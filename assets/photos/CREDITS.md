@@ -15,3 +15,9 @@ without his photos, which stay private).
 | farm.jpg | A tobacco farm in summer, under sunbeams | Mark Stebnicki | https://www.pexels.com/photo/agbiopix-tobacco-field-agriculture-2257526/ |
 | evening.jpg | A glass and a bottle on a dark table | cottonbro studio | https://www.pexels.com/photo/a-glass-and-whiskey-on-the-table-9419353/ |
 | wood.jpg | Dark wood grain | Karolina Grabowska (Kaboompics) | https://www.pexels.com/photo/dark-wood-texture-4709011/ |
+
+The journal screen (`../screens/entry.webp`) shows, as its moment photo, a
+glass on a wooden table from Pexels (https://www.pexels.com/photo/a-glass-of-whiskey-on-a-table-14856492/,
+the photographer named there), put in on his word on 2026-10-29: evening.jpg
+there looked washed out beside the bundles photo. evening.jpg stays as the
+dark background behind Suggest One.
