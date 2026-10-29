@@ -20,4 +20,8 @@ The journal screen (`../screens/entry.webp`) shows, as its moment photo, a
 glass on a wooden table from Pexels (https://www.pexels.com/photo/a-glass-of-whiskey-on-a-table-14856492/,
 the photographer named there), put in on his word on 2026-10-29: evening.jpg
 there looked washed out beside the bundles photo. evening.jpg stays as the
-dark background behind Suggest One.
+dark background behind Suggest One. Its cigar photo, the same evening (his
+word: the bundles were used "too many times", at the top and in the home
+screen already), is a single cigar on a wooden bar by Cesar
+(https://www.pexels.com/photo/macro-shot-of-cigar-on-a-wooden-surface-10233497/),
+cropped below its band so no brand shows.
