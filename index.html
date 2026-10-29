@@ -2,15 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Cigar Locker</title>
-  <meta name="description" content="Cigar Locker is a collection, inventory and journal app for iPhone. Scan a band or a box to name and measure a cigar, keep every humidor and its humidity, and keep a journal worth keeping. For adults 21 and over.">
-  <meta name="theme-color" content="#1a110c" media="(prefers-color-scheme: dark)">
-  <meta name="theme-color" content="#fbf6ee" media="(prefers-color-scheme: light)">
+  <meta name="description" content="Cigar Locker is the private collection, humidor and journal app for iPhone. Scan a band or a box to name and measure a cigar, watch every shelf's humidity, and keep a journal worth keeping. For adults 21 and over.">
+  <meta name="theme-color" content="#0f0906">
   <meta property="og:title" content="Cigar Locker">
-  <meta property="og:description" content="Your humidors, beautifully kept. A collection, inventory and journal app for iPhone, for adults 21 and over.">
+  <meta property="og:description" content="Your humidors, beautifully kept. The private collection, humidor and journal app for iPhone, for adults 21 and over.">
   <meta property="og:url" content="https://cigarlocker.atlantisdev.ai/">
   <meta property="og:type" content="website">
+  <meta property="og:image" content="https://cigarlocker.atlantisdev.ai/assets/photos/bundles.jpg">
   <link rel="canonical" href="https://cigarlocker.atlantisdev.ai/">
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
@@ -18,10 +18,43 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="preload" as="image" href="assets/photos/bundles.jpg">
   <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.add('js');</script>
+  <script src="site.js" defer></script>
 </head>
-<body>
+<body class="home">
   <a class="skip" href="#main">Skip to content</a>
+
+  <!-- The drawn icons, each line with pathLength="1" so it can draw itself in. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <g id="i-scan"><path pathLength="1" d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16"/><rect pathLength="1" x="7" y="10" width="10" height="4" rx="2"/></g>
+      <g id="i-ruler"><path pathLength="1" d="M3 15.5 15.5 3 21 8.5 8.5 21z"/><path pathLength="1" d="M7 12l2 2M10 9l2 2M13 6l2 2"/></g>
+      <g id="i-spark"><path pathLength="1" d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path pathLength="1" d="M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/></g>
+      <g id="i-drop"><path pathLength="1" d="M12 3.5c3.5 4.2 6 7.6 6 10.5a6 6 0 0 1-12 0c0-2.9 2.5-6.3 6-10.5z"/><path pathLength="1" d="M9 14.5a3 3 0 0 0 3 3"/></g>
+      <g id="i-chart"><path pathLength="1" d="M4 19h16"/><polyline pathLength="1" points="4,15 8.5,10 12,13 16,7 20,9"/></g>
+      <g id="i-cabinet"><rect pathLength="1" x="5" y="3" width="14" height="18" rx="2"/><path pathLength="1" d="M5 9h14M5 15h14M12 3v18"/></g>
+      <g id="i-book"><path pathLength="1" d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path pathLength="1" d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19M9 7h6M9 10.5h4"/></g>
+      <g id="i-star"><path pathLength="1" d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></g>
+      <g id="i-glass"><path pathLength="1" d="M6 4h12l-1.4 14.2A2 2 0 0 1 14.6 20H9.4a2 2 0 0 1-2-1.8z"/><path pathLength="1" d="M6.6 10h10.8"/></g>
+      <g id="i-moon"><path pathLength="1" d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></g>
+      <g id="i-compass"><circle pathLength="1" cx="12" cy="12" r="8.5"/><path pathLength="1" d="M15.5 8.5l-2 5-5 2 2-5z"/></g>
+      <g id="i-case"><rect pathLength="1" x="3.5" y="7" width="17" height="12.5" rx="2"/><path pathLength="1" d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3.5 12.5h17"/></g>
+      <g id="i-people"><circle pathLength="1" cx="9" cy="8.5" r="3.2"/><path pathLength="1" d="M3.5 19a5.5 5.5 0 0 1 11 0M15.5 5.6a3.2 3.2 0 0 1 0 6M17 13.6a5.5 5.5 0 0 1 3.5 5.4"/></g>
+      <g id="i-lock"><rect pathLength="1" x="5" y="10.5" width="14" height="10" rx="2"/><path pathLength="1" d="M8 10.5V8a4 4 0 0 1 8 0v2.5M12 14.5v2.5"/></g>
+      <g id="i-palette"><path pathLength="1" d="M12 3.5a8.5 8.5 0 1 0 0 17c1.2 0 1.8-.9 1.8-1.8 0-1.3-1-1.6-1-2.7 0-1 .8-1.6 1.8-1.6h2.1a3.8 3.8 0 0 0 3.8-3.8C20.5 6.7 16.7 3.5 12 3.5z"/><circle pathLength="1" cx="7.8" cy="11" r="1"/><circle pathLength="1" cx="10.5" cy="7.5" r="1"/><circle pathLength="1" cx="15" cy="7.8" r="1"/></g>
+      <g id="i-import"><path pathLength="1" d="M12 3.5v11M7.5 10l4.5 4.5 4.5-4.5M4 15.5V19a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-3.5"/></g>
+      <g id="i-table"><rect pathLength="1" x="4" y="4" width="16" height="16" rx="2"/><path pathLength="1" d="M4 9.5h16M4 15h16M10 4v16"/></g>
+      <g id="i-shield"><path pathLength="1" d="M12 3.5l7 2.8v5.4c0 4.3-3 7.6-7 8.8-4-1.2-7-4.5-7-8.8V6.3z"/><path pathLength="1" d="M9 12l2 2 4-4"/></g>
+      <g id="i-cloud"><path pathLength="1" d="M7 18.5a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4.5 4.5 0 0 1-.5 9z"/></g>
+      <g id="i-gem"><path pathLength="1" d="M7 4h10l3.5 5L12 20.5 3.5 9z"/><path pathLength="1" d="M3.5 9h17M9.5 4 12 9l2.5-5M12 9v11.5"/></g>
+      <g id="i-thermo"><path pathLength="1" d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path pathLength="1" d="M12 9v8"/></g>
+      <g id="i-key"><circle pathLength="1" cx="8" cy="15" r="4"/><path pathLength="1" d="M11 12l8.5-8.5M16 7l2.5 2.5M14 9l2 2"/></g>
+      <g id="i-camera"><path pathLength="1" d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.3l1.6-2h5.2l1.6 2h2.3A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle pathLength="1" cx="12" cy="13" r="3.4"/></g>
+      <g id="i-phone"><rect pathLength="1" x="6" y="2.5" width="12" height="19" rx="2.5"/><path pathLength="1" d="M10.5 18.5h3"/></g>
+    </defs>
+  </svg>
 
   <header class="site-header">
     <div class="wrap">
@@ -30,150 +63,251 @@
         <span class="brand-name">Cigar Locker</span>
       </a>
       <nav class="site-nav" aria-label="Site">
-        <a href="#features">Features</a>
+        <a class="hide-small" href="#scan">The scan</a>
+        <a class="hide-small" href="#humidity">Humidity</a>
+        <a class="hide-small" href="#journal">Journal</a>
         <a href="support.html">Support</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="terms.html">Terms</a>
+        <a class="nav-pill" href="#download">Coming soon</a>
       </nav>
     </div>
   </header>
 
   <main id="main">
-    <section class="hero">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-photo"><img src="assets/photos/bundles.jpg" alt="" width="2000" height="1331"></div>
       <div class="wrap">
-        <div class="hero-panel">
-          <img src="assets/logo.svg" alt="Cigar Locker" width="998" height="618">
-        </div>
         <div class="hero-copy">
-          <p class="overline">For the collector's humidor</p>
-          <h1>Your humidors, <em>beautifully kept.</em></h1>
-          <p class="lead">Cigar Locker is a collection, inventory and journal app for iPhone. Scan a band or a box and it names the cigar, measures it and looks up the rest. Then it keeps every humidor, every shelf's humidity and every journal entry in one quiet, handsome place.</p>
-          <div class="cta">
+          <p class="overline reveal">The private collection app for iPhone</p>
+          <h1 id="hero-title"><span class="line reveal" style="--d:.1s">Your humidors,</span> <em class="line reveal" style="--d:.25s">beautifully kept.</em></h1>
+          <p class="lead reveal" style="--d:.4s">Scan a band and the cigar is named, measured and looked up. Every shelf's humidity, every purchase and every evening worth remembering, kept in one handsome place.</p>
+          <div class="cta reveal" style="--d:.55s">
             <!-- Placeholder. Before launch, replace with Apple's official
                  "Download on the App Store" badge, unaltered, from
                  https://developer.apple.com/app-store/marketing/guidelines/
                  and link it to https://apps.apple.com/app/id6827316453 -->
             <a class="store-badge" role="link" aria-disabled="true" title="Coming soon to the App Store">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-phone"/></svg>
               <span><small>Coming soon to the</small><strong>App Store</strong></span>
             </a>
-            <a class="text-link" href="#features">See what it does</a>
+            <a class="text-link" href="#scan">See what it does</a>
           </div>
-          <p class="fine">For adults 21 and over. Cigar Locker is a collection and journal app; it does not sell tobacco.</p>
+          <p class="fine reveal" style="--d:.7s">For adults 21 and over. Cigar Locker is a collection and journal app; it does not sell tobacco.</p>
+        </div>
+        <div class="hero-phones reveal rise" style="--d:.3s">
+          <div class="hero-glow"></div>
+          <div class="phone back"><img src="assets/screens/home-cabinet.webp" alt="" width="660" height="1431"></div>
+          <div class="phone front"><img src="assets/screens/home-reserve.webp" alt="The Private Reserve home screen: a photo across the top, 1,015 cigars across two humidors, and each humidor's humidity" width="660" height="1431"></div>
+        </div>
+      </div>
+      <span class="scroll-cue" aria-hidden="true"></span>
+    </section>
+
+    <section class="marquee-band" aria-label="What Cigar Locker does">
+      <div class="marquee">
+        <div class="marquee-track">
+          <div class="marquee-group">
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-scan"/></svg></span>Scan a band or a box</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-ruler"/></svg></span>Length and ring gauge, measured</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-spark"/></svg></span>Binder, filler and factory, looked up</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-gem"/></svg></span>A rarity score out of 10</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-cabinet"/></svg></span>Every humidor, every purchase</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-import"/></svg></span>Bring your list from another app</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-table"/></svg></span>Export to a spreadsheet</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-key"/></svg></span>Sign in with Apple backup</span>
+          </div>
+        </div>
+      </div>
+      <div class="marquee reverse">
+        <div class="marquee-track">
+          <div class="marquee-group">
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-drop"/></svg></span>Humidity, shelf by shelf</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-chart"/></svg></span>The day, week, month or year</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-star"/></svg></span>Ratings out of ten stars</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-camera"/></svg></span>The cigar and the moment</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-moon"/></svg></span>Suggest One for the hour</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-glass"/></svg></span>Pairings, both ways</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-case"/></svg></span>Packed for the trip</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-compass"/></svg></span>Try Next, from your ratings</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-people"/></svg></span>Friends, and only friends</span>
+            <span class="tile"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-palette"/></svg></span>Eight styles, five palettes</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="section" id="features" aria-labelledby="features-title">
+    <section class="section showcase" id="scan" aria-labelledby="scan-title">
       <div class="wrap">
-        <div class="section-head">
-          <p class="overline">What it does</p>
-          <h2 id="features-title">Everything a collector keeps track of, <em>and a few things you couldn't.</em></h2>
-        </div>
-
-        <div class="features">
-          <article class="feature wide">
-            <p class="num">01</p>
-            <h3>Scan a band or a box</h3>
-            <div class="feature-body">
-              <p>Take a photo, or choose one already in your photos. Cigar Locker reads the band the way a collector does, by its colors, shape and emblem as well as its words, along with the wrapper's color and the shape of the head. It names the cigar and fills in the form for you. A box gives the count and packaging too.</p>
-              <p>Lay the cigar beside a dollar bill, a credit card, a business card, a quarter or a ruler and it measures the length and ring gauge, then settles on a size that line is actually made in. If the name isn't right, <strong>Not correct? Think harder</strong> takes a closer look, or choose from the close matches it offers.</p>
-            </div>
-          </article>
-
-          <article class="feature">
-            <p class="num">02</p>
-            <h3>The homework, done for you</h3>
-            <p>After a scan it looks up the wrapper, binder and filler, the factory and its town, the country, the year the line was released and every size it comes in, and names where the facts came from. Many lines are answered straight from the makers' own catalogs.</p>
-            <p>Each cigar gets a rarity score out of 10, and where you didn't note what you paid, the maker's suggested price stands in, always marked as an estimate.</p>
-          </article>
-
-          <article class="feature">
-            <p class="num">03</p>
-            <h3>Every humidor, every purchase</h3>
-            <p>Keep as many humidors as you own, in as many houses. Each purchase remembers where it came from, when, whether you bought it in person or had it shipped, and why you chose it, if you like.</p>
-            <p>Move part of a box and it keeps its date and price. Gifts, trades and damage are noted as what they are, and any line in a cigar's history can be undone. Search, filter by strength, wrapper, country, length or rarity, sort any way you like, and export it all to a spreadsheet.</p>
-          </article>
-
-          <article class="feature">
-            <p class="num">04</p>
-            <h3>Humidity, shelf by shelf</h3>
-            <p>Connect your SensorPush sensors and see the humidity and temperature in each humidor. A tall cabinet with several sensors is drawn as a map, each reading in its place, green when it's on target and amber when it drifts.</p>
-            <p>Give each shelf its own target, see the average or every sensor, and look back by the day, week, month or year. Needs a SensorPush WiFi Gateway; readings are checked while the app is open.</p>
-          </article>
-
-          <article class="feature">
-            <p class="num">05</p>
-            <h3>A journal worth keeping</h3>
-            <p>Rate each cigar out of 10 stars, write your tasting notes, and keep two photos: one of the cigar, and one of the moment, where you were and who you were with.</p>
-            <p>Every entry has its own page, can be edited later, and stays yours unless you choose to tell friends.</p>
-          </article>
-
-          <article class="feature">
-            <p class="num">06</p>
-            <h3>Suggest One</h3>
-            <p>Not sure which to reach for? Say whether you're inside or out, how long it should last, how strong, and whether you've eaten. Suggest One weighs the hour and, outside, the weather at your ZIP code, then offers three from your own humidor, each with its reason.</p>
-            <p>Planning a trip? Say where and when, and it packs a list from your collection to suit the forecast there.</p>
-          </article>
-
-          <article class="feature">
-            <p class="num">07</p>
-            <h3>Pairings, both ways</h3>
-            <p>Drinks and food to go with any cigar you keep, always including a choice without alcohol. Or start from a drink or a dish and see which cigars in your humidor suit it best.</p>
-          </article>
-
-          <article class="feature">
-            <p class="num">08</p>
-            <h3>Friends, and only friends</h3>
-            <p>Add friends by username or with an invite code. Tell them what you're enjoying, with a photo if you like, and choose exactly who sees it. Reply, message, and share a friend's post with others.</p>
-            <p>Nothing is public. Hide your posts from anyone, choose whether people can find you, and block or report anyone at any time.</p>
-          </article>
-
-          <article class="feature">
-            <p class="num">09</p>
-            <h3>Make it yours</h3>
-            <p>Eight home screen styles, from the photo-led Private Reserve to the all-type Ledger, and five palettes: Onyx, Midnight, Emerald, Cognac and Oxblood, each in light, dark or automatic.</p>
-          </article>
-
-          <article class="feature wide">
-            <p class="num">10</p>
-            <h3>Bring your collection with you</h3>
-            <p>Kept a list in another app? Save it as a spreadsheet file and <strong>Import a collection</strong> reads it, offers to fix any spellings, never adds a cigar twice, and can be undone.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="section private" aria-labelledby="private-title">
-      <div class="wrap">
-        <div class="section-head">
-          <p class="overline">Private by design</p>
-          <h2 id="private-title">Yours, <em>and nobody else's.</em></h2>
-          <p>Your collection lives on your iPhone first, so it opens instantly and works with no signal in the humidor room.</p>
-        </div>
-        <div>
-          <ul class="points">
-            <li>Sign in with Apple to back up your collection and photos privately, and bring them back on a new phone.</li>
-            <li>Your SensorPush password stays in your iPhone's Keychain and goes only to SensorPush.</li>
-            <li>No ads. No tracking across other apps or websites. Your personal data is never sold.</li>
-            <li>Delete your account inside the app whenever you like.</li>
+        <div class="copy">
+          <p class="num reveal">01</p>
+          <p class="overline reveal">The scan</p>
+          <h2 id="scan-title" class="reveal" style="--d:.1s">Point. Scan. <em>Known.</em></h2>
+          <p class="reveal" style="--d:.2s">Cigar Locker reads a band the way a collector does: its colors, shape and emblem as well as its words. It names the cigar, measures it against a dollar bill or a card, and settles on a size the line is actually made in.</p>
+          <ul class="marks">
+            <li class="reveal" style="--d:.25s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.4s"><use href="#i-scan"/></svg></span><span>Reads the band<small>Even the ones that never say what they are.</small></span></li>
+            <li class="reveal" style="--d:.35s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.5s"><use href="#i-ruler"/></svg></span><span>Measures it<small>Length and ring gauge, from the photo.</small></span></li>
+            <li class="reveal" style="--d:.45s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.6s"><use href="#i-spark"/></svg></span><span>Does the homework<small>Wrapper, binder, filler, factory and the year it was released.</small></span></li>
           </ul>
-          <p class="fine">Scanning, look-ups, suggestions and Friends use our server, so they need you to be signed in. <a href="privacy.html">Read the privacy policy</a>.</p>
+        </div>
+        <div class="stage">
+          <span class="orbit" aria-hidden="true"></span>
+          <span class="orbit two" aria-hidden="true"></span>
+          <div class="phone reveal rise"><img src="assets/screens/scan.webp" alt="A scan of a box: the cigar named, measured at 5 by 50 beside a dollar bill, and six details looked up" width="660" height="1431" loading="lazy"></div>
+          <div class="float-card a reveal" style="--d:.5s"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-ruler"/></svg></span><span><strong>5″ × 50</strong>Measured: its Robusto</span></div>
+          <div class="float-card b reveal" style="--d:.7s"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-spark"/></svg></span><span><strong>6 details filled in</strong>Looked up for you</span></div>
         </div>
       </div>
     </section>
 
-    <section class="section closing" aria-labelledby="closing-title">
+    <section class="section photo-band" aria-labelledby="figures-title">
+      <div class="bg" data-parallax><img src="assets/photos/leaf-in-hand.jpg" alt="" width="1800" height="1200" loading="lazy"></div>
+      <div class="wrap">
+        <div class="section-head center">
+          <p class="overline reveal">Built on the makers' own catalogs</p>
+          <h2 id="figures-title" class="reveal" style="--d:.1s">It knows <em>its cigars.</em></h2>
+          <p class="reveal" style="--d:.2s">Bands, blends and sizes read from the makers' catalogs, so most scans are answered in seconds, and anything new is looked up on the web.</p>
+        </div>
+        <div class="figures reveal" style="--d:.2s">
+          <div class="figure"><b data-count="800" data-suffix="+">800+</b><span>bands it knows by sight</span></div>
+          <div class="figure"><b data-count="800" data-suffix="+">800+</b><span>lines, with their blend and every size</span></div>
+          <div class="figure"><b data-count="200" data-suffix="+">200+</b><span>makers, from Cuba to Nicaragua</span></div>
+          <div class="figure"><b data-count="10">10</b><span>stars for every journal entry</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section showcase flip" id="humidity" aria-labelledby="humidity-title">
+      <div class="wrap">
+        <div class="copy">
+          <p class="num reveal">02</p>
+          <p class="overline reveal">Humidity</p>
+          <h2 id="humidity-title" class="reveal" style="--d:.1s">Every shelf, <em>in its place.</em></h2>
+          <p class="reveal" style="--d:.2s">Connect your SensorPush sensors and a tall cabinet is drawn as a map, each reading where it hangs: green on target, amber when it drifts. Give every shelf its own target, then look back by the day, week, month or year.</p>
+          <div class="gauges">
+            <div class="gauge reveal" style="--v:62;--d:.2s"><svg viewBox="0 0 84 84" aria-hidden="true"><circle class="track" cx="42" cy="42" r="36" pathLength="100"/><circle class="fill" cx="42" cy="42" r="36" pathLength="100"/></svg><b data-count="62" data-suffix="%">62%</b><span>Top · 60–64</span></div>
+            <div class="gauge reveal" style="--v:65;--d:.35s"><svg viewBox="0 0 84 84" aria-hidden="true"><circle class="track" cx="42" cy="42" r="36" pathLength="100"/><circle class="fill" cx="42" cy="42" r="36" pathLength="100"/></svg><b data-count="65" data-suffix="%">65%</b><span>Middle · 64–66</span></div>
+            <div class="gauge reveal" style="--v:68;--d:.5s"><svg viewBox="0 0 84 84" aria-hidden="true"><circle class="track" cx="42" cy="42" r="36" pathLength="100"/><circle class="fill" cx="42" cy="42" r="36" pathLength="100"/></svg><b data-count="68" data-suffix="%">68%</b><span>Bottom · 66–69</span></div>
+          </div>
+          <p class="fine reveal" style="margin-top:20px">Works with SensorPush sensors and their WiFi Gateway. No sensors yet? The app has a sample to look around.</p>
+        </div>
+        <div class="stage">
+          <span class="orbit" aria-hidden="true"></span>
+          <span class="orbit two" aria-hidden="true"></span>
+          <div class="phone reveal rise"><img src="assets/screens/humidor.webp" alt="A display case's humidity: 60 to 68 percent across six sensors, drawn as a map of the cabinet" width="660" height="1431" loading="lazy"></div>
+          <div class="float-card a reveal" style="--d:.5s"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-drop"/></svg></span><span><strong>Six sensors</strong>Each judged on its own</span></div>
+          <div class="float-card b reveal" style="--d:.7s"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-chart"/></svg></span><span><strong>A year of readings</strong>Filled in for you</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section showcase" id="journal" aria-labelledby="journal-title">
+      <div class="wrap">
+        <div class="copy">
+          <p class="num reveal">03</p>
+          <p class="overline reveal">The journal</p>
+          <h2 id="journal-title" class="reveal" style="--d:.1s">Evenings <em>worth keeping.</em></h2>
+          <p class="reveal" style="--d:.2s">Rate each cigar out of ten stars, write what you tasted, and keep two photos: the cigar, and the moment. Every entry has its own page, and stays yours unless you choose to share it.</p>
+          <div class="stars reveal" style="--d:.3s" role="img" aria-label="Nine stars out of ten">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><use href="#i-star"/></svg>
+          </div>
+          <p class="stars-note reveal" style="--d:.35s">“Cocoa and cedar from the first inch, then black pepper. A long finish.”</p>
+          <ul class="marks">
+            <li class="reveal" style="--d:.4s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.5s"><use href="#i-book"/></svg></span><span>Every cigar's history<small>Gifts, trades and moves noted as what they are, and undone with a tap.</small></span></li>
+          </ul>
+        </div>
+        <div class="stage">
+          <span class="orbit" aria-hidden="true"></span>
+          <span class="orbit two" aria-hidden="true"></span>
+          <div class="phone reveal rise"><img src="assets/screens/entry.webp" alt="A journal entry rated nine stars out of ten, with a photo of the cigar's leaf and one of the evening" width="660" height="1431" loading="lazy"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section showcase flip photo-band" aria-labelledby="suggest-title">
+      <div class="bg" data-parallax><img src="assets/photos/evening.jpg" alt="" width="1400" height="2100" loading="lazy"></div>
+      <div class="wrap">
+        <div class="copy">
+          <p class="num reveal">04</p>
+          <p class="overline reveal">Suggest One</p>
+          <h2 id="suggest-title" class="reveal" style="--d:.1s">The right cigar <em>for the hour.</em></h2>
+          <p class="reveal" style="--d:.2s">Inside or out, the weather at your ZIP code, whether you've eaten, how long you have. Suggest One weighs it all and offers three from your own humidor, each with its reason. Going away for the weekend? It packs for the trip.</p>
+          <ul class="marks">
+            <li class="reveal" style="--d:.3s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.4s"><use href="#i-glass"/></svg></span><span>Pairings, both ways<small>Drinks and food for any cigar, or the cigars that suit a drink.</small></span></li>
+            <li class="reveal" style="--d:.4s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.5s"><use href="#i-compass"/></svg></span><span>Try Next<small>Lines you don't have yet, chosen from your own ratings.</small></span></li>
+          </ul>
+        </div>
+        <div class="stage">
+          <span class="orbit" aria-hidden="true"></span>
+          <span class="orbit two" aria-hidden="true"></span>
+          <div class="phone reveal rise"><img src="assets/screens/home-concierge.webp" alt="The Concierge home screen: a greeting, tonight's suggestion and a cigar of the day worth rediscovering" width="660" height="1431" loading="lazy"></div>
+          <div class="float-card a reveal" style="--d:.5s"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-thermo"/></svg></span><span><strong>41°F, light wind</strong>Outside, so a shorter one</span></div>
+          <div class="float-card b reveal" style="--d:.7s"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-moon"/></svg></span><span><strong>After dinner</strong>Something fuller</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="styles" aria-labelledby="styles-title">
+      <div class="wrap">
+        <div class="section-head center">
+          <p class="overline reveal">Make it yours</p>
+          <h2 id="styles-title" class="reveal" style="--d:.1s">Eight looks. <em>Five palettes.</em></h2>
+          <p class="reveal" style="--d:.2s">From the photo-led Private Reserve to the all-type Ledger, each in light or dark.</p>
+        </div>
+      </div>
+      <div class="screens marquee" aria-label="The eight home screen styles">
+        <div class="marquee-track">
+          <div class="marquee-group">
+            <figure><div class="phone"><img src="assets/screens/home-reserve.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Cognac</small>Private Reserve</figcaption></figure>
+            <figure><div class="phone"><img src="assets/screens/home-gallery.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Onyx</small>Gallery</figcaption></figure>
+            <figure><div class="phone"><img src="assets/screens/home-concierge.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Emerald</small>Concierge</figcaption></figure>
+            <figure><div class="phone"><img src="assets/screens/home-cabinet.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Midnight</small>Cabinet</figcaption></figure>
+            <figure><div class="phone"><img src="assets/screens/home-club.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Oxblood</small>Club</figcaption></figure>
+            <figure><div class="phone"><img src="assets/screens/home-ledger.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Oxblood</small>Ledger</figcaption></figure>
+            <figure><div class="phone"><img src="assets/screens/home-minimal.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Cognac</small>Minimal</figcaption></figure>
+            <figure><div class="phone"><img src="assets/screens/home-current.webp" alt="" width="660" height="1431" loading="lazy"></div><figcaption><small>Onyx</small>Classic</figcaption></figure>
+          </div>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="palettes reveal">
+          <span class="palette"><i style="background:linear-gradient(135deg,#2a2a2c,#0b0b0c);box-shadow:0 0 0 2px #c9ccd1 inset"></i>Onyx</span>
+          <span class="palette"><i style="background:linear-gradient(135deg,#1c2a4a,#0b1222);box-shadow:0 0 0 2px #d9c08f inset"></i>Midnight</span>
+          <span class="palette"><i style="background:linear-gradient(135deg,#1f4a37,#0b1a13);box-shadow:0 0 0 2px #b9d3c0 inset"></i>Emerald</span>
+          <span class="palette"><i style="background:linear-gradient(135deg,#4a2c1c,#170e09);box-shadow:0 0 0 2px #e3a671 inset"></i>Cognac</span>
+          <span class="palette"><i style="background:linear-gradient(135deg,#5a1a1f,#1c0709);box-shadow:0 0 0 2px #c9a35c inset"></i>Oxblood</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section photo-band" aria-labelledby="private-title">
+      <div class="bg" data-parallax><img src="assets/photos/leaves.jpg" alt="" width="1800" height="1200" loading="lazy"></div>
+      <div class="wrap">
+        <div class="section-head center">
+          <p class="overline reveal">Private by design</p>
+          <h2 id="private-title" class="reveal" style="--d:.1s">Yours, <em>and nobody else's.</em></h2>
+        </div>
+        <div class="cards">
+          <article class="card reveal" style="--d:.1s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.3s"><use href="#i-lock"/></svg></span><h3>On your iPhone first</h3><p>Your collection opens instantly and works with no signal in the humidor room.</p></article>
+          <article class="card reveal" style="--d:.2s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.4s"><use href="#i-cloud"/></svg></span><h3>Backed up privately</h3><p>Sign in with Apple to keep your collection and photos safe, and bring them to a new phone.</p></article>
+          <article class="card reveal" style="--d:.3s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.5s"><use href="#i-people"/></svg></span><h3>Friends, and only friends</h3><p>Nothing is public. Choose exactly who sees what you're enjoying, and block anyone at any time.</p></article>
+          <article class="card reveal" style="--d:.4s"><span class="ic"><svg class="draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="--d:.6s"><use href="#i-shield"/></svg></span><h3>No ads, no tracking</h3><p>Your data is never sold, and you can delete your account inside the app.</p></article>
+        </div>
+        <p class="fine reveal" style="text-align:center;margin-top:28px">Scanning, look-ups, suggestions and Friends use our server, so they need you to be signed in. <a href="privacy.html">Read about your privacy</a>.</p>
+      </div>
+    </section>
+
+    <section class="closing photo-band" id="download" aria-labelledby="closing-title">
+      <div class="bg" data-parallax><img src="assets/photos/wood.jpg" alt="" width="1200" height="1800" loading="lazy"></div>
       <div class="wrap narrow">
-        <img src="assets/mark.svg" alt="" width="56" height="71">
-        <h2 id="closing-title">Coming soon to iPhone</h2>
-        <div class="cta">
+        <img class="mark reveal" src="assets/mark.svg" alt="" width="76" height="96">
+        <h2 id="closing-title" class="reveal" style="--d:.1s">Coming soon <em>to iPhone.</em></h2>
+        <p class="lead reveal" style="--d:.2s">For adults 21 and over. Cigar Locker is a collection and journal app; it does not sell tobacco.</p>
+        <div class="cta reveal" style="--d:.3s">
           <a class="store-badge" role="link" aria-disabled="true" title="Coming soon to the App Store">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><use href="#i-phone"/></svg>
             <span><small>Coming soon to the</small><strong>App Store</strong></span>
           </a>
         </div>
-        <p class="fine">Questions? <a href="support.html">Visit support</a> or write to <a href="mailto:support@atlantisdev.ai">support@atlantisdev.ai</a>.</p>
+        <p class="fine reveal" style="--d:.4s">Questions? <a href="support.html">Visit support</a> or write to <a href="mailto:support@atlantisdev.ai">support@atlantisdev.ai</a>.</p>
       </div>
     </section>
   </main>
@@ -181,6 +315,7 @@
   <footer class="site-footer">
     <div class="wrap">
       <div>
+        <p class="foot-brand"><img src="assets/mark.svg" alt="" width="21" height="26">Cigar Locker</p>
         <p>&copy; 2026 Cigar Locker. All rights reserved.</p>
         <p>Cigar Locker is a collection, inventory and journal app for adults 21 and over. It does not sell tobacco.</p>
         <p>SensorPush is a trademark of its owner. App Store is a service mark of Apple Inc.</p>
