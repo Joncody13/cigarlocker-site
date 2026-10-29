@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <!-- Nothing but this page's own files, and only the app's server to talk to. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://nypahhdmoxrfvwnfufdf.supabase.co wss://nypahhdmoxrfvwnfufdf.supabase.co; base-uri 'none'; form-action 'none'">
+  <title>Cigar Locker Console</title>
+  <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="console.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img src="../assets/mark.svg" alt="" width="28" height="28">
+      <span>Cigar Locker</span><span class="sub">Console</span>
+    </div>
+    <div class="top-right" id="top-right" hidden>
+      <span class="muted" id="updated"></span>
+      <button type="button" class="ghost" id="refresh">Refresh</button>
+      <button type="button" class="ghost" id="sign-out">Sign out</button>
+    </div>
+  </header>
+
+  <!-- Signing in: the email, then the authenticator code. -->
+  <main id="gate" class="gate" hidden>
+    <div class="gate-card">
+      <h1 id="gate-title">Sign in</h1>
+      <p class="muted" id="gate-words"></p>
+      <form id="email-form" hidden>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <button type="submit" class="primary">Email me a sign-in link</button>
+      </form>
+      <form id="otp-form" hidden>
+        <label for="otp">Code from the email, if it shows one</label>
+        <input id="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6,10}" maxlength="10">
+        <button type="submit" class="primary">Sign in with the code</button>
+        <button type="button" class="link" id="start-over">Use a different email</button>
+      </form>
+      <div id="enroll" hidden>
+        <img id="qr" alt="QR code to add Cigar Locker Console to an authenticator app" width="200" height="200">
+        <p class="muted small">Or type this key into the app: <code id="secret"></code></p>
+      </div>
+      <form id="code-form" hidden>
+        <label for="code">Six-digit code from your authenticator app</label>
+        <input id="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+        <button type="submit" class="primary">Open the console</button>
+      </form>
+      <p class="error" id="gate-error" role="alert"></p>
+    </div>
+  </main>
+
+  <main id="board" class="board" hidden>
+    <section aria-labelledby="h-today">
+      <h2 id="h-today" class="overline">At a glance</h2>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <section class="row three">
+      <div class="card">
+        <h3>People in the app, by day</h3>
+        <p class="muted small">Each person or install that opened it, last 30 days</p>
+        <div id="chart-active" class="chart"></div>
+      </div>
+      <div class="card">
+        <h3>Scans, by day</h3>
+        <p class="muted small">Every cigar or box scanned, last 30 days</p>
+        <div id="chart-scans" class="chart"></div>
+      </div>
+      <div class="card feed-card">
+        <h3>What's happening</h3>
+        <ol id="feed" class="feed"></ol>
+      </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-members">
+      <div class="card-head">
+        <h3 id="h-members">Members</h3>
+        <input id="member-search" type="search" placeholder="Search name, email, phone, town, ZIP" aria-label="Search members">
+        <span class="muted small" id="member-count"></span>
+      </div>
+      <div class="table-wrap">
+        <table class="members" id="members">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="muted small">Click a member for what they bought, rated and did. Days are Massachusetts time.</p>
+    </section>
+
+    <section class="row three">
+      <div class="card">
+        <h3>Shops they buy from</h3>
+        <table class="plain" id="shops"></table>
+      </div>
+      <div class="card">
+        <h3>Brands in their humidors</h3>
+        <table class="plain" id="brands"></table>
+      </div>
+      <div class="card">
+        <h3>Why they bought</h3>
+        <div id="reasons" class="hbars"></div>
+        <h3 class="spaced">How they bought</h3>
+        <div id="how" class="hbars"></div>
+        <h3 class="spaced">Where members live</h3>
+        <div id="states" class="hbars"></div>
+      </div>
+    </section>
+
+    <section class="row three">
+      <div class="card">
+        <h3>Emails</h3>
+        <dl class="facts" id="emails"></dl>
+      </div>
+      <div class="card">
+        <h3>App health</h3>
+        <dl class="facts" id="health"></dl>
+        <h3 class="spaced">Versions in use, last 30 days</h3>
+        <table class="plain" id="versions"></table>
+      </div>
+      <div class="card log-card">
+        <h3>Looks at this console</h3>
+        <div class="table-wrap"><table class="plain" id="log"></table></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="tip" class="tip" role="status" hidden></div>
+  <script src="supabase.js"></script>
+  <script src="console.js"></script>
+</body>
+</html>
