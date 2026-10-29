@@ -228,10 +228,11 @@
     }, REFRESH_MINUTES * 60000);
   }
 
-  async function refresh() {
+  /** The board again; worked out afresh on the server when he asks (the Refresh button). */
+  async function refresh(fresh = false) {
     $('board').classList.add('loading');
     try {
-      snapshot = await ask({ action: 'snapshot' });
+      snapshot = await ask({ action: 'snapshot', fresh: fresh === true });
       render(snapshot);
     } catch (e) {
       if (e.status === 401 || e.status === 403) {
@@ -244,29 +245,28 @@
     }
   }
 
-  $('refresh').addEventListener('click', refresh);
+  $('refresh').addEventListener('click', () => refresh(true));
 
   // ---- the board ----------------------------------------------------------------
 
-  let byId = new Map();
+  // The names of the members in "What's happening", from the server.
+  let names = {};
 
   function who(id, install) {
     if (!id) return install ? `Someone not signed in (install ${install})` : 'Someone not signed in';
-    const m = byId.get(id);
-    if (!m) return 'A member';
-    return m.name || (m.username ? `@${m.username}` : '') || m.displayName || m.email || 'A member';
+    return names[id] || 'A member';
   }
 
   function render(d) {
     today = d.today;
-    byId = new Map(d.members.map((m) => [m.id, m]));
+    names = d.names || {};
     $('updated').textContent = `Updated ${timeFmt.format(new Date(d.at))}`;
     tiles(d.totals);
     barChart($('chart-active'), d.daily, 'active', (v) => plural(v, 'person', 'people'));
     barChart($('chart-scans'), d.daily, 'scans', (v) => plural(v, 'scan'));
     feed(d.feed);
     renderFilters();
-    people();
+    loadPeople(false);
     market(d.market);
     mailBox(d.mail, d.totals);
     health(d.health, d.totals);
@@ -480,7 +480,6 @@
   const G = window.CigarGroups;
   let filters = [];
   let loadedGroup = null;
-  let shownNow = [];
   const ctx = () => ({ now: Date.now() });
 
   const placeFilter = () => filters.find((f) => f.field === 'place' && f.place);
@@ -537,31 +536,57 @@
     return [...COLUMNS, ...extra];
   }
 
+  // The group, a page at a time, filtered, searched and sorted on the server
+  // (console_find), so it is the same with ten members or half a million.
+  const PAGE = 200;
+  let page = { total: 0, reach: { news: 0, offers: 0 }, rows: [] };
+  let pageAsked = 0;
+  let pageTimer = null;
+  let pageError = '';
+
+  const search = () => $('member-search').value.trim();
+
+  /** The group changed: ask again, once he has stopped typing for a moment. */
   function people() {
+    clearTimeout(pageTimer);
+    pageTimer = setTimeout(() => loadPeople(false), 250);
+  }
+
+  async function loadPeople(more) {
     if (!snapshot) return;
-    const list = snapshot.members;
-    const q = $('member-search').value.trim().toLowerCase();
-    const picked = G.pick(list, filters, ctx());
-    const shown = picked.filter(
-      (m) => !q || [m.name, m.username, m.displayName, m.email, m.phone, m.city, m.state, m.zip, m.street].join(' ').toLowerCase().includes(q),
-    );
-    shownNow = shown;
+    const asked = ++pageAsked;
+    try {
+      const got = await ask({
+        action: 'people',
+        filters,
+        search: search(),
+        sort: sortBy,
+        desc: sortDown,
+        offset: more ? page.rows.length : 0,
+        limit: PAGE,
+      });
+      if (asked !== pageAsked) return;
+      page = more ? { ...got, rows: [...page.rows, ...got.rows] } : got;
+      pageError = '';
+    } catch (e) {
+      if (asked !== pageAsked) return;
+      pageError = e.message;
+    }
+    drawPeople();
+  }
+
+  function drawPeople() {
+    const shown = page.rows;
+    const all = (snapshot && snapshot.people && snapshot.people.total) || 0;
+    const q = search();
     const columns = columnsNow();
-    const col = columns.find((c) => c.key === sortBy) || COLUMNS[4];
-    shown.sort((a, b) => {
-      const x = col.sort(a);
-      const y = col.sort(b);
-      const order = x < y ? -1 : x > y ? 1 : 0;
-      return sortDown ? -order : order;
-    });
     const narrowed = filters.some((f) => G.describe(f)) || q;
-    $('member-count').textContent = narrowed ? `${n(shown.length)} of ${plural(list.length, 'member')}` : plural(list.length, 'member');
+    $('member-count').textContent = pageError || (narrowed ? `${n(page.total)} of ${plural(all, 'member')}` : plural(all, 'member'));
     $('group-words').textContent = narrowed ? G.describeAll(filters) + (q ? ` · search "${q}"` : '') : 'Everyone';
-    const reach = { news: G.reachable(shown, 'news').length, offers: G.reachable(shown, 'offers').length };
-    $('email-group').textContent = shown.length === 1 ? 'Email this person' : `Email these ${n(shown.length)} people`;
-    $('email-group').disabled = shown.length === 0;
-    $('group-reach').textContent = `${n(reach.offers)} can get offers, ${n(reach.news)} can get news`;
-    $('download-group').disabled = shown.length === 0;
+    $('email-group').textContent = page.total === 1 ? 'Email this person' : `Email these ${n(page.total)} people`;
+    $('email-group').disabled = page.total === 0;
+    $('group-reach').textContent = `${n(page.reach.offers)} can get offers, ${n(page.reach.news)} can get news`;
+    $('download-group').disabled = page.total === 0;
     $('members').tHead.replaceChildren(
       h(
         'tr',
@@ -580,7 +605,7 @@
                   sortBy = c.key;
                   sortDown = true;
                 }
-                people();
+                loadPeople(false);
               },
             }),
           ),
@@ -588,7 +613,7 @@
       ),
     );
     const body = [];
-    for (const m of shown.slice(0, 500)) {
+    for (const m of shown) {
       const c = cells(m);
       body.push(
         h(
@@ -605,8 +630,22 @@
       );
       if (open === m.id) body.push(h('tr', { class: 'detail-row' }, h('td', { colspan: columns.length }, detailBox(m))));
     }
-    if (shown.length > 500) body.push(h('tr', {}, h('td', { colspan: columns.length, class: 'muted', text: `The first 500 of ${n(shown.length)} are shown; the spreadsheet has them all.` })));
-    if (!shown.length) body.push(h('tr', {}, h('td', { colspan: columns.length, class: 'muted', text: list.length ? 'Nobody matches.' : 'No members yet.' })));
+    if (shown.length < page.total) {
+      body.push(
+        h(
+          'tr',
+          {},
+          h(
+            'td',
+            { colspan: columns.length, class: 'muted' },
+            `Showing ${n(shown.length)} of ${n(page.total)}. `,
+            h('button', { type: 'button', class: 'link', text: `Show ${n(Math.min(PAGE, page.total - shown.length))} more`, onclick: () => loadPeople(true) }),
+            ' The spreadsheet has them all.',
+          ),
+        ),
+      );
+    }
+    if (!shown.length) body.push(h('tr', {}, h('td', { colspan: columns.length, class: 'muted', text: all ? 'Nobody matches.' : 'No members yet.' })));
     $('members').tBodies[0].replaceChildren(...body);
   }
 
@@ -614,12 +653,11 @@
 
   function toggle(id) {
     open = open === id ? null : id;
-    people();
+    drawPeople();
   }
 
   // The filters, one row each.
   function renderFilters() {
-    const list = snapshot ? snapshot.members : [];
     $('filters').replaceChildren(
       ...filters.map((filter, i) => {
         const f = G.byKey.get(filter.field);
@@ -635,7 +673,7 @@
             people();
           },
         });
-        return h('div', { class: 'filter-row' }, h('span', { class: 'filter-label', text: f.label }), editor(f, filter, list), remove);
+        return h('div', { class: 'filter-row' }, h('span', { class: 'filter-label', text: f.label }), editor(f, filter), remove);
       }),
     );
     renderGroupsBar();
@@ -677,14 +715,17 @@
     );
   }
 
-  function editor(f, filter, list) {
+  /** A choice or "has" filter's buttons: its own, or what members have, most common first (worked out on the server). */
+  const choicesOf = (f) => f.options || (snapshot && snapshot.people && snapshot.people.choices && snapshot.people.choices[f.key]) || [];
+
+  function editor(f, filter) {
     switch (f.type) {
       case 'range':
         return h('div', { class: 'editor' }, numberBox(filter, 'min', 'from'), h('span', { class: 'muted', text: 'to' }), numberBox(filter, 'max', 'to'), h('span', { class: 'muted small', text: f.unit || '' }));
       case 'choice':
       case 'has': {
         filter.values = filter.values || [];
-        const options = G.choicesFor(f.key, list, ctx());
+        const options = choicesOf(f);
         if (!options.length) return h('span', { class: 'muted small', text: 'Nobody has one yet.' });
         return toggles(options.slice(0, 60), filter.values, f.words || ((x) => x), (v) => {
           const at = filter.values.indexOf(v);
@@ -857,14 +898,32 @@
     })),
   ];
 
-  $('download-group').addEventListener('click', () => {
-    const extra = placeFilter() ? [{ label: `Miles from ${placeFilter().place.name}`, get: (m) => (milesTo(m) == null ? '' : Math.round(milesTo(m))) }] : [];
-    const blob = new Blob([G.csv(shownNow, [...SHEET, ...extra], ctx())], { type: 'text/csv;charset=utf-8' });
-    const link = h('a', { href: URL.createObjectURL(blob), download: `cigar-locker-people-${today || 'today'}.csv` });
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+  // Every page of the group, then the spreadsheet.
+  $('download-group').addEventListener('click', async () => {
+    const button = $('download-group');
+    const words = button.textContent;
+    button.disabled = true;
+    try {
+      const rows = [];
+      for (;;) {
+        button.textContent = `Reading ${n(rows.length)} of ${n(page.total)}…`;
+        const got = await ask({ action: 'people', filters, search: search(), sort: sortBy, desc: sortDown, offset: rows.length, limit: 5000 });
+        rows.push(...got.rows);
+        if (got.rows.length === 0 || rows.length >= got.total) break;
+      }
+      const extra = placeFilter() ? [{ label: `Miles from ${placeFilter().place.name}`, get: (m) => (milesTo(m) == null ? '' : Math.round(milesTo(m))) }] : [];
+      const blob = new Blob([G.csv(rows, [...SHEET, ...extra], ctx())], { type: 'text/csv;charset=utf-8' });
+      const link = h('a', { href: URL.createObjectURL(blob), download: `cigar-locker-people-${today || 'today'}.csv` });
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+    } catch (e) {
+      window.alert(e.message);
+    } finally {
+      button.textContent = words;
+      button.disabled = page.total === 0;
+    }
   });
 
   // ---- emailing the group ---------------------------------------------------------
@@ -884,16 +943,16 @@
 
   function updateCompose() {
     const kind = composeKind();
-    const reach = G.reachable(shownNow, kind);
+    const reach = page.reach[kind];
     const missing = emailReady(snapshot.mail);
-    $('compose-who').textContent = `${$('group-words').textContent}: ${plural(shownNow.length, 'person', 'people')}.`;
-    $('compose-reach').textContent = `${plural(reach.length, 'of them said', 'of them said')} yes to ${kind === 'news' ? 'news from Cigar Locker' : 'offers from local shops'} and will get it.${
-      shownNow.length > reach.length ? ` The other ${n(shownNow.length - reach.length)} said no, gave no address, or bounced.` : ''
+    $('compose-who').textContent = `${$('group-words').textContent}: ${plural(page.total, 'person', 'people')}.`;
+    $('compose-reach').textContent = `${plural(reach, 'of them said', 'of them said')} yes to ${kind === 'news' ? 'news from Cigar Locker' : 'offers from local shops'} and will get it.${
+      page.total > reach ? ` The other ${n(page.total - reach)} said no, gave no address, or bounced.` : ''
     }`;
     $('compose-missing').replaceChildren(...missing.map((m) => h('li', { text: m })));
     $('compose-missing').hidden = missing.length === 0;
-    $('compose-send').textContent = `Send to ${plural(reach.length, 'person', 'people')}`;
-    $('compose-send').disabled = missing.length > 0 || reach.length === 0;
+    $('compose-send').textContent = `Send to ${plural(reach, 'person', 'people')}`;
+    $('compose-send').disabled = missing.length > 0 || reach === 0;
     $('compose-test').disabled = missing.length > 0;
   }
 
@@ -933,10 +992,11 @@
     const l = letter();
     $('compose-error').textContent = '';
     if (!l.subject || !l.body) return ($('compose-error').textContent = 'Write a subject and a message first.');
-    const reach = G.reachable(shownNow, l.kind);
-    if (!window.confirm(`Send “${l.subject}” to ${plural(reach.length, 'person', 'people')}? It cannot be called back.`)) return;
+    const reach = page.reach[l.kind];
+    if (!window.confirm(`Send “${l.subject}” to ${plural(reach, 'person', 'people')}? It cannot be called back.`)) return;
     try {
-      const out = await ask({ action: 'email-send', ...l, ids: reach.map((m) => m.id), audience: $('group-words').textContent, expect: reach.length });
+      // The server works the group out again from its filters and sends only if it is still these people.
+      const out = await ask({ action: 'email-send', ...l, filters, search: search(), audience: $('group-words').textContent, expect: reach });
       $('compose').close();
       $('compose-subject').value = '';
       $('compose-body').value = '';
