@@ -908,7 +908,13 @@
   $('compose-cancel').addEventListener('click', () => $('compose').close());
 
   function letter() {
-    return { kind: composeKind(), subject: $('compose-subject').value.trim(), body: $('compose-body').value.trim() };
+    return {
+      kind: composeKind(),
+      subject: $('compose-subject').value.trim(),
+      body: $('compose-body').value.trim(),
+      tagLinks: $('compose-tag').checked,
+      paidLinks: $('compose-paid').checked,
+    };
   }
 
   $('compose-test').addEventListener('click', async () => {
@@ -1157,6 +1163,7 @@
                     h('div', { class: 'muted small', text: `${c.test ? 'Test · ' : ''}${c.kind === 'news' ? 'News' : 'Offers'} · ${c.audience}` }),
                     c.status === 'sending' ? h('div', { class: 'warn small', text: `Sending: ${n(c.sent)} of ${n(c.recipients)} so far` }) : null,
                     c.failed ? h('div', { class: 'error small', text: `${n(c.failed)} did not go: ${c.error}` }) : null,
+                    ...(c.links || []).map((l) => h('div', { class: 'muted small link-line', text: `${linkWords(l.link)}: ${plural(l.taps, 'tap')} by ${plural(l.people, 'person', 'people')}` })),
                   ),
                   h('td', { class: 'num', text: n(c.sent) }),
                   h('td', { class: 'num', text: n(c.delivered) + pct(c.delivered, c.sent) }),
@@ -1170,6 +1177,18 @@
           ]
         : [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: 'No emails sent yet. Pick a group above, then "Email these people".' })))]),
     );
+  }
+
+  /** A link as a shop's address and page, without the tags added for its statistics. */
+  function linkWords(link) {
+    try {
+      const u = new URL(link);
+      for (const k of [...u.searchParams.keys()]) if (k.toLowerCase().startsWith('utm_')) u.searchParams.delete(k);
+      const rest = `${u.pathname === '/' ? '' : u.pathname}${u.search}`;
+      return `${u.hostname.replace(/^www\./, '')}${rest}`.slice(0, 80);
+    } catch {
+      return link.slice(0, 80);
+    }
   }
 
   $('mail-settings').addEventListener('submit', async (ev) => {

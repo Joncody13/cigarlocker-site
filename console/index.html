@@ -178,7 +178,9 @@
       <input id="compose-subject" type="text" maxlength="200">
       <label for="compose-body">Message</label>
       <textarea id="compose-body" rows="10" maxlength="20000"></textarea>
-      <p class="muted small">Write {first name} for each person's first name ("there" when they gave none). A blank line starts a new paragraph; web addresses become links. Each email ends with why they got it, an unsubscribe link and your postal address.</p>
+      <p class="muted small">Write {first name} for each person's first name ("there" when they gave none). A blank line starts a new paragraph. Paste a shop's web address to link to it, or put <code>[Shop the offer](https://shop.com/deal)</code> on a line of its own for a button. Each email ends with why they got it, an unsubscribe link and your postal address.</p>
+      <label class="check"><input type="checkbox" id="compose-tag" checked> Tag the links, so the shops' own statistics show the visits came from Cigar Locker</label>
+      <label class="check"><input type="checkbox" id="compose-paid"> I'm paid for these links (a shop's affiliate program, a sponsorship). The email then says so, as the FTC requires.</label>
       <p class="error" id="compose-error" role="alert"></p>
       <p class="done" id="compose-done" role="status"></p>
       <div class="compose-buttons">

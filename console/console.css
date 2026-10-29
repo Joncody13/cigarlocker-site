@@ -315,3 +315,7 @@ fieldset.kind label { display: inline-flex; gap: 6px; align-items: center; margi
 ul.missing { color: var(--amber); padding-left: 18px; margin: 8px 0; }
 .done { color: var(--green); margin: 6px 0 0; }
 .compose-buttons { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+
+label.check { display: flex; gap: 8px; align-items: flex-start; color: var(--text); font-size: 13px; margin: 10px 0 0; }
+label.check input { margin-top: 3px; }
+.link-line { word-break: break-all; }
