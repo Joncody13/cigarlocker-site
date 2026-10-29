@@ -12,6 +12,6 @@ without his photos, which stay private).
 |---|---|---|---|
 | bundles.jpg | Paper-banded bundles of cigars on a counter | Thibault Luycx | https://www.pexels.com/photo/stacks-of-raw-packed-cigars-in-fabric-3975067/ |
 | leaves.jpg | Dried tobacco leaves, close up | Mark Stebnicki | https://www.pexels.com/photo/a-close-up-of-dried-tobacco-leaves-27793718/ |
-| field.jpg | A tobacco field at harvest | John Lambeth | https://www.pexels.com/photo/scenic-view-of-a-tobacco-farm-2888962/ |
+| farm.jpg | A tobacco farm in summer, under sunbeams | Mark Stebnicki | https://www.pexels.com/photo/agbiopix-tobacco-field-agriculture-2257526/ |
 | evening.jpg | A glass and a bottle on a dark table | cottonbro studio | https://www.pexels.com/photo/a-glass-and-whiskey-on-the-table-9419353/ |
 | wood.jpg | Dark wood grain | Karolina Grabowska (Kaboompics) | https://www.pexels.com/photo/dark-wood-texture-4709011/ |

@@ -1009,6 +1009,23 @@ p {
   background: linear-gradient(180deg, var(--bg) 0%, rgba(15, 9, 6, 0.72) 22%, rgba(15, 9, 6, 0.8) 78%, var(--bg) 100%);
 }
 
+/* A section where the photo is the point: clear at the top, dark under the words. */
+.photo-band.vivid {
+  padding-top: min(52vh, 460px);
+}
+
+.photo-band.vivid .bg img {
+  object-position: 50% 30%;
+}
+
+.photo-band.vivid::before {
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(15, 9, 6, 0.1) 14%, rgba(15, 9, 6, 0.2) 30%, rgba(15, 9, 6, 0.74) 48%, rgba(15, 9, 6, 0.94) 78%, var(--bg) 100%);
+}
+
+.photo-band.vivid .section-head {
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.7);
+}
+
 /* The humidity rings. */
 .climate {
   display: grid;
