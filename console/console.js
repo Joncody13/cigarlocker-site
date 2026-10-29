@@ -162,7 +162,16 @@
     if (enrollError) return failed(enrollError);
     factorId = made.id;
     $('qr').src = made.totp.qr_code;
-    $('secret').textContent = made.totp.secret;
+    // On a phone the QR code cannot be scanned: its link opens the phone's
+    // authenticator app with the account filled in, and the key is in
+    // fours, copied whole by a button.
+    $('totp-link').href = made.totp.uri;
+    $('secret').textContent = made.totp.secret.replace(/(.{4})/g, '$1 ').trim();
+    $('copy-secret').onclick = () =>
+      navigator.clipboard.writeText(made.totp.secret).then(
+        () => ($('copy-secret').textContent = 'Copied'),
+        () => ($('copy-secret').textContent = 'Copy failed: type it in'),
+      );
     gate(
       'Set up your authenticator',
       "Scan this with your phone's camera or authenticator app (the iPhone's Passwords app, Google Authenticator or 1Password), then enter the six digits it shows. From now on the console asks for them each time.",

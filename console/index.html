@@ -42,7 +42,10 @@
       </form>
       <div id="enroll" hidden>
         <img id="qr" alt="QR code to add Cigar Locker Console to an authenticator app" width="200" height="200">
+        <p class="muted small">On a computer, scan it with your phone. On this phone:</p>
+        <a class="button primary" id="totp-link" href="#">Add to my authenticator app</a>
         <p class="muted small">Or type this key into the app: <code id="secret"></code></p>
+        <button type="button" class="link" id="copy-secret">Copy the key</button>
       </div>
       <form id="code-form" hidden>
         <label for="code">Six-digit code from your authenticator app</label>

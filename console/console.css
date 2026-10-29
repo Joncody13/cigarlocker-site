@@ -117,6 +117,18 @@ label { display: block; color: var(--muted); font-size: 12px; margin: 14px 0 6px
 }
 .gate-card > p { margin: 8px 0 0; }
 #enroll { text-align: center; margin-top: 16px; }
+#enroll code { user-select: all; -webkit-user-select: all; word-break: normal; }
+a.button.primary {
+  display: block;
+  text-decoration: none;
+  text-align: center;
+  background: var(--gold);
+  color: #1a100a;
+  border-radius: 10px;
+  padding: 11px 16px;
+  font-weight: 600;
+  margin-top: 12px;
+}
 #qr { background: #fff; border-radius: 12px; padding: 10px; }
 
 /* The board. */
