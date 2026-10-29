@@ -268,9 +268,24 @@
     renderFilters();
     loadPeople(false);
     market(d.market);
+    knowledge(d.knowledge);
     mailBox(d.mail, d.totals);
     health(d.health, d.totals);
     log(d.log);
+  }
+
+  /** What Cigar Locker knows of cigars: its libraries, look-ups and scans. */
+  function knowledge(k) {
+    if (!k) return $('knowledge').replaceChildren();
+    const added = k.newThisMonth || {};
+    $('knowledge').replaceChildren(
+      tile('Cigar lines on record', n(k.lines), `From ${n(k.makers)} makers, ${n(k.sizes)} sizes · ${n(k.linesFromWeb)} found on the web`),
+      tile('Bands it recognises', n(k.bands), k.bandsFromScans ? `${n(k.bandsFromScans)} learned from members’ scans` : 'From makers’ catalogues and your photos'),
+      tile('Cigars looked up in detail', n(k.lookedUp), `${n(k.withPhoto)} with a photo`),
+      tile('Scans so far', n(k.scans), `${n(k.scans30)} in the last 30 days`),
+      tile('Kinds in members’ humidors', n(k.kindsOwned), k.kindsOwned ? `${Math.round((k.kindsKnown / k.kindsOwned) * 100)}% with full details` : ''),
+      tile('Added this month', n((added.lines || 0) + (added.bands || 0) + (added.lookedUp || 0)), `${n(added.lines)} lines, ${n(added.bands)} bands, ${n(added.lookedUp)} look-ups`),
+    );
   }
 
   function tile(label, value, note) {
