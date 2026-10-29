@@ -248,26 +248,27 @@
 
   // ---- the board ----------------------------------------------------------------
 
-  let people = new Map();
+  let byId = new Map();
 
   function who(id, install) {
     if (!id) return install ? `Someone not signed in (install ${install})` : 'Someone not signed in';
-    const m = people.get(id);
+    const m = byId.get(id);
     if (!m) return 'A member';
     return m.name || (m.username ? `@${m.username}` : '') || m.displayName || m.email || 'A member';
   }
 
   function render(d) {
     today = d.today;
-    people = new Map(d.members.map((m) => [m.id, m]));
+    byId = new Map(d.members.map((m) => [m.id, m]));
     $('updated').textContent = `Updated ${timeFmt.format(new Date(d.at))}`;
     tiles(d.totals);
     barChart($('chart-active'), d.daily, 'active', (v) => plural(v, 'person', 'people'));
     barChart($('chart-scans'), d.daily, 'scans', (v) => plural(v, 'scan'));
     feed(d.feed);
-    members(d.members);
+    renderFilters();
+    people();
     market(d.market);
-    emails(d.totals);
+    mailBox(d.mail, d.totals);
     health(d.health, d.totals);
     log(d.log);
   }
@@ -474,24 +475,98 @@
     return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : p;
   };
 
-  function members(list) {
+  // ---- people: any group he likes (groups.js), then email or a spreadsheet -------
+
+  const G = window.CigarGroups;
+  let filters = [];
+  let loadedGroup = null;
+  let shownNow = [];
+  const ctx = () => ({ now: Date.now() });
+
+  const placeFilter = () => filters.find((f) => f.field === 'place' && f.place);
+  const milesTo = (m) => {
+    const f = placeFilter();
+    return f && m.lat != null ? G.milesBetween(f.place, m) : null;
+  };
+
+  /** What a filtered field shows in its own column. */
+  function fieldText(f, m) {
+    if (f.type === 'place') {
+      const miles = milesTo(m);
+      return miles == null ? '' : `${n(miles)} mi`;
+    }
+    const v = f.get(m, ctx());
+    if (v === null || v === undefined || v === '') return '';
+    if (f.type === 'yesno') return v ? 'Yes' : 'No';
+    if (f.unit === 'dollars') return `$${n(v)}`;
+    if (Array.isArray(v)) {
+      const words = v.map(f.words || ((x) => x));
+      return words.length > 4 ? `${words.slice(0, 4).join(', ')} and ${words.length - 4} more` : words.join(', ');
+    }
+    if (f.key === 'cigars') {
+      const t = ((filters.find((x) => x.field === 'cigars') || {}).text || '').toLowerCase();
+      return (m.cigars || []).filter((c) => !t || c.toLowerCase().includes(t)).slice(0, 3).join(', ');
+    }
+    return typeof v === 'number' ? n(v) : (f.words || ((x) => x))(String(v));
+  }
+
+  function fieldColumn(f) {
+    return {
+      key: `f:${f.key}`,
+      label: f.key === 'place' ? 'Miles away' : f.label,
+      num: f.type === 'range' || f.type === 'place',
+      sort: (m) => {
+        const v = f.type === 'place' ? milesTo(m) : f.get(m, ctx());
+        if (v === null || v === undefined) return f.type === 'range' || f.type === 'place' ? -Infinity : '';
+        return Array.isArray(v) ? v.join(', ') : typeof v === 'boolean' ? Number(v) : v;
+      },
+      cell: (m) => fieldText(f, m),
+    };
+  }
+
+  function columnsNow() {
+    const seen = new Set();
+    const extra = [];
+    for (const filter of filters) {
+      const f = G.byKey.get(filter.field);
+      if (f && !seen.has(f.key) && f.key !== 'age') {
+        seen.add(f.key);
+        extra.push(fieldColumn(f));
+      }
+    }
+    return [...COLUMNS, ...extra];
+  }
+
+  function people() {
+    if (!snapshot) return;
+    const list = snapshot.members;
     const q = $('member-search').value.trim().toLowerCase();
-    const shown = list.filter((m) =>
-      !q || [m.name, m.username, m.displayName, m.email, m.phone, m.city, m.state, m.zip, m.street].join(' ').toLowerCase().includes(q),
+    const picked = G.pick(list, filters, ctx());
+    const shown = picked.filter(
+      (m) => !q || [m.name, m.username, m.displayName, m.email, m.phone, m.city, m.state, m.zip, m.street].join(' ').toLowerCase().includes(q),
     );
-    const col = COLUMNS.find((c) => c.key === sortBy) || COLUMNS[4];
+    shownNow = shown;
+    const columns = columnsNow();
+    const col = columns.find((c) => c.key === sortBy) || COLUMNS[4];
     shown.sort((a, b) => {
       const x = col.sort(a);
       const y = col.sort(b);
       const order = x < y ? -1 : x > y ? 1 : 0;
       return sortDown ? -order : order;
     });
-    $('member-count').textContent = q ? `${n(shown.length)} of ${plural(list.length, 'member')}` : plural(list.length, 'member');
+    const narrowed = filters.some((f) => G.describe(f)) || q;
+    $('member-count').textContent = narrowed ? `${n(shown.length)} of ${plural(list.length, 'member')}` : plural(list.length, 'member');
+    $('group-words').textContent = narrowed ? G.describeAll(filters) + (q ? ` · search "${q}"` : '') : 'Everyone';
+    const reach = { news: G.reachable(shown, 'news').length, offers: G.reachable(shown, 'offers').length };
+    $('email-group').textContent = shown.length === 1 ? 'Email this person' : `Email these ${n(shown.length)} people`;
+    $('email-group').disabled = shown.length === 0;
+    $('group-reach').textContent = `${n(reach.offers)} can get offers, ${n(reach.news)} can get news`;
+    $('download-group').disabled = shown.length === 0;
     $('members').tHead.replaceChildren(
       h(
         'tr',
         {},
-        COLUMNS.map((c) =>
+        columns.map((c) =>
           h(
             'th',
             { class: c.num ? 'num' : null, 'aria-sort': c.key === sortBy ? (sortDown ? 'descending' : 'ascending') : null },
@@ -505,7 +580,7 @@
                   sortBy = c.key;
                   sortDown = true;
                 }
-                members(list);
+                people();
               },
             }),
           ),
@@ -513,7 +588,7 @@
       ),
     );
     const body = [];
-    for (const m of shown) {
+    for (const m of shown.slice(0, 500)) {
       const c = cells(m);
       body.push(
         h(
@@ -522,24 +597,349 @@
             class: open === m.id ? 'member open' : 'member',
             tabindex: 0,
             'aria-expanded': open === m.id ? 'true' : 'false',
-            onclick: () => toggle(m.id, list),
-            onkeydown: (ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), toggle(m.id, list)),
+            onclick: () => toggle(m.id),
+            onkeydown: (ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), toggle(m.id)),
           },
-          COLUMNS.map((col) => h('td', { class: col.num ? 'num' : null }, c[col.key])),
+          columns.map((col) => h('td', { class: col.num ? 'num' : null }, col.cell ? col.cell(m) : c[col.key])),
         ),
       );
-      if (open === m.id) body.push(h('tr', { class: 'detail-row' }, h('td', { colspan: COLUMNS.length }, detailBox(m))));
+      if (open === m.id) body.push(h('tr', { class: 'detail-row' }, h('td', { colspan: columns.length }, detailBox(m))));
     }
-    if (!shown.length) body.push(h('tr', {}, h('td', { colspan: COLUMNS.length, class: 'muted', text: q ? 'No member matches.' : 'No members yet.' })));
+    if (shown.length > 500) body.push(h('tr', {}, h('td', { colspan: columns.length, class: 'muted', text: `The first 500 of ${n(shown.length)} are shown; the spreadsheet has them all.` })));
+    if (!shown.length) body.push(h('tr', {}, h('td', { colspan: columns.length, class: 'muted', text: list.length ? 'Nobody matches.' : 'No members yet.' })));
     $('members').tBodies[0].replaceChildren(...body);
   }
 
-  $('member-search').addEventListener('input', () => snapshot && members(snapshot.members));
+  $('member-search').addEventListener('input', people);
 
-  function toggle(id, list) {
+  function toggle(id) {
     open = open === id ? null : id;
-    members(list);
+    people();
   }
+
+  // The filters, one row each.
+  function renderFilters() {
+    const list = snapshot ? snapshot.members : [];
+    $('filters').replaceChildren(
+      ...filters.map((filter, i) => {
+        const f = G.byKey.get(filter.field);
+        if (!f) return h('div');
+        const remove = h('button', {
+          type: 'button',
+          class: 'remove',
+          'aria-label': `Remove ${f.label}`,
+          text: '×',
+          onclick: () => {
+            filters.splice(i, 1);
+            renderFilters();
+            people();
+          },
+        });
+        return h('div', { class: 'filter-row' }, h('span', { class: 'filter-label', text: f.label }), editor(f, filter, list), remove);
+      }),
+    );
+    renderGroupsBar();
+  }
+
+  function numberBox(filter, key, placeholder) {
+    return h('input', {
+      type: 'number',
+      inputmode: 'decimal',
+      class: 'num-box',
+      placeholder,
+      value: filter[key] ?? '',
+      oninput: (ev) => {
+        filter[key] = ev.target.value;
+        people();
+      },
+    });
+  }
+
+  function toggles(values, chosen, words, onToggle) {
+    return h(
+      'div',
+      { class: 'toggles' },
+      values.map((v) =>
+        h('button', {
+          type: 'button',
+          class: chosen.includes(v) ? 'toggle on' : 'toggle',
+          'aria-pressed': chosen.includes(v) ? 'true' : 'false',
+          text: words(v),
+          onclick: (ev) => {
+            onToggle(v);
+            const on = chosen.includes(v);
+            ev.target.classList.toggle('on', on);
+            ev.target.setAttribute('aria-pressed', on ? 'true' : 'false');
+            people();
+          },
+        }),
+      ),
+    );
+  }
+
+  function editor(f, filter, list) {
+    switch (f.type) {
+      case 'range':
+        return h('div', { class: 'editor' }, numberBox(filter, 'min', 'from'), h('span', { class: 'muted', text: 'to' }), numberBox(filter, 'max', 'to'), h('span', { class: 'muted small', text: f.unit || '' }));
+      case 'choice':
+      case 'has': {
+        filter.values = filter.values || [];
+        const options = G.choicesFor(f.key, list, ctx());
+        if (!options.length) return h('span', { class: 'muted small', text: 'Nobody has one yet.' });
+        return toggles(options.slice(0, 60), filter.values, f.words || ((x) => x), (v) => {
+          const at = filter.values.indexOf(v);
+          if (at >= 0) filter.values.splice(at, 1);
+          else filter.values.push(v);
+        });
+      }
+      case 'text':
+        return h('input', {
+          type: 'text',
+          class: 'text-box',
+          value: filter.text || '',
+          placeholder: f.key === 'cigars' ? 'Padrón 1964, OpusX…' : '',
+          oninput: (ev) => {
+            filter.text = ev.target.value;
+            people();
+          },
+        });
+      case 'yesno': {
+        const chosen = filter.yes === true ? ['Yes'] : filter.yes === false ? ['No'] : [];
+        return toggles(['Yes', 'No'], chosen, (x) => x, (v) => {
+          const want = v === 'Yes';
+          filter.yes = filter.yes === want ? null : want;
+          chosen.splice(0, chosen.length, ...(filter.yes === true ? ['Yes'] : filter.yes === false ? ['No'] : []));
+          renderFilters();
+        });
+      }
+      case 'place': {
+        const found = h('span', { class: 'muted small', text: filter.place ? `Found: ${filter.place.name}` : '' });
+        const where = h('input', { type: 'text', class: 'text-box', placeholder: 'St. Petersburg, FL or a ZIP code', value: filter.query || '' });
+        const look = async () => {
+          filter.query = where.value.trim();
+          if (!filter.query) return;
+          found.textContent = 'Finding…';
+          try {
+            filter.place = await ask({ action: 'place', query: filter.query });
+            found.textContent = `Found: ${filter.place.name}`;
+          } catch (e) {
+            filter.place = null;
+            found.textContent = e.message;
+          }
+          people();
+        };
+        where.addEventListener('keydown', (ev) => ev.key === 'Enter' && (ev.preventDefault(), look()));
+        where.addEventListener('change', look);
+        if (filter.miles === undefined) filter.miles = 100;
+        return h('div', { class: 'editor' }, numberBox(filter, 'miles', 'miles'), h('span', { class: 'muted', text: 'miles of' }), where, h('button', { type: 'button', class: 'ghost', text: 'Find', onclick: look }), found);
+      }
+      default:
+        return h('span');
+    }
+  }
+
+  // Adding a filter: every field, by section.
+  (function addFilterMenu() {
+    const groups = [...new Set(G.FIELDS.map((f) => f.group))];
+    $('add-filter').replaceChildren(
+      h('option', { value: '', text: 'Add a filter…' }),
+      ...groups.map((g) => h('optgroup', { label: g }, G.FIELDS.filter((f) => f.group === g).map((f) => h('option', { value: f.key, text: f.label })))),
+    );
+    $('add-filter').addEventListener('change', (ev) => {
+      const key = ev.target.value;
+      ev.target.value = '';
+      if (!key) return;
+      filters.push({ field: key });
+      renderFilters();
+      const rows = $('filters').querySelectorAll('.filter-row');
+      const last = rows[rows.length - 1];
+      const first = last && last.querySelector('input, button.toggle');
+      if (first) first.focus();
+      people();
+    });
+  })();
+
+  // Saved groups.
+  function renderGroupsBar() {
+    const groups = (snapshot && snapshot.mail && snapshot.mail.groups) || [];
+    const bar = [];
+    if (groups.length) {
+      bar.push(h('span', { class: 'muted small', text: 'Saved groups:' }));
+      for (const g of groups) {
+        bar.push(
+          h('button', {
+            type: 'button',
+            class: loadedGroup && loadedGroup.id === g.id ? 'toggle on' : 'toggle',
+            text: g.name,
+            onclick: () => {
+              filters = JSON.parse(JSON.stringify(g.filters || []));
+              loadedGroup = { id: g.id, name: g.name };
+              renderFilters();
+              people();
+            },
+          }),
+        );
+      }
+    }
+    const has = filters.length > 0;
+    if (has) bar.push(h('button', { type: 'button', class: 'ghost', text: loadedGroup ? `Save changes to “${loadedGroup.name}”` : 'Save as a group', onclick: () => saveGroup(!!loadedGroup) }));
+    if (has && loadedGroup) bar.push(h('button', { type: 'button', class: 'ghost', text: 'Save as a new group', onclick: () => saveGroup(false) }));
+    if (loadedGroup) bar.push(h('button', { type: 'button', class: 'ghost', text: `Delete “${loadedGroup.name}”`, onclick: deleteGroup }));
+    if (has) {
+      bar.push(
+        h('button', {
+          type: 'button',
+          class: 'link',
+          text: 'Clear the filters',
+          onclick: () => {
+            filters = [];
+            loadedGroup = null;
+            renderFilters();
+            people();
+          },
+        }),
+      );
+    }
+    $('groups-bar').replaceChildren(...bar);
+  }
+
+  async function saveGroup(update) {
+    const name = update ? loadedGroup.name : (window.prompt('Name this group', loadedGroup ? `${loadedGroup.name} (copy)` : '') || '').trim();
+    if (!name) return;
+    try {
+      const saved = await ask({ action: 'save-group', id: update ? loadedGroup.id : null, name, filters });
+      const groups = snapshot.mail.groups.filter((g) => g.id !== saved.id);
+      groups.push({ id: saved.id, name, filters: JSON.parse(JSON.stringify(filters)) });
+      groups.sort((a, b) => a.name.localeCompare(b.name));
+      snapshot.mail.groups = groups;
+      loadedGroup = { id: saved.id, name };
+      renderGroupsBar();
+    } catch (e) {
+      window.alert(e.message);
+    }
+  }
+
+  async function deleteGroup() {
+    if (!window.confirm(`Delete the group “${loadedGroup.name}”? The people in it are not touched.`)) return;
+    try {
+      await ask({ action: 'delete-group', id: loadedGroup.id });
+      snapshot.mail.groups = snapshot.mail.groups.filter((g) => g.id !== loadedGroup.id);
+      loadedGroup = null;
+      renderGroupsBar();
+    } catch (e) {
+      window.alert(e.message);
+    }
+  }
+
+  // A spreadsheet of the people shown, with everything known of them.
+  const SHEET = [
+    { label: 'Name', get: (m) => m.name },
+    { label: 'Username', get: (m) => (m.username ? `@${m.username}` : '') },
+    { label: 'Email', get: (m) => m.email },
+    { label: 'Phone', get: (m) => (m.phone ? formatPhone(m.phone) : '') },
+    { label: 'Street', get: (m) => m.street },
+    { label: 'Town', get: (m) => m.city },
+    { label: 'State', get: (m) => m.state },
+    { label: 'ZIP', get: (m) => m.zip },
+    { label: 'Age', get: (m) => m.age },
+    { label: 'Birthday', get: (m) => m.birthDate },
+    { label: 'Joined', get: (m) => (m.joined || '').slice(0, 10) },
+    { label: 'Last in the app', get: (m) => (m.lastSeen || '').slice(0, 10) },
+    { label: 'News emails', get: (m) => (m.news ? 'yes' : 'no') },
+    { label: 'Offers emails', get: (m) => (m.offers ? 'yes' : 'no') },
+    { label: 'Market insights', get: (m) => (m.insights ? 'yes' : 'no') },
+    ...G.FIELDS.filter((f) => !['age', 'place', 'state', 'city', 'zip', 'news', 'offers', 'insights', 'birthMonth', 'hasName', 'hasPhone', 'hasAddress', 'joinedDays', 'lastSeenDays'].includes(f.key)).map((f) => ({
+      label: f.label,
+      get: (m, c) => {
+        const v = f.get(m, c);
+        return typeof v === 'boolean' ? (v ? 'yes' : 'no') : Array.isArray(v) ? v.map(f.words || ((x) => x)) : v;
+      },
+    })),
+  ];
+
+  $('download-group').addEventListener('click', () => {
+    const extra = placeFilter() ? [{ label: `Miles from ${placeFilter().place.name}`, get: (m) => (milesTo(m) == null ? '' : Math.round(milesTo(m))) }] : [];
+    const blob = new Blob([G.csv(shownNow, [...SHEET, ...extra], ctx())], { type: 'text/csv;charset=utf-8' });
+    const link = h('a', { href: URL.createObjectURL(blob), download: `cigar-locker-people-${today || 'today'}.csv` });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+  });
+
+  // ---- emailing the group ---------------------------------------------------------
+
+  function emailReady(mail) {
+    const st = mail.settings || {};
+    return [
+      mail.keySet ? null : 'Connect the email service (Resend): its key goes in Supabase’s secrets as RESEND_API_KEY.',
+      (st.postal_address || '').trim() ? null : 'Add your postal address below: the law wants it in every promotional email.',
+      st.from_news && st.from_offers ? null : 'Add who the emails come from, below.',
+    ].filter(Boolean);
+  }
+
+  function composeKind() {
+    return document.querySelector('input[name="compose-kind"]:checked').value;
+  }
+
+  function updateCompose() {
+    const kind = composeKind();
+    const reach = G.reachable(shownNow, kind);
+    const missing = emailReady(snapshot.mail);
+    $('compose-who').textContent = `${$('group-words').textContent}: ${plural(shownNow.length, 'person', 'people')}.`;
+    $('compose-reach').textContent = `${plural(reach.length, 'of them said', 'of them said')} yes to ${kind === 'news' ? 'news from Cigar Locker' : 'offers from local shops'} and will get it.${
+      shownNow.length > reach.length ? ` The other ${n(shownNow.length - reach.length)} said no, gave no address, or bounced.` : ''
+    }`;
+    $('compose-missing').replaceChildren(...missing.map((m) => h('li', { text: m })));
+    $('compose-missing').hidden = missing.length === 0;
+    $('compose-send').textContent = `Send to ${plural(reach.length, 'person', 'people')}`;
+    $('compose-send').disabled = missing.length > 0 || reach.length === 0;
+    $('compose-test').disabled = missing.length > 0;
+  }
+
+  $('email-group').addEventListener('click', () => {
+    $('compose-error').textContent = '';
+    $('compose-done').textContent = '';
+    updateCompose();
+    $('compose').showModal();
+    $('compose-subject').focus();
+  });
+  for (const r of document.querySelectorAll('input[name="compose-kind"]')) r.addEventListener('change', updateCompose);
+  $('compose-cancel').addEventListener('click', () => $('compose').close());
+
+  function letter() {
+    return { kind: composeKind(), subject: $('compose-subject').value.trim(), body: $('compose-body').value.trim() };
+  }
+
+  $('compose-test').addEventListener('click', async () => {
+    const l = letter();
+    $('compose-error').textContent = '';
+    if (!l.subject || !l.body) return ($('compose-error').textContent = 'Write a subject and a message first.');
+    try {
+      await ask({ action: 'email-test', ...l });
+      $('compose-done').textContent = 'A test is on its way to your console email.';
+    } catch (e) {
+      $('compose-error').textContent = e.message;
+    }
+  });
+
+  $('compose-send').addEventListener('click', async () => {
+    const l = letter();
+    $('compose-error').textContent = '';
+    if (!l.subject || !l.body) return ($('compose-error').textContent = 'Write a subject and a message first.');
+    const reach = G.reachable(shownNow, l.kind);
+    if (!window.confirm(`Send “${l.subject}” to ${plural(reach.length, 'person', 'people')}? It cannot be called back.`)) return;
+    try {
+      const out = await ask({ action: 'email-send', ...l, ids: reach.map((m) => m.id), audience: $('group-words').textContent, expect: reach.length });
+      $('compose').close();
+      $('compose-subject').value = '';
+      $('compose-body').value = '';
+      $('mail-note').textContent = `Sending to ${plural(out.sending, 'person', 'people')}. The figures fill in below as the email service reports back.`;
+      setTimeout(refresh, 8000);
+    } catch (e) {
+      $('compose-error').textContent = e.message;
+    }
+  });
 
   const details = new Map();
 
@@ -601,9 +1001,40 @@
       d.outs.map((o) => [o.on ? longDay(o.on) : '', { gifted: 'Gave away', traded: 'Traded', lost: 'Lost', damaged: 'Damaged' }[o.kind] || o.kind, `${n(o.n)} ${o.cigar}`, o.to]),
       [],
     );
+    const time = G.usualTime(m);
+    const habits = h(
+      'dl',
+      { class: 'facts' },
+      fact('Cigars enjoyed', m.enjoyedAll ? `${n(m.enjoyedAll)} in all · ${n(m.enjoyed30)} in the last 30 days · about ${m.perWeek} a week` : 'None logged yet'),
+      m.enjoyedAll ? fact('On a day they enjoy one', `${m.perEnjoyDay} on average, ${n(m.mostInADay)} at most`) : null,
+      m.enjoyedAll
+        ? fact('When', `${time ? `Usually in the ${time.toLowerCase()}` : 'Not known'} (morning ${n(m.morning)}, afternoon ${n(m.afternoon)}, evening ${n(m.evening)}, night ${n(m.night)}; ${n(m.weekend)} on weekends)`)
+        : null,
+      m.lastEnjoyed ? fact('Last enjoyed', longDay(m.lastEnjoyed)) : null,
+      fact('Ratings', m.rated ? `${m.avgRating} of 10 on average, ${plural(m.rated, 'cigar')} · ${n(m.loved)} rated 8 or more · favorite ${m.favorite}` : 'None yet'),
+      fact('Wrappers', [m.shadeMost && `keeps ${m.shadeMost} most`, m.shadesLoved && m.shadesLoved.length && `loves ${m.shadesLoved.join(', ')}`].filter(Boolean).join('; ') || 'Not known'),
+      fact('Strength', m.strengthMost ? `${G.strengthWords(m.strengthMost)} most` : 'Not known'),
+      fact('Humidors', m.humidors ? `${plural(m.humidors, 'humidor')}${m.humidorNames.length ? `: ${m.humidorNames.join(', ')}` : ''}${m.placeNames.length ? ` · in ${m.placeNames.join(', ')}` : ''}${m.sensors ? ` · ${plural(m.sensors, 'sensor')}` : ''}` : 'None'),
+      fact('Collection', m.cigarsNow ? `${n(m.cigarsNow)} cigars, ${plural(m.kindsNow, 'kind')}, worth about ${money(m.valueCents)}` : 'Empty'),
+      fact('Spending', `${money(m.spentYear)} this year on ${plural(m.boughtYear, 'cigar')}${m.avgPaidCents != null ? ` · ${money(m.avgPaidCents)} a cigar on average` : ''}${m.paidPct != null ? ` · ${m.paidPct}% of retail` : ''}`),
+      fact('Shops', m.shops.length ? m.shops.join(', ') : 'None named'),
+      fact('In the app', `${plural(m.opens30, 'open')} and ${minutes(m.minutes30)} in 30 days, on ${plural(m.days30, 'day')} · ${plural(m.opensAll, 'open')} in all`),
+    );
+    const mails = table(
+      ['Sent', 'Email', 'Delivered', 'Opened', 'Tapped'],
+      (d.emails || []).map((e) => [
+        dayYearFmt.format(new Date(e.sent)),
+        `${e.subject} (${e.kind})${e.unsubscribed ? ' · unsubscribed from it' : ''}${e.bounced ? ' · bounced' : ''}`,
+        e.delivered ? 'Yes' : '',
+        e.opened ? `${n(e.opens)} times` : '',
+        e.clicked ? 'Yes' : '',
+      ]),
+      [],
+    );
     // Only what there is: an empty slot would show as words.
     return [
-      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: 'About' }), about), h('div', {}, h('h4', { text: d.installs > 1 ? `Days in the app (on ${n(d.installs)} phones)` : 'Days in the app' }), days)),
+      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: 'About' }), about), h('div', {}, h('h4', { text: 'Habits' }), habits)),
+      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: d.installs > 1 ? `Days in the app (on ${n(d.installs)} phones)` : 'Days in the app' }), days), h('div', {}, h('h4', { text: 'Emails from you' }), mails)),
       h('h4', { text: `Purchases (${n(d.purchases.length)})` }),
       buys,
       h('h4', { text: `Ratings (${n(d.ratings.length)})` }),
@@ -678,15 +1109,86 @@
     );
   }
 
-  function emails(t) {
-    $('emails').replaceChildren(
-      ...fact('News from Cigar Locker', `${plural(t.news, 'member')} say yes`),
-      ...fact('Offers from local shops', `${plural(t.offers, 'member')} say yes`),
-      ...fact('Market insights', `${plural(t.insights, 'member')} say yes`),
+  // Emails: ready to send or not, the settings, and every email sent with what became of it.
+  function mailBox(mail, t) {
+    const st = mail.settings || {};
+    const check = (ok, words) => h('li', { class: ok ? 'ok' : 'todo' }, h('span', { class: 'mark', text: ok ? '✓' : '•' }), words);
+    $('mail-ready').replaceChildren(
+      check(mail.keySet, mail.keySet ? 'Email service connected' : 'Email service (Resend): not connected yet'),
+      check(mail.webhookSet, mail.webhookSet ? 'Opens and taps reported back' : 'Opens and taps: not reported back yet (Resend webhook)'),
+      check(!!(st.postal_address || '').trim(), (st.postal_address || '').trim() ? `Postal address: ${st.postal_address}` : 'Postal address: not given yet'),
+    );
+    $('set-from-news').value = st.from_news || '';
+    $('set-from-offers').value = st.from_offers || '';
+    $('set-reply-to').value = st.reply_to || '';
+    $('set-postal').value = st.postal_address || '';
+    $('mail-audience').replaceChildren(
+      ...fact('Say yes to news', plural(t.news, 'member')),
+      ...fact('Say yes to offers', plural(t.offers, 'member')),
+      ...fact('Say yes to market insights', plural(t.insights, 'member')),
       ...fact('Apple relay addresses', `${n(t.relay)} of ${n(t.accounts)}: they reach people once atlantisdev.ai is registered with Apple`),
-      ...fact('Sending', 'Not set up yet. Promotions, and whether each is opened, start once the email service (Resend) is connected.'),
+      ...fact('Never written to again', `${plural(mail.blocked, 'address', 'addresses')} (bounced, or marked as spam)`),
+    );
+    const pct = (part, whole) => (whole ? ` (${Math.round((part / whole) * 100)}%)` : '');
+    $('campaigns').replaceChildren(
+      ...(mail.campaigns.length
+        ? [
+            h(
+              'thead',
+              {},
+              h(
+                'tr',
+                {},
+                ['Sent', 'Email', 'To', 'Delivered', 'Opened', 'Tapped', 'Unsubscribed', 'Bounced or spam'].map((x, i) => h('th', { class: i > 1 ? 'num' : null, text: x })),
+              ),
+            ),
+            h(
+              'tbody',
+              {},
+              mail.campaigns.map((c) =>
+                h(
+                  'tr',
+                  { class: c.test ? 'test' : null },
+                  h('td', { text: `${dayFmt.format(new Date(c.created))}, ${timeFmt.format(new Date(c.created))}` }),
+                  h(
+                    'td',
+                    {},
+                    h('strong', { text: c.subject }),
+                    h('div', { class: 'muted small', text: `${c.test ? 'Test · ' : ''}${c.kind === 'news' ? 'News' : 'Offers'} · ${c.audience}` }),
+                    c.status === 'sending' ? h('div', { class: 'warn small', text: `Sending: ${n(c.sent)} of ${n(c.recipients)} so far` }) : null,
+                    c.failed ? h('div', { class: 'error small', text: `${n(c.failed)} did not go: ${c.error}` }) : null,
+                  ),
+                  h('td', { class: 'num', text: n(c.sent) }),
+                  h('td', { class: 'num', text: n(c.delivered) + pct(c.delivered, c.sent) }),
+                  h('td', { class: 'num', text: n(c.opened) + pct(c.opened, c.delivered || c.sent) }),
+                  h('td', { class: 'num', text: n(c.clicked) + pct(c.clicked, c.delivered || c.sent) }),
+                  h('td', { class: 'num', text: n(c.unsubscribed) }),
+                  h('td', { class: 'num', text: n(c.bounced + c.complained) }),
+                ),
+              ),
+            ),
+          ]
+        : [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: 'No emails sent yet. Pick a group above, then "Email these people".' })))]),
     );
   }
+
+  $('mail-settings').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    $('settings-note').textContent = '';
+    try {
+      await ask({
+        action: 'email-settings',
+        fromNews: $('set-from-news').value,
+        fromOffers: $('set-from-offers').value,
+        replyTo: $('set-reply-to').value,
+        postalAddress: $('set-postal').value,
+      });
+      $('settings-note').textContent = 'Saved.';
+      refresh();
+    } catch (e) {
+      $('settings-note').textContent = e.message;
+    }
+  });
 
   function health(x, t) {
     $('health').replaceChildren(

@@ -78,7 +78,7 @@ button:focus-visible, input:focus-visible, tr:focus-visible, .hit:focus-visible 
   outline-offset: 2px;
 }
 
-input[type='email'], input[type='search'], input:not([type]) , input[inputmode] {
+input[type='email'], input[type='search'], input[type='text'], input[type='number'], input:not([type]), input[inputmode] {
   width: 100%;
   background: var(--surface-2);
   border: 1px solid var(--line-strong);
@@ -217,3 +217,101 @@ dl.facts dd { margin: 0; }
 
 tr.refused td { color: var(--amber); }
 tr.refused td .muted { color: var(--faint); }
+
+/* People: the filters, saved groups and the group's buttons. */
+.groups-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+.groups-bar:empty { display: none; }
+.filters { display: grid; gap: 8px; }
+.filter-row {
+  display: grid;
+  grid-template-columns: 230px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.filter-label { font-weight: 600; font-size: 13px; }
+.editor { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.num-box { width: 110px !important; padding: 7px 9px !important; }
+.text-box { width: min(320px, 100%) !important; padding: 7px 9px !important; }
+.toggles { display: flex; flex-wrap: wrap; gap: 5px; }
+button.toggle {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+  padding: 4px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--muted);
+}
+button.toggle:hover { border-color: var(--gold); color: var(--text); }
+button.toggle.on { background: rgba(227, 188, 140, 0.16); border-color: var(--gold); color: var(--gold-hi); }
+button.remove { background: none; border: 0; color: var(--faint); font-size: 20px; cursor: pointer; padding: 0 6px; }
+button.remove:hover { color: var(--red); }
+.filter-add { display: flex; align-items: center; gap: 12px; margin: 10px 0 4px; flex-wrap: wrap; }
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.group-words { margin: 0; flex: 1 1 100%; color: var(--gold-hi); font-weight: 500; }
+button.primary.inline { width: auto; margin-top: 0; padding: 8px 14px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+@media (max-width: 900px) { .filter-row { grid-template-columns: 1fr auto; } .filter-row .editor, .filter-row .toggles, .filter-row .text-box { grid-column: 1 / -1; } }
+
+/* Emails. */
+.mail-grid { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 2fr); gap: 28px; }
+@media (max-width: 1100px) { .mail-grid { grid-template-columns: 1fr; } }
+ul.ready { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
+ul.ready li { display: flex; gap: 8px; }
+ul.ready .mark { width: 1em; text-align: center; }
+ul.ready li.ok .mark { color: var(--green); }
+ul.ready li.todo { color: var(--amber); }
+.settings input { margin-bottom: 2px; }
+.settings button { margin-top: 12px; }
+tr.test td { opacity: 0.65; }
+.row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .row.two { grid-template-columns: 1fr; } }
+
+/* Writing an email to a group. */
+dialog {
+  width: min(680px, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  padding: 24px 26px;
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.compose h2 { font-size: 20px; margin-bottom: 6px; }
+.compose textarea {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+fieldset.kind { border: 0; padding: 0; margin: 14px 0 0; display: flex; gap: 18px; flex-wrap: wrap; }
+fieldset.kind legend { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+fieldset.kind label { display: inline-flex; gap: 6px; align-items: center; margin: 0; color: var(--text); font-size: 14px; }
+ul.missing { color: var(--amber); padding-left: 18px; margin: 8px 0; }
+.done { color: var(--green); margin: 6px 0 0; }
+.compose-buttons { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }

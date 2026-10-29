@@ -345,6 +345,20 @@ p {
   margin: 34px 0 20px;
 }
 
+/* A plain button (the unsubscribe page). */
+.button {
+  font: inherit;
+  font-weight: 600;
+  color: #1a100a;
+  background: var(--gold);
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 22px;
+  cursor: pointer;
+}
+.button:hover { background: var(--gold-hi); }
+.button:disabled { opacity: 0.5; cursor: default; }
+
 /* A placeholder until Apple's own badge artwork goes in (it links nowhere yet). */
 .store-badge {
   display: inline-flex;

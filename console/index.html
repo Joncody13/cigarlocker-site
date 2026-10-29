@@ -78,9 +78,21 @@
 
     <section class="card wide" aria-labelledby="h-members">
       <div class="card-head">
-        <h3 id="h-members">Members</h3>
-        <input id="member-search" type="search" placeholder="Search name, email, phone, town, ZIP" aria-label="Search members">
+        <h3 id="h-members">People</h3>
+        <input id="member-search" type="search" placeholder="Search name, email, phone, town, ZIP" aria-label="Search people">
         <span class="muted small" id="member-count"></span>
+      </div>
+      <div class="groups-bar" id="groups-bar"></div>
+      <div class="filters" id="filters"></div>
+      <div class="filter-add">
+        <select id="add-filter" aria-label="Add a filter"></select>
+        <span class="muted small">Each filter narrows the list: the people below match all of them.</span>
+      </div>
+      <div class="group-actions">
+        <p class="group-words" id="group-words">Everyone</p>
+        <button type="button" class="primary inline" id="email-group">Email these people</button>
+        <button type="button" class="ghost" id="download-group">Download spreadsheet</button>
+        <span class="muted small" id="group-reach"></span>
       </div>
       <div class="table-wrap">
         <table class="members" id="members">
@@ -88,7 +100,7 @@
           <tbody></tbody>
         </table>
       </div>
-      <p class="muted small">Click a member for what they bought, rated and did. Days are Massachusetts time.</p>
+      <p class="muted small">Click a person for what they bought, rated, did, and the emails they got. Days are Massachusetts time; the hour a cigar was enjoyed is the member's own.</p>
     </section>
 
     <section class="row three">
@@ -110,11 +122,34 @@
       </div>
     </section>
 
-    <section class="row three">
-      <div class="card">
-        <h3>Emails</h3>
-        <dl class="facts" id="emails"></dl>
+    <section class="card wide" aria-labelledby="h-mail">
+      <div class="card-head"><h3 id="h-mail">Emails</h3><span class="muted small" id="mail-note"></span></div>
+      <div class="mail-grid">
+        <div>
+          <ul class="ready" id="mail-ready"></ul>
+          <dl class="facts" id="mail-audience"></dl>
+          <form id="mail-settings" class="settings">
+            <h4>Settings</h4>
+            <label for="set-from-news">News comes from</label>
+            <input id="set-from-news" type="text" placeholder="Cigar Locker &lt;news@atlantisdev.ai&gt;">
+            <label for="set-from-offers">Offers come from</label>
+            <input id="set-from-offers" type="text" placeholder="Cigar Locker Offers &lt;offers@atlantisdev.ai&gt;">
+            <label for="set-reply-to">Replies go to</label>
+            <input id="set-reply-to" type="text" placeholder="support@atlantisdev.ai">
+            <label for="set-postal">Postal address, shown in every email (the law wants one)</label>
+            <input id="set-postal" type="text" placeholder="Street, town, state ZIP, or a P.O. box">
+            <button type="submit" class="ghost">Save the settings</button>
+            <span class="muted small" id="settings-note"></span>
+          </form>
+        </div>
+        <div>
+          <h4>Sent</h4>
+          <div class="table-wrap"><table class="plain" id="campaigns"></table></div>
+        </div>
       </div>
+    </section>
+
+    <section class="row two">
       <div class="card">
         <h3>App health</h3>
         <dl class="facts" id="health"></dl>
@@ -128,8 +163,35 @@
     </section>
   </main>
 
+  <dialog id="compose" aria-labelledby="compose-title">
+    <form method="dialog" class="compose">
+      <h2 id="compose-title">Email this group</h2>
+      <p class="muted" id="compose-who"></p>
+      <fieldset class="kind">
+        <legend>Kind of email</legend>
+        <label><input type="radio" name="compose-kind" value="offers" checked> Offers from local shops</label>
+        <label><input type="radio" name="compose-kind" value="news"> News from Cigar Locker</label>
+      </fieldset>
+      <p id="compose-reach"></p>
+      <ul class="missing" id="compose-missing" hidden></ul>
+      <label for="compose-subject">Subject</label>
+      <input id="compose-subject" type="text" maxlength="200">
+      <label for="compose-body">Message</label>
+      <textarea id="compose-body" rows="10" maxlength="20000"></textarea>
+      <p class="muted small">Write {first name} for each person's first name ("there" when they gave none). A blank line starts a new paragraph; web addresses become links. Each email ends with why they got it, an unsubscribe link and your postal address.</p>
+      <p class="error" id="compose-error" role="alert"></p>
+      <p class="done" id="compose-done" role="status"></p>
+      <div class="compose-buttons">
+        <button type="button" class="ghost" id="compose-test">Send me a test</button>
+        <button type="button" class="primary inline" id="compose-send">Send</button>
+        <button type="button" class="link" id="compose-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
   <div id="tip" class="tip" role="status" hidden></div>
   <script src="supabase.js"></script>
+  <script src="groups.js"></script>
   <script src="console.js"></script>
 </body>
 </html>
