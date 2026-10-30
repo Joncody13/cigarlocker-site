@@ -440,6 +440,7 @@
     { key: 'bought', label: 'Bought, 12 mo', num: true, sort: (m) => m.bought12 },
     { key: 'paid', label: 'Paid vs retail', num: true, sort: (m) => (m.retailCents ? m.paidCents / m.retailCents : -1) },
     { key: 'ratings', label: 'Ratings', num: true, sort: (m) => m.rated },
+    { key: 'sensors', label: 'Sensors', num: true, sort: (m) => m.sensors },
     { key: 'shop', label: 'Buys most at', sort: (m) => m.topShop.toLowerCase() },
     { key: 'mail', label: 'Emails', sort: (m) => (m.news ? 2 : 0) + (m.offers ? 1 : 0) },
   ];
@@ -483,6 +484,7 @@
       bought: m.bought12 ? h('div', {}, n(m.bought12), h('div', { class: 'muted small', text: m.spent12 ? money(m.spent12) : 'no prices' })) : '',
       paid: paidWords(m),
       ratings: m.rated ? `${m.avgRating} avg · ${n(m.rated)}` : '',
+      sensors: sensorCell(m),
       shop: m.topShop,
       mail: h(
         'div',
@@ -492,6 +494,18 @@
         h('span', { class: m.insights ? 'chip on' : 'chip', text: 'Insights' }),
       ),
     };
+  }
+
+  /** "6 sensors", then their humidity as the phone last sent it: "60–68% · 1 off · 2 hr ago". */
+  function sensorCell(m) {
+    const s = m.sensorStatus;
+    const count = Math.max(m.sensors || 0, (s && s.sensors) || 0);
+    if (!count) return '';
+    const range = s && s.low != null ? (s.low === s.high ? `${s.low}%` : `${s.low}–${s.high}%`) : '';
+    const line = s
+      ? [range || 'No readings', s.off ? `${n(s.off)} off target` : '', s.quiet ? `${n(s.quiet)} quiet` : '', s.read ? ago(s.read) : ''].filter(Boolean).join(' · ')
+      : 'No readings sent yet';
+    return h('div', {}, plural(count, 'sensor'), h('div', { class: s && s.off ? 'warn small' : 'muted small', text: line }));
   }
 
   const formatPhone = (p) => {
@@ -1110,6 +1124,22 @@
       fact('Shops', m.shops.length ? m.shops.join(', ') : 'None named'),
       fact('In the app', `${plural(m.opens30, 'open')} and ${minutes(m.minutes30)} in 30 days, on ${plural(m.days30, 'day')} · ${plural(m.opensAll, 'open')} in all`),
     );
+    const STATUS = { ok: 'In range', dry: 'Too dry', humid: 'Too humid', quiet: 'No reading for 90 min', '': '' };
+    const pct = (v) => (v == null ? '' : `${Math.round(v)}%`);
+    const sensors = table(
+      ['Humidor', 'Sensor', 'Humidity', 'Last hour', 'Temp', 'Target', 'Status', 'Read'],
+      (d.sensors || []).map((x) => [
+        x.humidor || 'In no humidor',
+        x.name,
+        pct(x.humidity),
+        pct(x.hourHumidity),
+        x.temperatureF == null ? '' : `${Math.round(x.temperatureF)}°F`,
+        x.min != null && x.max != null ? `${Math.round(x.min)}–${Math.round(x.max)}%` : '',
+        STATUS[x.status] ?? '',
+        x.read ? ago(x.read) : 'Never',
+      ]),
+      [2, 3, 4],
+    );
     const mails = table(
       ['Sent', 'Email', 'Delivered', 'Opened', 'Tapped'],
       (d.emails || []).map((e) => [
@@ -1125,6 +1155,10 @@
     return [
       h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: 'About' }), about), h('div', {}, h('h4', { text: 'Habits' }), habits)),
       h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: d.installs > 1 ? `Days in the app (on ${n(d.installs)} phones)` : 'Days in the app' }), days), h('div', {}, h('h4', { text: 'Emails from you' }), mails)),
+      m.sensors || (d.sensors || []).length
+        ? h('h4', { text: `Sensors (${n(Math.max(m.sensors || 0, (d.sensors || []).length))}), as their phone last sent them` })
+        : null,
+      m.sensors || (d.sensors || []).length ? sensors : null,
       h('h4', { text: `Purchases (${n(d.purchases.length)})` }),
       buys,
       h('h4', { text: `Ratings (${n(d.ratings.length)})` }),
