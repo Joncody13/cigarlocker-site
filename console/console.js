@@ -57,12 +57,13 @@
   // The buttons along the top (his words: "buttons at the top that'll say
   // global"): one part of the console at a time, remembered.
   const TAB = 'console.tab';
-  const TABS = ['global', 'people', 'market', 'emails', 'knowledge', 'health'];
+  const TABS = ['global', 'people', 'market', 'emails', 'knowledge', 'featured', 'health'];
   function showTab(name) {
     const tab = TABS.includes(name) ? name : 'global';
     for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.dataset.tab !== tab;
     for (const b of document.querySelectorAll('#tabs [data-show]')) b.setAttribute('aria-selected', b.dataset.show === tab ? 'true' : 'false');
     remember(TAB, tab);
+    if (tab === 'featured' && !$('board').hidden) loadFeatured();
   }
   for (const b of document.querySelectorAll('#tabs [data-show]')) {
     b.addEventListener('click', () => {
@@ -279,6 +280,7 @@
     $('top-right').hidden = false;
     $('tabs').hidden = false;
     await refresh();
+    if (recall(TAB) === 'featured') loadFeatured();
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
       if (document.visibilityState === 'visible') refresh();
@@ -1602,6 +1604,154 @@
     const system = /Mac OS X/.test(agent) ? 'Mac' : /Windows/.test(agent) ? 'Windows' : /iPhone|iPad/.test(agent) ? 'iPhone' : /Android/.test(agent) ? 'Android' : /Linux/.test(agent) ? 'Linux' : '';
     return system ? `${browser} on ${system}` : browser;
   }
+
+  // ---- featured shops ---------------------------------------------------------------
+  // His words, 2026-10-30: "featured shops that will always come up on top of
+  // the search in there area" (071_featured_places.sql). A shop chosen from
+  // Places, its days and its area; the switch hides them all while Apple
+  // reviews the app.
+
+  const STATUS_WORDS = { showing: 'Showing', waiting: 'Starts later', over: 'Ended' };
+  const KIND_WORDS = { shop: 'Shop', lounge: 'Lounge', both: 'Shop and lounge' };
+  let chosenPlace = null;
+
+  const isoDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const dayWords = (iso) => {
+    const [y, m, d] = String(iso).split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  const placeWhere = (p) => [p.city, p.state].filter(Boolean).join(', ');
+
+  function drawFeatured(out) {
+    $('featured-on').checked = !!out.on;
+    $('featured-today').textContent = out.on ? 'Showing in the app' : 'Hidden in the app';
+    const table = $('features');
+    table.replaceChildren();
+    if (!out.features || out.features.length === 0) {
+      table.append(h('tbody', null, h('tr', null, h('td', { class: 'muted' }, 'No shop featured yet. Find one on the right.'))));
+      return;
+    }
+    table.append(
+      h('thead', null, h('tr', null, h('th', null, 'Shop'), h('th', null, 'Days'), h('th', null, 'Area'), h('th', null, ''), h('th', null, ''))),
+      h(
+        'tbody',
+        null,
+        out.features.map((f) =>
+          h(
+            'tr',
+            { class: f.status === 'over' ? 'muted' : null },
+            h('td', null, h('strong', null, f.name), h('br'), h('span', { class: 'muted small' }, `${KIND_WORDS[f.kind] || ''} · ${placeWhere(f)}`), f.note ? h('div', { class: 'muted small' }, f.note) : null),
+            h('td', null, `${dayWords(f.startsOn)} – ${dayWords(f.endsOn)}`),
+            h('td', null, `${f.miles} mi`),
+            h('td', null, h('span', { class: `pill ${f.status === 'showing' ? 'good' : ''}` }, STATUS_WORDS[f.status] || f.status)),
+            h(
+              'td',
+              null,
+              h('button', {
+                type: 'button',
+                class: 'ghost small',
+                text: 'Remove',
+                onclick: async () => {
+                  if (!confirm(`Stop featuring ${f.name} (${dayWords(f.startsOn)} – ${dayWords(f.endsOn)})?`)) return;
+                  try {
+                    drawFeatured(await ask({ action: 'feature-remove', id: f.id }));
+                  } catch (e) {
+                    $('feature-result').textContent = e.message;
+                  }
+                },
+              }),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  async function loadFeatured() {
+    try {
+      drawFeatured(await ask({ action: 'featured' }));
+    } catch (e) {
+      $('feature-result').textContent = e.message;
+    }
+  }
+
+  $('featured-on').addEventListener('change', async (ev) => {
+    const on = ev.target.checked;
+    try {
+      drawFeatured(await ask({ action: 'featured-switch', on }));
+    } catch (e) {
+      ev.target.checked = !on;
+      $('feature-result').textContent = e.message;
+    }
+  });
+
+  function choose(p) {
+    chosenPlace = p;
+    $('feature-chosen').textContent = p ? `Chosen: ${p.name}, ${[p.street, placeWhere(p)].filter(Boolean).join(', ')}` : 'No shop chosen yet.';
+    $('feature-found').replaceChildren();
+  }
+
+  let findTimer = null;
+  $('feature-find').addEventListener('input', (ev) => {
+    clearTimeout(findTimer);
+    const query = ev.target.value.trim();
+    if (query.length < 2) {
+      $('feature-found').replaceChildren();
+      return;
+    }
+    findTimer = setTimeout(async () => {
+      try {
+        const out = await ask({ action: 'featured-find', query });
+        $('feature-found').replaceChildren(
+          ...(out.places.length
+            ? out.places.map((p) =>
+                h('button', { type: 'button', class: 'ghost small', onclick: () => choose(p) }, `${p.name} · ${placeWhere(p)}`),
+              )
+            : [h('span', { class: 'muted small' }, 'No place by that name or town. Places are added by their town’s search.')]),
+        );
+      } catch (e) {
+        $('feature-result').textContent = e.message;
+      }
+    }, 300);
+  });
+
+  {
+    const today = new Date();
+    $('feature-starts').value = isoDay(today);
+    $('feature-ends').value = isoDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30));
+  }
+
+  $('feature-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const result = $('feature-result');
+    if (!chosenPlace) {
+      result.textContent = 'Find and choose the shop first.';
+      return;
+    }
+    const startsOn = $('feature-starts').value;
+    const endsOn = $('feature-ends').value;
+    if (!startsOn || !endsOn || endsOn < startsOn) {
+      result.textContent = 'The last day comes on or after the first.';
+      return;
+    }
+    try {
+      const out = await ask({
+        action: 'feature-add',
+        place: chosenPlace.id,
+        startsOn,
+        endsOn,
+        miles: Math.round(Number($('feature-miles').value) || 30),
+        note: $('feature-note').value.trim(),
+      });
+      drawFeatured(out);
+      result.textContent = `${chosenPlace.name} is featured from ${dayWords(startsOn)} to ${dayWords(endsOn)}.`;
+      choose(null);
+      $('feature-find').value = '';
+      $('feature-note').value = '';
+    } catch (e) {
+      result.textContent = e.message;
+    }
+  });
 
   // ---- starting -------------------------------------------------------------------
 
