@@ -18,6 +18,7 @@
       <span>Cigar Locker</span><span class="sub">Console</span>
     </div>
     <div class="top-right" id="top-right" hidden>
+      <input id="lookup" type="search" placeholder="Look up a person" aria-label="Look up a person by name, email, phone, town or ZIP">
       <span class="muted" id="updated"></span>
       <button type="button" class="ghost" id="refresh">Refresh</button>
       <button type="button" class="ghost" id="sign-out">Sign out</button>
@@ -55,6 +56,11 @@
       <p class="error" id="gate-error" role="alert"></p>
     </div>
   </main>
+
+  <!-- One person's page, over the console (console.js openPerson). -->
+  <div id="person" class="person" role="dialog" aria-modal="true" aria-labelledby="person-name" hidden>
+    <div class="person-inner detail" id="person-inner"></div>
+  </div>
 
   <main id="board" class="board" hidden>
     <section aria-labelledby="h-today">

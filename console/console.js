@@ -447,7 +447,6 @@
 
   let sortBy = 'joined';
   let sortDown = true;
-  let open = null;
 
   function paidWords(m) {
     if (!m.retailCents) return '';
@@ -657,16 +656,15 @@
         h(
           'tr',
           {
-            class: open === m.id ? 'member open' : 'member',
+            class: 'member',
             tabindex: 0,
-            'aria-expanded': open === m.id ? 'true' : 'false',
-            onclick: () => toggle(m.id),
-            onkeydown: (ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), toggle(m.id)),
+            title: 'Open their page',
+            onclick: () => openPerson(m),
+            onkeydown: (ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), openPerson(m)),
           },
           columns.map((col) => h('td', { class: col.num ? 'num' : null }, col.cell ? col.cell(m) : c[col.key])),
         ),
       );
-      if (open === m.id) body.push(h('tr', { class: 'detail-row' }, h('td', { colspan: columns.length }, detailBox(m))));
     }
     if (shown.length < page.total) {
       body.push(
@@ -689,10 +687,20 @@
 
   $('member-search').addEventListener('input', people);
 
-  function toggle(id) {
-    open = open === id ? null : id;
-    drawPeople();
-  }
+  // "Look up a person" in the top bar: the People list narrows as he types,
+  // and Enter opens the one person found (or shows the list when several are).
+  $('lookup').addEventListener('input', () => {
+    $('member-search').value = $('lookup').value;
+    people();
+  });
+  $('lookup').addEventListener('keydown', async (ev) => {
+    if (ev.key !== 'Enter') return;
+    ev.preventDefault();
+    clearTimeout(pageTimer);
+    await loadPeople(false);
+    if (page.rows.length === 1) openPerson(page.rows[0]);
+    else document.querySelector('[aria-labelledby="h-members"]').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
 
   // The filters, one row each.
   function renderFilters() {
@@ -1045,20 +1053,76 @@
     }
   });
 
+  // A person's own page (his words, 2026-10-30: "I need to be able to click
+  // on individual people's names. And see how many cigars they have, their
+  // full history of where they bought them, where their humidors are, how
+  // much they pay, how often they scan, how often they use the app"): over
+  // the whole console, Back (or Esc) returns to the list where it was.
   const details = new Map();
+  let personFor = null;
+  let scrollBefore = 0;
 
-  function detailBox(m) {
-    const box = h('div', { class: 'detail' }, h('p', { class: 'muted', text: 'Reading…' }));
+  function openPerson(m) {
+    personFor = m.id;
+    scrollBefore = window.scrollY;
+    const sheet = $('person');
+    const inner = $('person-inner');
+    inner.replaceChildren(personHead(m), h('p', { class: 'muted', text: 'Reading…' }));
+    sheet.hidden = false;
+    sheet.scrollTop = 0;
+    document.body.classList.add('locked');
+    $('person-back').focus();
     const known = details.get(m.id);
-    if (known) box.replaceChildren(...detail(m, known));
+    const show = (d) => personFor === m.id && inner.replaceChildren(personHead(m), ...detail(m, d));
+    if (known) show(known);
     else
       ask({ action: 'member', id: m.id })
         .then((d) => {
           details.set(m.id, d);
-          box.replaceChildren(...detail(m, d));
+          show(d);
         })
-        .catch((e) => box.replaceChildren(h('p', { class: 'error', text: e.message })));
-    return box;
+        .catch((e) => personFor === m.id && inner.replaceChildren(personHead(m), h('p', { class: 'error', text: e.message })));
+  }
+
+  function closePerson() {
+    personFor = null;
+    $('person').hidden = true;
+    document.body.classList.remove('locked');
+    window.scrollTo(0, scrollBefore);
+  }
+
+  document.addEventListener('keydown', (ev) => ev.key === 'Escape' && personFor && closePerson());
+
+  /** Back, the name, and who they are in a line. */
+  function personHead(m) {
+    const where = [m.city, [m.state, m.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    return h(
+      'div',
+      { class: 'person-head' },
+      h('button', { type: 'button', class: 'ghost', id: 'person-back', text: '← Back to People', onclick: closePerson }),
+      h('h2', { class: 'person-name', id: 'person-name', text: m.name || (m.username ? `@${m.username}` : m.email) }),
+      h(
+        'p',
+        { class: 'person-sub' },
+        [m.name && m.username ? `@${m.username}` : '', m.email, m.phone ? formatPhone(m.phone) : '', where].filter(Boolean).join(' · '),
+      ),
+      h(
+        'p',
+        { class: 'muted small' },
+        [
+          `Joined ${dayYearFmt.format(new Date(m.joined))}`,
+          m.lastSeen || m.lastSignIn ? `last seen ${ago(m.lastSeen || m.lastSignIn)}` : '',
+          m.profile ? '' : 'sign-up not finished',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      ),
+    );
+  }
+
+  /** A figure in a tile, with a line under it. */
+  function tile(label, value, note) {
+    return h('div', { class: 'tile' }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), note ? h('div', { class: 'tile-note', text: note }) : null);
   }
 
   function detail(m, d) {
@@ -1071,7 +1135,6 @@
       fact('Born', m.birthDate ? `${longDay(m.birthDate)} (${m.age})` : 'Not given'),
       fact('Signs in with', m.provider === 'apple' ? 'Apple' : m.provider || 'Unknown'),
       fact('Joined', `${dayYearFmt.format(new Date(m.joined))}${m.lastSignIn ? ` · last signed in ${ago(m.lastSignIn)}` : ''}`),
-      fact('Phone it runs on', [m.platform, m.version].filter(Boolean).join(', ') || 'Not seen yet'),
       fact('Friends', `${plural(d.social.friends, 'friend')} · ${plural(d.social.posts, 'post')} · ${plural(d.social.messages, 'message')}${d.social.reported ? ` · reported ${n(d.social.reported)} times` : ''}`),
       fact('Says yes to', [m.news && 'News emails', m.offers && 'Offers from shops', m.insights && 'Market insights'].filter(Boolean).join(', ') || 'Nothing'),
     );
@@ -1118,11 +1181,6 @@
       fact('Ratings', m.rated ? `${m.avgRating} of 10 on average, ${plural(m.rated, 'cigar')} · ${n(m.loved)} rated 8 or more · favorite ${m.favorite}` : 'None yet'),
       fact('Wrappers', [m.shadeMost && `keeps ${m.shadeMost} most`, m.shadesLoved && m.shadesLoved.length && `loves ${m.shadesLoved.join(', ')}`].filter(Boolean).join('; ') || 'Not known'),
       fact('Strength', m.strengthMost ? `${G.strengthWords(m.strengthMost)} most` : 'Not known'),
-      fact('Humidors', m.humidors ? `${plural(m.humidors, 'humidor')}${m.humidorNames.length ? `: ${m.humidorNames.join(', ')}` : ''}${m.placeNames.length ? ` · in ${m.placeNames.join(', ')}` : ''}${m.sensors ? ` · ${plural(m.sensors, 'sensor')}` : ''}` : 'None'),
-      fact('Collection', m.cigarsNow ? `${n(m.cigarsNow)} cigars, ${plural(m.kindsNow, 'kind')}, worth about ${money(m.valueCents)}` : 'Empty'),
-      fact('Spending', `${money(m.spentYear)} this year on ${plural(m.boughtYear, 'cigar')}${m.avgPaidCents != null ? ` · ${money(m.avgPaidCents)} a cigar on average` : ''}${m.paidPct != null ? ` · ${m.paidPct}% of retail` : ''}`),
-      fact('Shops', m.shops.length ? m.shops.join(', ') : 'None named'),
-      fact('In the app', `${plural(m.opens30, 'open')} and ${minutes(m.minutes30)} in 30 days, on ${plural(m.days30, 'day')} · ${plural(m.opensAll, 'open')} in all`),
     );
     const STATUS = { ok: 'In range', dry: 'Too dry', humid: 'Too humid', quiet: 'No reading for 90 min', '': '' };
     const pct = (v) => (v == null ? '' : `${Math.round(v)}%`);
@@ -1151,20 +1209,91 @@
       ]),
       [],
     );
+    const figures = h(
+      'div',
+      { class: 'tiles' },
+      tile('Cigars now', n(m.cigarsNow), plural(m.kindsNow, 'kind')),
+      tile('Worth', m.valueCents ? money(m.valueCents) : '—', 'paid, else retail'),
+      tile('Humidors', n(m.humidors), m.sensors ? plural(m.sensors, 'sensor') : 'no sensors'),
+      tile('Spent this year', money(m.spentYear), plural(m.boughtYear, 'cigar')),
+      tile('Paid a cigar', m.avgPaidCents != null ? money(m.avgPaidCents) : '—', m.paidPct != null ? `${m.paidPct}% of retail` : 'retail not known'),
+      tile('Scans, 30 days', n(m.scans30), `${n(m.scansToday)} today · ${n(m.scansAll)} in all`),
+      tile('App opens, 30 days', n(m.opens30), `${n(m.opensToday)} today · ${n(m.opensAll)} in all`),
+      tile('Time in the app, 30 days', minutes(m.minutes30), `${minutes(m.minutesAll)} in all`),
+    );
+    const pctRange = (x) => (x.low == null ? '' : x.low === x.high ? `${x.low}%` : `${x.low}–${x.high}%`);
+    const humidors = table(
+      ['Humidor', 'Where', 'Cigars', 'Kinds', 'Sensors', 'Humidity'],
+      (d.humidors || []).map((x) => [
+        x.name,
+        x.location || 'Not said',
+        n(x.cigars),
+        n(x.kinds),
+        x.sensors ? n(x.sensors) : '',
+        [pctRange(x), x.off ? `${n(x.off)} off target` : '', x.read ? ago(x.read) : ''].filter(Boolean).join(' · '),
+      ]),
+      [2, 3, 4],
+    );
+    // Where they buy: each shop's purchases, cigars, spend and last day, most spent first.
+    const byShop = new Map();
+    for (const p of d.purchases) {
+      const key = p.imported && !p.shop ? 'Imported, no shop given' : p.shop || 'No shop given';
+      const s = byShop.get(key) || { name: key, city: [p.city, p.region].filter(Boolean).join(', '), lots: 0, cigars: 0, cents: 0, priced: false, last: null };
+      s.lots += 1;
+      s.cigars += p.qty || 0;
+      if (p.cents != null) {
+        s.cents += p.cents;
+        s.priced = true;
+      }
+      if (!p.imported && p.boughtOn && (!s.last || p.boughtOn > s.last)) s.last = p.boughtOn;
+      byShop.set(key, s);
+    }
+    const shops = table(
+      ['Shop', 'Town', 'Purchases', 'Cigars', 'Spent', 'Last bought'],
+      [...byShop.values()]
+        .sort((a, b) => b.cents - a.cents || b.cigars - a.cigars)
+        .map((s) => [s.name, s.city, n(s.lots), n(s.cigars), s.priced ? money(s.cents) : '', s.last ? longDay(s.last) : '']),
+      [2, 3, 4],
+    );
+    const use = h(
+      'dl',
+      { class: 'facts' },
+      fact('Scans', `${n(m.scansToday)} today · ${n(m.scans30)} in 30 days · ${n(m.scansAll)} in all`),
+      fact('Look-ups and suggestions', `${n(m.lookups30)} look-ups · ${n(m.suggestions30)} suggestions, in 30 days`),
+      fact('App opens', `${n(m.opensToday)} today · ${n(m.opens7)} this week · ${n(m.opens30)} in 30 days · ${n(m.opensAll)} in all`),
+      fact('Time in the app', `${minutes(m.minutesToday)} today · ${minutes(m.minutes7)} this week · ${minutes(m.minutes30)} in 30 days · ${minutes(m.minutesAll)} in all`),
+      fact('Days they opened it', `${plural(m.days30, 'day')} of the last 30 · ${plural(m.daysAll, 'day')} in all`),
+      fact('First and last seen', [m.firstSeen ? `first ${dayYearFmt.format(new Date(m.firstSeen))}` : '', m.lastSeen ? `last ${ago(m.lastSeen)}` : ''].filter(Boolean).join(' · ') || 'Not seen yet'),
+      fact('Runs on', [(m.platform || '').replace(/^ios/, 'iPhone').replace(/^android/, 'Android'), m.version && `version ${m.version}`].filter(Boolean).join(', ') + (d.installs > 1 ? ` · ${n(d.installs)} phones` : '') || 'Not seen yet'),
+    );
     // Only what there is: an empty slot would show as words.
     return [
-      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: 'About' }), about), h('div', {}, h('h4', { text: 'Habits' }), habits)),
-      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: d.installs > 1 ? `Days in the app (on ${n(d.installs)} phones)` : 'Days in the app' }), days), h('div', {}, h('h4', { text: 'Emails from you' }), mails)),
+      figures,
+      h(
+        'div',
+        { class: 'detail-grid' },
+        h('div', {}, h('h4', { text: `Humidors (${n((d.humidors || []).length)})` }), humidors),
+        h('div', {}, h('h4', { text: 'Where they buy' }), shops),
+      ),
+      h(
+        'div',
+        { class: 'detail-grid' },
+        h('div', {}, h('h4', { text: 'Scans and time in the app' }), use, h('p', { class: 'muted small', text: 'Counted since Oct 29, 2026, when the console began.' })),
+        h('div', {}, h('h4', { text: 'Habits' }), habits),
+      ),
+      h('h4', { text: `Every purchase (${n(d.purchases.length)}), newest first` }),
+      buys,
       m.sensors || (d.sensors || []).length
         ? h('h4', { text: `Sensors (${n(Math.max(m.sensors || 0, (d.sensors || []).length))}), as their phone last sent them` })
         : null,
       m.sensors || (d.sensors || []).length ? sensors : null,
-      h('h4', { text: `Purchases (${n(d.purchases.length)})` }),
-      buys,
+      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: d.installs > 1 ? `Days in the app (on ${n(d.installs)} phones)` : 'Days in the app' }), days), h('div', {}, h('h4', { text: 'About' }), about)),
       h('h4', { text: `Ratings (${n(d.ratings.length)})` }),
       rated,
       d.outs.length ? h('h4', { text: 'Given, traded, lost' }) : null,
       d.outs.length ? outs : null,
+      h('h4', { text: 'Emails from you' }),
+      mails,
     ].filter(Boolean);
   }
 

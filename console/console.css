@@ -105,6 +105,16 @@ label { display: block; color: var(--muted); font-size: 12px; margin: 14px 0 6px
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: 0.02em; }
 .brand .sub { color: var(--gold); font-weight: 500; }
 .top-right { display: flex; align-items: center; gap: 10px; }
+.top-right #lookup { width: 260px; padding: 7px 12px; }
+
+/* One person's page, over everything (his ask, 2026-10-30). */
+body.locked { overflow: hidden; }
+.person { position: fixed; inset: 0; z-index: 20; overflow-y: auto; background: var(--bg); }
+.person-inner { max-width: 1440px; margin: 0 auto; padding: 22px 28px 64px; }
+.person-head { border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 18px; }
+.person-name { font-family: 'Iowan Old Style', Georgia, 'Times New Roman', serif; font-weight: 400; font-size: 40px; letter-spacing: -0.01em; margin-top: 18px; }
+.person-sub { color: var(--text); margin: 6px 0 4px; }
+.person .tiles { margin-bottom: 6px; }
 
 /* Signing in. */
 .gate { display: grid; place-items: center; min-height: calc(100vh - 60px); padding: 24px 16px; }
@@ -199,6 +209,8 @@ table.plain td:first-child, table.plain th:first-child { padding-left: 0; }
 .members td:first-child { white-space: normal; min-width: 200px; }
 .members td:nth-child(3), .members td:nth-child(13) { white-space: normal; min-width: 120px; }
 .members tr.member { cursor: pointer; }
+.members .who strong { color: var(--gold); }
+.members tr.member:hover .who strong { text-decoration: underline; }
 .members tr.member:hover td { background: rgba(227, 188, 140, 0.04); }
 .members tr.open td { background: rgba(227, 188, 140, 0.07); }
 .members .who strong { font-weight: 600; }
@@ -209,7 +221,6 @@ button.sort:hover { color: var(--text); }
 .chip { font-size: 11px; padding: 1px 6px; border-radius: 99px; border: 1px solid var(--line-strong); color: var(--faint); }
 .chip.on { border-color: rgba(134, 196, 151, 0.5); color: var(--green); }
 
-.detail-row > td { background: var(--surface-2); padding: 4px 18px 18px; white-space: normal; }
 .detail { max-width: 1500px; }
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; }
 @media (max-width: 1100px) { .detail-grid { grid-template-columns: 1fr; } }
