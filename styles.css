@@ -279,6 +279,7 @@ p {
 }
 
 .brand-name {
+  white-space: nowrap;
   font-family: var(--serif);
   font-size: 25px;
   line-height: 1.2;
@@ -295,6 +296,7 @@ p {
 }
 
 .site-nav a {
+  white-space: nowrap;
   color: var(--muted);
   text-decoration: none;
   padding: 4px 0;
@@ -1738,7 +1740,19 @@ tr:last-child td {
 
   .site-nav {
     flex-wrap: nowrap;
-    gap: 14px;
+    gap: 18px;
+  }
+
+  /* On a phone Sign in takes the pill's place ("Coming soon" is the page's own button). */
+  .site-nav .nav-signin {
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    padding: 6px 14px;
+    color: var(--gold);
+  }
+
+  .site-nav .nav-signin::after {
+    display: none;
   }
 
   .brand-name {
@@ -1747,6 +1761,26 @@ tr:last-child td {
 
   .stage {
     min-height: 520px;
+  }
+}
+
+/* The narrowest phones. */
+@media (max-width: 359px) {
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-name {
+    font-size: 20px;
+  }
+
+  .site-nav {
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .site-nav .nav-signin {
+    padding: 5px 11px;
   }
 }
 
