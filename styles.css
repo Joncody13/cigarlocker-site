@@ -1893,3 +1893,6 @@ tr:last-child td {
     display: none;
   }
 }
+
+/* Signing in to the web version (signin/): Apple's own button, drawn by Apple's script. */
+.apple-signin { width: 280px; max-width: 100%; height: 50px; margin: 8px 0 18px; cursor: pointer; }
