@@ -20,10 +20,21 @@
     <div class="top-right" id="top-right" hidden>
       <input id="lookup" type="search" placeholder="Look up a person" aria-label="Look up a person by name, email, phone, town or ZIP">
       <span class="muted" id="updated"></span>
+      <button type="button" class="ghost" id="look">Dark</button>
       <button type="button" class="ghost" id="refresh">Refresh</button>
       <button type="button" class="ghost" id="sign-out">Sign out</button>
     </div>
   </header>
+
+  <!-- One button for each part of the console (his words, 2026-10-30: "buttons at the top"). -->
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Parts of the console" hidden>
+    <button type="button" role="tab" data-show="global">Global</button>
+    <button type="button" role="tab" data-show="people">People</button>
+    <button type="button" role="tab" data-show="market">Market</button>
+    <button type="button" role="tab" data-show="emails">Emails</button>
+    <button type="button" role="tab" data-show="knowledge">Knowledge</button>
+    <button type="button" role="tab" data-show="health">Health</button>
+  </nav>
 
   <!-- Signing in: the email, then the authenticator code. -->
   <main id="gate" class="gate" hidden>
@@ -63,12 +74,12 @@
   </div>
 
   <main id="board" class="board" hidden>
-    <section aria-labelledby="h-today">
+    <section aria-labelledby="h-today" data-tab="global">
       <h2 id="h-today" class="overline">At a glance</h2>
       <div class="tiles" id="tiles"></div>
     </section>
 
-    <section class="row three">
+    <section class="row three" data-tab="global">
       <div class="card">
         <h3>People in the app, by day</h3>
         <p class="muted small">Each person or install that opened it, last 30 days</p>
@@ -85,7 +96,7 @@
       </div>
     </section>
 
-    <section class="card wide" aria-labelledby="h-members">
+    <section class="card wide" aria-labelledby="h-members" data-tab="people">
       <div class="card-head">
         <h3 id="h-members">People</h3>
         <input id="member-search" type="search" placeholder="Search name, email, phone, town, ZIP" aria-label="Search people">
@@ -93,9 +104,13 @@
       </div>
       <div class="groups-bar" id="groups-bar"></div>
       <div class="filters" id="filters"></div>
-      <div class="filter-add">
-        <select id="add-filter" aria-label="Add a filter"></select>
-        <span class="muted small">Each filter narrows the list: the people below match all of them.</span>
+      <div class="filter-panel">
+        <div class="filter-panel-head">
+          <input id="filter-find" type="search" placeholder="Find a filter: age, wrapper, scans, shop…" aria-label="Find a filter">
+          <span class="muted small" id="filter-count"></span>
+          <button type="button" class="link" id="filter-fold">Hide the filters</button>
+        </div>
+        <div class="filter-groups" id="filter-groups"></div>
       </div>
       <div class="group-actions">
         <p class="group-words" id="group-words">Everyone</p>
@@ -112,7 +127,7 @@
       <p class="muted small">Click a person for what they bought, rated, did, and the emails they got. Days are Massachusetts time; the hour a cigar was enjoyed is the member's own.</p>
     </section>
 
-    <section class="row three">
+    <section class="row three" data-tab="market">
       <div class="card">
         <h3>Shops they buy from</h3>
         <table class="plain" id="shops"></table>
@@ -131,12 +146,12 @@
       </div>
     </section>
 
-    <section class="card wide" aria-labelledby="h-knows">
+    <section class="card wide" aria-labelledby="h-knows" data-tab="knowledge">
       <div class="card-head"><h3 id="h-knows">What Cigar Locker knows</h3><span class="muted small">Cigars on record, from makers’ catalogues, web look-ups and members’ scans</span></div>
       <div class="tiles" id="knowledge"></div>
     </section>
 
-    <section class="card wide" aria-labelledby="h-mail">
+    <section class="card wide" aria-labelledby="h-mail" data-tab="emails">
       <div class="card-head"><h3 id="h-mail">Emails</h3><span class="muted small" id="mail-note"></span></div>
       <div class="mail-grid">
         <div>
@@ -163,7 +178,7 @@
       </div>
     </section>
 
-    <section class="row two">
+    <section class="row two" data-tab="health">
       <div class="card">
         <h3>App health</h3>
         <dl class="facts" id="health"></dl>

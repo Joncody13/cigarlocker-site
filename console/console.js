@@ -26,6 +26,52 @@
 
   const $ = (id) => document.getElementById(id);
 
+  // What this computer remembers: the look, the part shown, the folded filters.
+  function remember(key, value) {
+    try {
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    } catch {
+      // A browser that keeps nothing starts as new each time.
+    }
+  }
+  function recall(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  // Bright, or the website's dark (his words, 2026-10-30: "I need to make it brighter").
+  const LOOK = 'console.look';
+  function setLook(look) {
+    if (look === 'dark') document.documentElement.dataset.look = 'dark';
+    else delete document.documentElement.dataset.look;
+    $('look').textContent = look === 'dark' ? 'Bright' : 'Dark';
+    remember(LOOK, look === 'dark' ? 'dark' : '');
+  }
+  setLook(recall(LOOK));
+  $('look').addEventListener('click', () => setLook(document.documentElement.dataset.look === 'dark' ? '' : 'dark'));
+
+  // The buttons along the top (his words: "buttons at the top that'll say
+  // global"): one part of the console at a time, remembered.
+  const TAB = 'console.tab';
+  const TABS = ['global', 'people', 'market', 'emails', 'knowledge', 'health'];
+  function showTab(name) {
+    const tab = TABS.includes(name) ? name : 'global';
+    for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.dataset.tab !== tab;
+    for (const b of document.querySelectorAll('#tabs [data-show]')) b.setAttribute('aria-selected', b.dataset.show === tab ? 'true' : 'false');
+    remember(TAB, tab);
+  }
+  for (const b of document.querySelectorAll('#tabs [data-show]')) {
+    b.addEventListener('click', () => {
+      showTab(b.dataset.show);
+      window.scrollTo(0, 0);
+    });
+  }
+  showTab(recall(TAB) || 'global');
+
   /** An element with its attributes and children; strings become text. */
   function h(tag, attrs, ...children) {
     const el = document.createElement(tag);
@@ -101,6 +147,7 @@
   function gate(title, words, show) {
     $('board').hidden = true;
     $('top-right').hidden = true;
+    $('tabs').hidden = true;
     $('gate').hidden = false;
     $('gate-title').textContent = title;
     $('gate-words').textContent = words;
@@ -230,6 +277,7 @@
     $('gate').hidden = true;
     $('board').hidden = false;
     $('top-right').hidden = false;
+    $('tabs').hidden = false;
     await refresh();
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
@@ -691,6 +739,7 @@
   // and Enter opens the one person found (or shows the list when several are).
   $('lookup').addEventListener('input', () => {
     $('member-search').value = $('lookup').value;
+    showTab('people');
     people();
   });
   $('lookup').addEventListener('keydown', async (ev) => {
@@ -698,8 +747,8 @@
     ev.preventDefault();
     clearTimeout(pageTimer);
     await loadPeople(false);
+    showTab('people');
     if (page.rows.length === 1) openPerson(page.rows[0]);
-    else document.querySelector('[aria-labelledby="h-members"]').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
   // The filters, one row each.
@@ -723,6 +772,7 @@
       }),
     );
     renderGroupsBar();
+    drawFilterChoices();
   }
 
   function numberBox(filter, key, placeholder) {
@@ -826,25 +876,68 @@
   }
 
   // Adding a filter: every field, by section.
-  (function addFilterMenu() {
+  // Every filter on view, by section (his words, 2026-10-30: "I just want a
+  // million filter options to be able to check everything"): click one to
+  // add it to the list's filters; one in use is marked. A box finds them by
+  // name, and the whole panel folds away.
+  function addFilter(key) {
+    filters.push({ field: key });
+    renderFilters();
+    const rows = $('filters').querySelectorAll('.filter-row');
+    const last = rows[rows.length - 1];
+    const first = last && last.querySelector('input, button.toggle');
+    if (first) first.focus();
+    people();
+  }
+
+  function drawFilterChoices() {
+    const q = $('filter-find').value.trim().toLowerCase();
+    const used = new Set(filters.map((f) => f.field));
     const groups = [...new Set(G.FIELDS.map((f) => f.group))];
-    $('add-filter').replaceChildren(
-      h('option', { value: '', text: 'Add a filter…' }),
-      ...groups.map((g) => h('optgroup', { label: g }, G.FIELDS.filter((f) => f.group === g).map((f) => h('option', { value: f.key, text: f.label })))),
+    let shown = 0;
+    $('filter-groups').replaceChildren(
+      ...groups
+        .map((g) => {
+          const fields = G.FIELDS.filter((f) => f.group === g && (!q || f.label.toLowerCase().includes(q) || g.toLowerCase().includes(q)));
+          shown += fields.length;
+          if (!fields.length) return null;
+          return h(
+            'div',
+            { class: 'filter-group' },
+            h('h5', { text: g }),
+            h(
+              'div',
+              { class: 'toggles' },
+              fields.map((f) =>
+                h('button', {
+                  type: 'button',
+                  class: used.has(f.key) ? 'toggle on' : 'toggle',
+                  'aria-pressed': used.has(f.key) ? 'true' : 'false',
+                  text: f.label,
+                  onclick: () => addFilter(f.key),
+                }),
+              ),
+            ),
+          );
+        })
+        .filter(Boolean),
     );
-    $('add-filter').addEventListener('change', (ev) => {
-      const key = ev.target.value;
-      ev.target.value = '';
-      if (!key) return;
-      filters.push({ field: key });
-      renderFilters();
-      const rows = $('filters').querySelectorAll('.filter-row');
-      const last = rows[rows.length - 1];
-      const first = last && last.querySelector('input, button.toggle');
-      if (first) first.focus();
-      people();
-    });
-  })();
+    $('filter-count').textContent = q
+      ? `${n(shown)} of ${n(G.FIELDS.length)} filters`
+      : `${n(G.FIELDS.length)} filters. Click any to narrow the list: the people below match every filter you add.`;
+  }
+
+  $('filter-find').addEventListener('input', drawFilterChoices);
+  const FOLD = 'console.filters-folded';
+  function foldFilters(folded) {
+    $('filter-groups').hidden = folded;
+    $('filter-find').hidden = folded;
+    $('filter-fold').textContent = folded ? 'Show all the filters' : 'Hide the filters';
+    remember(FOLD, folded ? '1' : '');
+  }
+  $('filter-fold').addEventListener('click', () => foldFilters(!$('filter-groups').hidden));
+  foldFilters(recall(FOLD) === '1');
+  drawFilterChoices();
 
   // Saved groups.
   function renderGroupsBar() {
