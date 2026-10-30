@@ -1894,5 +1894,12 @@ tr:last-child td {
   }
 }
 
-/* Signing in to the web version (signin/): Apple's own button, drawn by Apple's script. */
-.apple-signin { width: 280px; max-width: 100%; height: 50px; margin: 8px 0 18px; cursor: pointer; }
+/* Signing in to the web version (signin/): Sign in with Apple as Apple draws it, white on the dark page. */
+.apple-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 280px; max-width: 100%; height: 50px; margin: 8px 0 6px;
+  border: 0; border-radius: 999px; background: #fff; color: #000;
+  font: 500 17px/1 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  cursor: pointer;
+}
+.apple-button:disabled { opacity: 0.5; cursor: default; }
