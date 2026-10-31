@@ -320,7 +320,7 @@
     today = d.today;
     names = d.names || {};
     $('updated').textContent = `Updated ${timeFmt.format(new Date(d.at))}`;
-    tiles(d.totals);
+    tiles(d.totals, d.plus || {});
     barChart($('chart-active'), d.daily, 'active', (v) => plural(v, 'person', 'people'));
     barChart($('chart-scans'), d.daily, 'scans', (v) => plural(v, 'scan'));
     feed(d.feed);
@@ -351,9 +351,10 @@
     return h('div', { class: 'tile' }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), note ? h('div', { class: 'tile-note', text: note }) : null);
   }
 
-  function tiles(t) {
+  function tiles(t, plus) {
     $('tiles').replaceChildren(
       tile('Members', n(t.accounts), `${n(t.joined7)} new this week · ${n(t.finished)} finished sign-up`),
+      tile('Plus members', n(plus.plus), `${n(plus.paying)} paying · ${n(plus.gifts)} given · ${plus.keysSet ? 'Apple keys in' : 'Apple keys not set yet'}`),
       tile('Installs', n(t.installs), `${n(t.installs7)} new this week · App Store figures to come`),
       tile('In the app today', n(t.activeToday), `${n(t.active7)} this week · ${n(t.active30)} in 30 days`),
       tile('Opens today', n(t.opensToday), `${minutes(t.minutesToday)} in all · a visit averages ${minutes(t.avgVisitSeconds7 / 60)}`),
@@ -1225,6 +1226,7 @@
       'dl',
       { class: 'facts' },
       fact('Email', m.email + (m.relay ? ' (Apple relay: reaches them once the domain is registered with Apple)' : '')),
+      fact('Cigar Locker Plus', plusWords(d.plus)),
       fact('Phone', m.phone ? formatPhone(m.phone) : 'Not given'),
       fact('Address', [m.street, m.city, [m.state, m.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ') || 'Not given'),
       fact('Born', m.birthDate ? `${longDay(m.birthDate)} (${m.age})` : 'Not given'),
@@ -1402,6 +1404,15 @@
 
   function fact(label, value) {
     return [h('dt', { text: label }), h('dd', { text: value })];
+  }
+
+  /** A member's Plus in a line: paying, given, lapsed, or none. */
+  function plusWords(x) {
+    if (!x || !x.status) return 'No';
+    const until = x.expiresAt ? dayYearFmt.format(new Date(x.expiresAt)) : null;
+    if (x.provider === 'gift') return x.plus ? `Yes, given${until ? ` until ${until}` : ''}` : 'A gift that has ended';
+    if (x.plus) return `Yes, paying${x.environment === 'Sandbox' ? ' (sandbox)' : ''}${x.autoRenew === false ? `, cancelled, ends ${until}` : until ? `, renews ${until}` : ''}`;
+    return `No: ${x.status}${until ? ` ${until}` : ''}`;
   }
 
   function table(heads, rows, numeric) {
