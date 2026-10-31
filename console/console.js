@@ -57,13 +57,14 @@
   // The buttons along the top (his words: "buttons at the top that'll say
   // global"): one part of the console at a time, remembered.
   const TAB = 'console.tab';
-  const TABS = ['global', 'people', 'market', 'emails', 'knowledge', 'featured', 'health'];
+  const TABS = ['global', 'people', 'market', 'emails', 'deals', 'knowledge', 'featured', 'health'];
   function showTab(name) {
     const tab = TABS.includes(name) ? name : 'global';
     for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.dataset.tab !== tab;
     for (const b of document.querySelectorAll('#tabs [data-show]')) b.setAttribute('aria-selected', b.dataset.show === tab ? 'true' : 'false');
     remember(TAB, tab);
     if (tab === 'featured' && !$('board').hidden) loadFeatured();
+    if (tab === 'deals' && !$('board').hidden) loadDeals();
   }
   for (const b of document.querySelectorAll('#tabs [data-show]')) {
     b.addEventListener('click', () => {
@@ -281,6 +282,7 @@
     $('tabs').hidden = false;
     await refresh();
     if (recall(TAB) === 'featured') loadFeatured();
+    if (recall(TAB) === 'deals') loadDeals();
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
       if (document.visibilityState === 'visible') refresh();
@@ -1083,14 +1085,23 @@
     return document.querySelector('input[name="compose-kind"]:checked').value;
   }
 
+  // Who the composer writes to: the group on the People tab, or (from a
+  // deal) everyone who said yes to offers; and the deal it is for, if any.
+  let target = null;
+  let composeDeal = null;
+
   function updateCompose() {
     const kind = composeKind();
-    const reach = page.reach[kind];
+    const t = target || { words: $('group-words').textContent, total: page.total, reach: page.reach };
+    const reach = t.reach[kind];
     const missing = emailReady(snapshot.mail);
-    $('compose-who').textContent = `${$('group-words').textContent}: ${plural(page.total, 'person', 'people')}.`;
-    $('compose-reach').textContent = `${plural(reach, 'of them said', 'of them said')} yes to ${kind === 'news' ? 'news from Cigar Locker' : 'offers from local shops'} and will get it.${
-      page.total > reach ? ` The other ${n(page.total - reach)} said no, gave no address, or bounced.` : ''
-    }`;
+    $('compose-title').textContent = composeDeal ? `Email the deal: ${composeDeal.shop}` : 'Email this group';
+    $('compose-deal-words').hidden = !composeDeal;
+    $('compose-who').textContent = `${t.words}: ${plural(t.total, 'person', 'people')}.`;
+    const skipped = kind === 'offers' && t.reach.skipped ? ` ${plural(t.reach.skipped, 'more lives', 'more live')} where offers are never sent.` : '';
+    $('compose-reach').textContent = `${plural(reach, 'of them said', 'of them said')} yes to ${kind === 'news' ? 'news from Cigar Locker' : 'offers from shops'} and will get it.${
+      t.total > reach ? ` The other ${n(t.total - reach)} said no, gave no address, or bounced.` : ''
+    }${skipped}`;
     $('compose-missing').replaceChildren(...missing.map((m) => h('li', { text: m })));
     $('compose-missing').hidden = missing.length === 0;
     $('compose-send').textContent = `Send to ${plural(reach, 'person', 'people')}`;
@@ -1099,6 +1110,8 @@
   }
 
   $('email-group').addEventListener('click', () => {
+    target = null;
+    composeDeal = null;
     $('compose-error').textContent = '';
     $('compose-done').textContent = '';
     updateCompose();
@@ -1115,6 +1128,7 @@
       body: $('compose-body').value.trim(),
       tagLinks: $('compose-tag').checked,
       paidLinks: $('compose-paid').checked,
+      deal: composeDeal ? composeDeal.id : null,
     };
   }
 
@@ -1134,12 +1148,16 @@
     const l = letter();
     $('compose-error').textContent = '';
     if (!l.subject || !l.body) return ($('compose-error').textContent = 'Write a subject and a message first.');
-    const reach = page.reach[l.kind];
+    const t = target || { filters, search: search(), words: $('group-words').textContent, reach: page.reach };
+    const reach = t.reach[l.kind];
     if (!window.confirm(`Send “${l.subject}” to ${plural(reach, 'person', 'people')}? It cannot be called back.`)) return;
     try {
       // The server works the group out again from its filters and sends only if it is still these people.
-      const out = await ask({ action: 'email-send', ...l, filters, search: search(), audience: $('group-words').textContent, expect: reach });
+      const out = await ask({ action: 'email-send', ...l, filters: t.filters, search: t.search, audience: t.words, expect: reach });
       $('compose').close();
+      if (composeDeal) setTimeout(loadDeals, 8000);
+      target = null;
+      composeDeal = null;
       $('compose-subject').value = '';
       $('compose-body').value = '';
       $('mail-note').textContent = `Sending to ${plural(out.sending, 'person', 'people')}. The figures fill in below as the email service reports back.`;
@@ -1993,6 +2011,290 @@
       result.textContent = e.message;
     }
   });
+
+  // ---- deals from shops -----------------------------------------------------------
+  // His words, 2026-10-31: "email a person nationwide for a special from any
+  // shop... a linjk or a discount code so my 40% markdown the buyer using my
+  // code gets say 25% off and i keep the rest... If someone smokes there last
+  // padron cigar in their humidor i wan tto be able to email them a code for
+  // a discount on a new box" (083_deals.sql). Email only, never in the app.
+
+  const DEAL_STATE = { running: 'Running', later: 'Starts later', ended: 'Ended' };
+  let editingDeal = null;
+  let dealsShown = [];
+
+  const pctText = (v) => (v === null || v === undefined || v === '' ? '' : `${Number(v)}%`);
+  const brandLine = (d) => [d.brand, d.line].filter(Boolean).join(' ');
+
+  /** The words a deal's email starts with: his to change before sending. */
+  function dealLetter(d) {
+    const off = d.buyerPercent ? `${Number(d.buyerPercent)}% off ` : '';
+    const until = d.endsOn ? `, through ${dayWords(d.endsOn)}` : '';
+    const subject = `${off}${brandLine(d) || d.what} at ${d.shop}`.replace(/^./, (c) => c.toUpperCase());
+    const body = [
+      'Hi {first name},',
+      `${d.shop} has ${d.what}${d.buyerPercent ? ` at ${Number(d.buyerPercent)}% off` : ''} for Cigar Locker members${until}.`,
+      d.brand ? 'Last time you bought {brand}, you paid {last paid}.' : null,
+      d.code ? `Use code ${d.code} at checkout.` : null,
+      d.link ? `[Shop the offer](${d.link})` : null,
+    ].filter(Boolean).join('\n\n');
+    return { subject, body };
+  }
+
+  /** The automatic email's first words. */
+  function autoLetter(d) {
+    const off = d.buyerPercent ? `${Number(d.buyerPercent)}% off` : 'A members’ deal';
+    const until = d.endsOn ? ` through ${dayWords(d.endsOn)}` : '';
+    return {
+      subject: `Out of {brand}? ${off} at ${d.shop}`,
+      body: [
+        'Hi {first name},',
+        'Looks like you’ve enjoyed the last of your {brand}.',
+        'Last time you paid {last paid}.',
+        `${d.shop} has ${d.what}${d.buyerPercent ? ` at ${Number(d.buyerPercent)}% off` : ''} for Cigar Locker members${until}${d.code ? `, with code ${d.code}` : ''}.`,
+        d.link ? `[Shop the offer](${d.link})` : null,
+      ].filter(Boolean).join('\n\n'),
+    };
+  }
+
+  function dealFigures(d) {
+    const yours = d.yourPercent && d.revenueCents ? Math.round((d.revenueCents * Number(d.yourPercent)) / 100) : 0;
+    const parts = [
+      `<b>${n(d.sent)}</b> got it`,
+      `<b>${n(d.opened)}</b> opened`,
+      `<b>${n(d.clicked)}</b> tapped`,
+      `<b>${n(d.carts)}</b> carts`,
+      `<b>${n(d.orders)}</b> orders`,
+      `<b>${money(d.revenueCents)}</b> in sales`,
+    ];
+    if (d.yourPercent) parts.push(`yours <b>${money(yours)}</b>`);
+    // Built from numbers and fixed words only, so safe as HTML.
+    const el = h('div', { class: 'deal-figures' });
+    el.innerHTML = parts.join(' · ');
+    return el;
+  }
+
+  function drawDeals(out) {
+    dealsShown = out.deals || [];
+    const r = out.ready || {};
+    const check = (ok, words) => h('li', { class: ok ? 'ok' : 'todo' }, h('span', { class: 'mark', text: ok ? '✓' : '•' }), words);
+    $('deals-ready').replaceChildren(
+      check(r.key, r.key ? 'Email service connected' : 'Email service (Resend): not connected yet, so nothing goes out'),
+      check(r.from && r.postal, r.from && r.postal ? 'Offers sender and postal address set' : 'Add who offers come from and your postal address (Emails tab)'),
+    );
+    if (document.activeElement !== $('skip-list')) $('skip-list').value = out.offersSkip || '';
+    const box = $('deals');
+    if (dealsShown.length === 0) {
+      box.replaceChildren(h('p', { class: 'muted' }, 'No deals yet. Add one on the right.'));
+      return;
+    }
+    box.replaceChildren(
+      ...dealsShown.map((d) => {
+        const terms = [
+          d.code ? `Code ${d.code}` : 'No code',
+          d.buyerPercent ? `buyer saves ${pctText(d.buyerPercent)}` : null,
+          d.yourPercent ? `you keep ${pctText(d.yourPercent)}` : null,
+          `${dayWords(d.startsOn)} – ${dayWords(d.endsOn)}`,
+        ].filter(Boolean).join(' · ');
+        const watch = brandLine(d);
+        const autoWords = watch
+          ? `By itself when someone runs out of ${watch}: ${d.autoOn ? 'on' : 'off'} · ${plural(d.autoSent, 'sent', 'sent')}${d.autoWaiting ? ` · ${n(d.autoWaiting)} waiting` : ''} · ${plural(d.ranOut30 || 0, 'member')} ran out in 30 days · ${plural(d.keepers || 0, 'member')} keep it now`
+          : 'Give it a brand to send it by itself when someone runs out.';
+        return h(
+          'div',
+          { class: `deal${d.state === 'ended' ? ' ended' : ''}` },
+          h('div', { class: 'deal-head' }, h('strong', null, `${d.shop} · ${d.what}`), h('span', { class: `pill ${d.state === 'running' ? 'good' : ''}` }, DEAL_STATE[d.state] || d.state)),
+          h('div', { class: 'deal-line' }, terms),
+          d.link ? h('div', { class: 'deal-line link-line' }, d.link) : null,
+          d.note ? h('div', { class: 'deal-line' }, d.note) : null,
+          dealFigures(d),
+          h('div', { class: 'deal-line' }, `${plural(d.emails, 'email')} sent by hand. ${autoWords}`),
+          h(
+            'div',
+            { class: 'deal-buttons' },
+            d.state !== 'ended' ? h('button', { type: 'button', class: 'primary inline small', text: 'Email everyone who said yes', onclick: () => emailDeal(d, true) }) : null,
+            d.state !== 'ended' ? h('button', { type: 'button', class: 'ghost small', text: 'Email the People group', onclick: () => emailDeal(d, false) }) : null,
+            h('button', { type: 'button', class: 'ghost small', text: 'Change', onclick: () => editDeal(d) }),
+            h('button', {
+              type: 'button',
+              class: 'ghost small',
+              text: 'Remove',
+              onclick: async () => {
+                if (!confirm(`Remove the ${d.shop} deal (${d.what})? Its emails and their figures stay on the Emails tab.`)) return;
+                try {
+                  drawDeals(await ask({ action: 'deal-remove', id: d.id }));
+                  if (editingDeal && editingDeal.id === d.id) clearDeal();
+                } catch (e) {
+                  $('deals-note').textContent = e.message;
+                }
+              },
+            }),
+          ),
+        );
+      }),
+    );
+  }
+
+  async function loadDeals() {
+    try {
+      drawDeals(await ask({ action: 'deals' }));
+    } catch (e) {
+      $('deals-note').textContent = e.message;
+    }
+  }
+
+  /** The composer, written for a deal: to everyone who said yes to offers, or to the People group. */
+  async function emailDeal(d, everyone) {
+    try {
+      if (everyone) {
+        const all = await ask({ action: 'people', filters: [], search: '', limit: 1 });
+        target = { filters: [], search: '', words: 'Everyone, anywhere', total: all.total, reach: all.reach };
+      } else {
+        target = { filters, search: search(), words: $('group-words').textContent, total: page.total, reach: page.reach };
+      }
+    } catch (e) {
+      $('deals-note').textContent = e.message;
+      return;
+    }
+    composeDeal = d;
+    const l = dealLetter(d);
+    document.querySelector('input[name="compose-kind"][value="offers"]').checked = true;
+    $('compose-subject').value = l.subject;
+    $('compose-body').value = l.body;
+    $('compose-tag').checked = true;
+    $('compose-paid').checked = true;
+    $('compose-error').textContent = '';
+    $('compose-done').textContent = '';
+    updateCompose();
+    $('compose').showModal();
+    $('compose-subject').focus();
+  }
+
+  function dealDefaults() {
+    const today = new Date();
+    $('deal-starts').value = isoDay(today);
+    $('deal-ends').value = isoDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() + 30));
+  }
+
+  function clearDeal() {
+    editingDeal = null;
+    $('deal-form').reset();
+    dealDefaults();
+    $('deal-auto-box').hidden = true;
+    $('deal-form-title').textContent = 'Add a deal';
+    $('deal-save').textContent = 'Save the deal';
+  }
+
+  function editDeal(d) {
+    editingDeal = d;
+    $('deal-shop').value = d.shop;
+    $('deal-what').value = d.what;
+    $('deal-brand').value = d.brand || '';
+    $('deal-line').value = d.line || '';
+    $('deal-code').value = d.code || '';
+    $('deal-link').value = d.link || '';
+    $('deal-buyer').value = d.buyerPercent ?? '';
+    $('deal-yours').value = d.yourPercent ?? '';
+    $('deal-starts').value = d.startsOn;
+    $('deal-ends').value = d.endsOn;
+    $('deal-note').value = d.note || '';
+    $('deal-auto').checked = !!d.autoOn;
+    $('deal-auto-subject').value = d.autoSubject || '';
+    $('deal-auto-body').value = d.autoBody || '';
+    $('deal-auto-box').hidden = !d.autoOn;
+    $('deal-form-title').textContent = `Change the ${d.shop} deal`;
+    $('deal-save').textContent = 'Save the changes';
+    $('deal-result').textContent = '';
+    $('deal-shop').focus();
+  }
+
+  function dealFromForm() {
+    const num = (id) => ($(id).value === '' ? null : Number($(id).value));
+    return {
+      id: editingDeal ? editingDeal.id : null,
+      shop: $('deal-shop').value.trim(),
+      what: $('deal-what').value.trim(),
+      brand: $('deal-brand').value.trim(),
+      line: $('deal-line').value.trim(),
+      code: $('deal-code').value.trim(),
+      link: $('deal-link').value.trim(),
+      buyerPercent: num('deal-buyer'),
+      yourPercent: num('deal-yours'),
+      startsOn: $('deal-starts').value,
+      endsOn: $('deal-ends').value,
+      note: $('deal-note').value.trim(),
+      autoOn: $('deal-auto').checked,
+      autoSubject: $('deal-auto-subject').value.trim(),
+      autoBody: $('deal-auto-body').value.trim(),
+    };
+  }
+
+  $('deal-auto').addEventListener('change', (ev) => {
+    $('deal-auto-box').hidden = !ev.target.checked;
+    if (ev.target.checked && !$('deal-auto-subject').value && !$('deal-auto-body').value) {
+      const l = autoLetter(dealFromForm());
+      $('deal-auto-subject').value = l.subject;
+      $('deal-auto-body').value = l.body;
+    }
+  });
+  $('deal-clear').addEventListener('click', clearDeal);
+
+  $('deal-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const d = dealFromForm();
+    const result = $('deal-result');
+    if (!d.shop || !d.what) return (result.textContent = 'Name the shop and the deal.');
+    if (!d.startsOn || !d.endsOn || d.endsOn < d.startsOn) return (result.textContent = 'The last day comes on or after the first.');
+    if (d.autoOn && !d.brand) return (result.textContent = 'Give the brand it watches, to send it by itself.');
+    if (d.autoOn && (!d.autoSubject || !d.autoBody)) return (result.textContent = 'Write the automatic email’s subject and message.');
+    try {
+      const out = await ask({ action: 'deal-save', deal: d });
+      drawDeals(out);
+      result.textContent = editingDeal ? 'Saved.' : `Saved. Email it from the list${d.autoOn ? ', and it goes by itself to anyone who runs out' : ''}.`;
+      editingDeal = (out.deals || []).find((x) => x.id === out.saved) || null;
+      if (editingDeal) {
+        $('deal-form-title').textContent = `Change the ${editingDeal.shop} deal`;
+        $('deal-save').textContent = 'Save the changes';
+      }
+    } catch (e) {
+      result.textContent = e.message;
+    }
+  });
+
+  $('deal-auto-test').addEventListener('click', async () => {
+    const d = dealFromForm();
+    const result = $('deal-result');
+    if (!editingDeal) return (result.textContent = 'Save the deal first, then send yourself a test.');
+    if (!d.autoSubject || !d.autoBody) return (result.textContent = 'Write the subject and message first.');
+    try {
+      await ask({ action: 'email-test', kind: 'offers', subject: d.autoSubject, body: d.autoBody, tagLinks: true, paidLinks: true, deal: editingDeal.id });
+      result.textContent = 'A test is on its way to your console email, with an example of {last paid}.';
+    } catch (e) {
+      result.textContent = e.message;
+    }
+  });
+
+  $('skip-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const st = (snapshot && snapshot.mail && snapshot.mail.settings) || {};
+    $('skip-note').textContent = '';
+    try {
+      await ask({
+        action: 'email-settings',
+        fromNews: st.from_news || '',
+        fromOffers: st.from_offers || '',
+        replyTo: st.reply_to || '',
+        postalAddress: st.postal_address || '',
+        offersSkip: $('skip-list').value,
+      });
+      $('skip-note').textContent = 'Saved.';
+      loadDeals();
+    } catch (e) {
+      $('skip-note').textContent = e.message.includes('Unknown') ? 'Only states (FL), ZIP codes (02903) and first three digits (100), with spaces between.' : e.message;
+    }
+  });
+
+  dealDefaults();
 
   // ---- starting -------------------------------------------------------------------
 

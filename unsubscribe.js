@@ -4,7 +4,7 @@
 // email off in the member's account.
 (() => {
   const ENDPOINT = 'https://nypahhdmoxrfvwnfufdf.supabase.co/functions/v1/email/unsubscribe';
-  const WORDS = { news: 'news from Cigar Locker', offers: 'offers from local shops' };
+  const WORDS = { news: 'news from Cigar Locker', offers: 'offers from shops' };
   const token = new URLSearchParams(location.search).get('t') || '';
   const kind = token.split('.')[1];
   const button = document.getElementById('unsub-button');

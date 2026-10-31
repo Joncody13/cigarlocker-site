@@ -32,6 +32,7 @@
     <button type="button" role="tab" data-show="people">People</button>
     <button type="button" role="tab" data-show="market">Market</button>
     <button type="button" role="tab" data-show="emails">Emails</button>
+    <button type="button" role="tab" data-show="deals">Deals</button>
     <button type="button" role="tab" data-show="knowledge">Knowledge</button>
     <button type="button" role="tab" data-show="featured">Featured</button>
     <button type="button" role="tab" data-show="health">Health</button>
@@ -209,6 +210,88 @@
       </div>
     </section>
 
+    <!-- Deals from shops, by email only (083; his words, 2026-10-31: "email a person nationwide for a special from any shop"). -->
+    <section class="row two" data-tab="deals">
+      <div class="card">
+        <div class="card-head"><h3>Deals from shops</h3><span class="muted small" id="deals-note"></span></div>
+        <p class="muted small">A shop’s special, by email only, never in the app. Email it to everyone who said yes to offers, anywhere in the country, or to the group on the People tab; or let it go by itself to a member the day they run out of its brand. Carts and sales come back as for any email: from a shop that reports them, an affiliate report pasted on the email’s page (Emails tab), or totals typed in there.</p>
+        <ul class="ready" id="deals-ready"></ul>
+        <div id="deals" class="deals"></div>
+      </div>
+      <div class="card">
+        <h3 id="deal-form-title">Add a deal</h3>
+        <form id="deal-form" class="settings deal-form">
+          <label for="deal-shop">Shop</label>
+          <input id="deal-shop" type="text" maxlength="100" required placeholder="Hiland’s Cigars, Scottsdale">
+          <label for="deal-what">The deal</label>
+          <input id="deal-what" type="text" maxlength="200" required placeholder="Plasencia Alma Fina, boxes of 10">
+          <div class="two-up">
+            <div>
+              <label for="deal-brand">Brand</label>
+              <input id="deal-brand" type="text" maxlength="80" placeholder="Plasencia">
+            </div>
+            <div>
+              <label for="deal-line">Line, if only one</label>
+              <input id="deal-line" type="text" maxlength="80" placeholder="Alma Fina">
+            </div>
+          </div>
+          <div class="two-up">
+            <div>
+              <label for="deal-code">Discount code</label>
+              <input id="deal-code" type="text" maxlength="40" placeholder="LOCKER25">
+            </div>
+            <div>
+              <label for="deal-link">Link to the deal</label>
+              <input id="deal-link" type="url" maxlength="1000" placeholder="https://…">
+            </div>
+          </div>
+          <div class="two-up">
+            <div>
+              <label for="deal-buyer">The buyer saves (%)</label>
+              <input id="deal-buyer" type="number" min="0" max="100" step="0.5" placeholder="25">
+            </div>
+            <div>
+              <label for="deal-yours">You keep (% of what they spend)</label>
+              <input id="deal-yours" type="number" min="0" max="100" step="0.5" placeholder="15">
+            </div>
+          </div>
+          <div class="two-up">
+            <div>
+              <label for="deal-starts">First day</label>
+              <input id="deal-starts" type="date" required>
+            </div>
+            <div>
+              <label for="deal-ends">Last day</label>
+              <input id="deal-ends" type="date" required>
+            </div>
+          </div>
+          <label for="deal-note">A note only you see</label>
+          <input id="deal-note" type="text" maxlength="2000" placeholder="Arranged with Mike, paid monthly">
+          <label class="check"><input type="checkbox" id="deal-auto"> Send it by itself to a member the day they run out of this brand (or this line, when one is given)</label>
+          <div id="deal-auto-box" hidden>
+            <label for="deal-auto-subject">Subject</label>
+            <input id="deal-auto-subject" type="text" maxlength="200">
+            <label for="deal-auto-body">Message</label>
+            <textarea id="deal-auto-body" rows="9" maxlength="20000"></textarea>
+            <p class="muted small">{first name}, {brand} (what they ran out of, as they write it) and {last paid} (what they paid last time, “$240 for 20”). A paragraph with {last paid} is left out for anyone who never typed a price, so keep it in a paragraph of its own. It goes only to members who said yes to offers, never twice for one deal, and no one gets more than one of these a week.</p>
+            <button type="button" class="ghost" id="deal-auto-test">Send me a test of it</button>
+          </div>
+          <div class="compose-buttons">
+            <button type="submit" class="primary inline" id="deal-save">Save the deal</button>
+            <button type="button" class="link" id="deal-clear">Clear</button>
+          </div>
+          <p class="muted small" id="deal-result" role="status"></p>
+        </form>
+        <h4 class="spaced">Never send offers to</h4>
+        <p class="muted small">States (FL), ZIP codes (02903) or the first three digits of a ZIP code (100), with spaces between. Members there get no offers at all. Started with Providence and New York City, where tobacco coupons are banned; your lawyer should set this list.</p>
+        <form id="skip-form" class="settings">
+          <textarea id="skip-list" rows="3" aria-label="Places that never get offers"></textarea>
+          <button type="submit" class="ghost">Save the list</button>
+          <span class="muted small" id="skip-note" role="status"></span>
+        </form>
+      </div>
+    </section>
+
     <section class="row two" data-tab="health">
       <div class="card">
         <h3>App health</h3>
@@ -229,7 +312,7 @@
       <p class="muted" id="compose-who"></p>
       <fieldset class="kind">
         <legend>Kind of email</legend>
-        <label><input type="radio" name="compose-kind" value="offers" checked> Offers from local shops</label>
+        <label><input type="radio" name="compose-kind" value="offers" checked> Offers from shops</label>
         <label><input type="radio" name="compose-kind" value="news"> News from Cigar Locker</label>
       </fieldset>
       <p id="compose-reach"></p>
@@ -238,6 +321,7 @@
       <input id="compose-subject" type="text" maxlength="200">
       <label for="compose-body">Message</label>
       <textarea id="compose-body" rows="10" maxlength="20000"></textarea>
+      <p class="muted small" id="compose-deal-words" hidden>For a deal, {brand} is its brand as each person writes it, and {last paid} what they paid last time (“$240 for 20”); a paragraph with {last paid} is left out for anyone who never typed a price.</p>
       <p class="muted small">Write {first name} for each person's first name ("there" when they gave none). A blank line starts a new paragraph. Paste a shop's web address to link to it, or put <code>[Shop the offer](https://shop.com/deal)</code> on a line of its own for a button. Each email ends with why they got it, an unsubscribe link and your postal address.</p>
       <label class="check"><input type="checkbox" id="compose-tag" checked> Tag the links, so the shops' own statistics show the visits came from Cigar Locker</label>
       <label class="check"><input type="checkbox" id="compose-paid"> I'm paid for these links (a shop's affiliate program, a sponsorship). The email then says so, as the FTC requires.</label>
