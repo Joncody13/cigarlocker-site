@@ -1112,6 +1112,7 @@
   $('email-group').addEventListener('click', () => {
     target = null;
     composeDeal = null;
+    for (const r of document.querySelectorAll('input[name="compose-kind"]')) r.disabled = false;
     $('compose-error').textContent = '';
     $('compose-done').textContent = '';
     updateCompose();
@@ -2159,6 +2160,8 @@
     composeDeal = d;
     const l = dealLetter(d);
     document.querySelector('input[name="compose-kind"][value="offers"]').checked = true;
+    // A deal is always an offer.
+    for (const r of document.querySelectorAll('input[name="compose-kind"]')) r.disabled = r.value !== 'offers';
     $('compose-subject').value = l.subject;
     $('compose-body').value = l.body;
     $('compose-tag').checked = true;
