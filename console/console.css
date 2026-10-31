@@ -403,3 +403,18 @@ button.ghost.small { padding: 4px 10px; font-size: 13px; }
 .pill.good { border-color: var(--green-line); color: var(--green); }
 tr.muted td { color: var(--faint); }
 #features td:nth-child(2), #features td:nth-child(3) { white-space: nowrap; }
+
+/* One email, from sent to sold (082). */
+.funnel { display: grid; gap: 8px; margin: 6px 0 12px; }
+.funnel-row { display: grid; grid-template-columns: 220px 1fr 140px; align-items: center; gap: 12px; }
+.funnel-label { font-size: 14px; }
+.funnel-track { height: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.funnel-bar { height: 100%; background: linear-gradient(90deg, var(--gold, #b8894f), var(--accent, #8e5f2c)); border-radius: 7px; }
+.funnel-count { font-variant-numeric: tabular-nums; text-align: right; font-size: 14px; }
+.verdict { margin: 4px 0 0; }
+.mail-totals { margin-bottom: 18px; }
+.reported-line { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.inline-form { margin-bottom: 18px; }
+.inline-form textarea { width: 100%; font: inherit; }
+button.name-link { background: none; border: 0; padding: 0; color: var(--gold, #8e5f2c); font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
+@media (max-width: 720px) { .funnel-row { grid-template-columns: 1fr; } .funnel-count { text-align: left; } }

@@ -23,42 +23,42 @@ __d(function(g,r,i,a,m,e,d){"use strict";var t,n=Object.create,o=Object.definePr
 __d(function(g,r,_i,a,m,e,d){"use strict";var n,t=Object.create,o=Object.defineProperty,u=Object.getOwnPropertyDescriptor,i=Object.getOwnPropertyNames,c=Object.getPrototypeOf,s=Object.prototype.hasOwnProperty,l=(n,t)=>o(n,"name",{value:t,configurable:!0}),f=(n,t,c,l)=>{if(t&&"object"==typeof t||"function"==typeof t)for(let f of i(t))s.call(n,f)||f===c||o(n,f,{get:()=>t[f],enumerable:!(l=u(t,f))||l.enumerable});return n},p=(n,u,i)=>(i=null!=n?t(c(n)):{},f(!u&&n&&n.__esModule?i:o(i,"default",{value:n,enumerable:!0}),n)),O={};((n,t)=>{for(var u in t)o(n,u,{get:t[u],enumerable:!0})})(O,{Presence:()=>b,Root:()=>b}),m.exports=(n=O,f(o({},"__esModule",{value:!0}),n));var N=p(r(d[0])),y=r(d[1]),v=p(r(d[0]));function M(n,t){return v.useReducer((n,o)=>t[n][o]??n,n)}l(M,"useStateMachine");var b=l(n=>{const{present:t,children:o}=n,u=E(t),i="function"==typeof o?o({present:u.isPresent}):N.Children.only(o),c=R(u.ref,P(i));return"function"==typeof o||u.isPresent?N.cloneElement(i,{ref:c}):null},"Presence");function E(n){const[t,o]=N.useState(),u=N.useRef(null),i=N.useRef(n),c=N.useRef("none"),s=N.useRef(void 0),f=n?"mounted":"unmounted",[p,O]=M(f,{mounted:{UNMOUNT:"unmounted",ANIMATION_OUT:"unmountSuspended"},unmountSuspended:{MOUNT:"mounted",ANIMATION_END:"unmounted"},unmounted:{MOUNT:"mounted"}});return N.useEffect(()=>{"mounted"===p?(c.current=s.current??A(u.current),s.current=void 0):c.current="none"},[p]),(0,y.useLayoutEffect)(()=>{const t=u.current,o=i.current;if(o!==n){const u=c.current,l=A(t);if(n)s.current=l,O("MOUNT");else if("none"===l||"none"===t?.display)O("UNMOUNT");else{O(o&&u!==l?"ANIMATION_OUT":"UNMOUNT")}i.current=n}},[n,O]),(0,y.useLayoutEffect)(()=>{if(t){let n;const o=t.ownerDocument.defaultView??window,s=l(c=>{const s=A(u.current).includes(CSS.escape(c.animationName));if(c.target===t&&s&&(O("ANIMATION_END"),!i.current)){const u=t.style.animationFillMode;t.style.animationFillMode="forwards",n=o.setTimeout(()=>{"forwards"===t.style.animationFillMode&&(t.style.animationFillMode=u)})}},"handleAnimationEnd"),f=l(n=>{n.target===t&&(c.current=A(u.current))},"handleAnimationStart");return t.addEventListener("animationstart",f),t.addEventListener("animationcancel",s),t.addEventListener("animationend",s),()=>{o.clearTimeout(n),t.removeEventListener("animationstart",f),t.removeEventListener("animationcancel",s),t.removeEventListener("animationend",s)}}O("ANIMATION_END")},[t,O]),{isPresent:["mounted","unmountSuspended"].includes(p),ref:N.useCallback(n=>{if(n){const t=getComputedStyle(n);u.current=t,s.current=A(t)}else u.current=null;o(n)},[])}}function T(n,t){if("function"==typeof n)return n(t);null!=n&&(n.current=t)}function R(...n){const t=N.useRef(n);return t.current=n,N.useCallback(n=>{const o=t.current;let u=!1;const i=o.map(t=>{const o=T(t,n);return u||"function"!=typeof o||(u=!0),o});if(u)return()=>{for(let n=0;n<i.length;n++){const t=i[n];"function"==typeof t?t():T(o[n],null)}}},[])}function A(n){return n?.animationName||"none"}function P(n){let t=Object.getOwnPropertyDescriptor(n.props,"ref")?.get,o=t&&"isReactWarning"in t&&t.isReactWarning;return o?n.ref:(t=Object.getOwnPropertyDescriptor(n,"ref")?.get,o=t&&"isReactWarning"in t&&t.isReactWarning,o?n.props.ref:n.props.ref||n.ref)}l(E,"usePresence"),l(T,"setRef"),l(R,"useStableComposedRefs"),l(A,"getAnimationName"),l(P,"getElementRef")},821,[12,812]);
 __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, exports, dependencyMap) {
   module.exports = Object.assign({
-    "navigationMenuRoot": "EFtDwW_navigationMenuRoot",
     "tabBadge": "EFtDwW_tabBadge",
-    "emptyTabBadge": "EFtDwW_emptyTabBadge",
-    "nativeTabsContainer": "EFtDwW_nativeTabsContainer",
+    "tabContent": "EFtDwW_tabContent",
     "navigationMenuTrigger": "EFtDwW_navigationMenuTrigger",
-    "tabText": "EFtDwW_tabText",
-    "tabContent": "EFtDwW_tabContent"
+    "nativeTabsContainer": "EFtDwW_nativeTabsContainer",
+    "navigationMenuRoot": "EFtDwW_navigationMenuRoot",
+    "emptyTabBadge": "EFtDwW_emptyTabBadge",
+    "tabText": "EFtDwW_tabText"
   }, {
     unstable_styles: {
-      "navigationMenuRoot": {
-        "$$css": true,
-        "_": "EFtDwW_navigationMenuRoot"
-      },
       "tabBadge": {
         "$$css": true,
         "_": "EFtDwW_tabBadge"
       },
-      "emptyTabBadge": {
+      "tabContent": {
         "$$css": true,
-        "_": "EFtDwW_emptyTabBadge"
-      },
-      "nativeTabsContainer": {
-        "$$css": true,
-        "_": "EFtDwW_nativeTabsContainer"
+        "_": "EFtDwW_tabContent"
       },
       "navigationMenuTrigger": {
         "$$css": true,
         "_": "EFtDwW_navigationMenuTrigger"
       },
+      "nativeTabsContainer": {
+        "$$css": true,
+        "_": "EFtDwW_nativeTabsContainer"
+      },
+      "navigationMenuRoot": {
+        "$$css": true,
+        "_": "EFtDwW_navigationMenuRoot"
+      },
+      "emptyTabBadge": {
+        "$$css": true,
+        "_": "EFtDwW_emptyTabBadge"
+      },
       "tabText": {
         "$$css": true,
         "_": "EFtDwW_tabText"
-      },
-      "tabContent": {
-        "$$css": true,
-        "_": "EFtDwW_tabContent"
       }
     }
   }, {});

@@ -1296,13 +1296,15 @@
       [2, 3, 4],
     );
     const mails = table(
-      ['Sent', 'Email', 'Delivered', 'Opened', 'Tapped'],
+      ['Sent', 'Email', 'Delivered', 'Opened', 'Clicked', 'Cart', 'Bought'],
       (d.emails || []).map((e) => [
         dayYearFmt.format(new Date(e.sent)),
         `${e.subject} (${e.kind})${e.unsubscribed ? ' · unsubscribed from it' : ''}${e.bounced ? ' · bounced' : ''}`,
         e.delivered ? 'Yes' : '',
         e.opened ? `${n(e.opens)} times` : '',
-        e.clicked ? 'Yes' : '',
+        e.clicked ? `${n(e.clicks || 1)} times` : '',
+        e.carted ? 'Yes' : '',
+        e.orders ? money(e.spentCents) : '',
       ]),
       [],
     );
@@ -1488,7 +1490,20 @@
       ...fact('Apple relay addresses', `${n(t.relay)} of ${n(t.accounts)}: they reach people once atlantisdev.ai is registered with Apple`),
       ...fact('Never written to again', `${plural(mail.blocked, 'address', 'addresses')} (bounced, or marked as spam)`),
     );
-    const pct = (part, whole) => (whole ? ` (${Math.round((part / whole) * 100)}%)` : '');
+    // Every email to members, from sent to sold.
+    const real = mail.campaigns.filter((c) => !c.test && c.status !== 'preparing');
+    lastAverage = { rates: G.averageRates(real), count: real.length };
+    const all = mail.totals || {};
+    const r = G.emailRates(all);
+    $('mail-totals').replaceChildren(
+      tile('Emails sent', n(all.sent), `${plural(all.campaigns || 0, 'campaign')} · ${pctWords(r.delivery)} delivered`),
+      tile('Opened', pctWords(r.open), `${n(all.opened)} people`),
+      tile('Clicked a link', pctWords(r.click), `${n(all.clicked)} people · ${pctWords(r.clickToOpen)} of those who opened`),
+      tile('Put something in a cart', n(all.carted), `${pctWords(r.cart)} of those who clicked`),
+      tile('Bought', n(r.buyers), `${plural(all.orders || 0, 'order')} · ${money(all.revenueCents)}`),
+      tile('Conversion rate', pctWords(r.conversion, 2), `buyers for every email delivered · ${pctWords(r.clickConversion, 1)} of clicks`),
+      tile('Revenue per email', r.revenuePerEmailCents == null ? '—' : money(r.revenuePerEmailCents), r.averageOrderCents == null ? 'no sales reported yet' : `an order averages ${money(r.averageOrderCents)}`),
+    );
     $('campaigns').replaceChildren(
       ...(mail.campaigns.length
         ? [
@@ -1498,38 +1513,253 @@
               h(
                 'tr',
                 {},
-                ['Sent', 'Email', 'To', 'Delivered', 'Opened', 'Tapped', 'Unsubscribed', 'Bounced or spam'].map((x, i) => h('th', { class: i > 1 ? 'num' : null, text: x })),
+                ['Sent', 'Email', 'To', 'Delivered', 'Opened', 'Clicked', 'Cart', 'Bought', 'Revenue', 'Conversion'].map((x, i) => h('th', { class: i > 1 ? 'num' : null, text: x })),
               ),
             ),
             h(
               'tbody',
               {},
-              mail.campaigns.map((c) =>
-                h(
+              mail.campaigns.map((c) => {
+                const cr = G.emailRates(c);
+                return h(
                   'tr',
                   { class: c.test ? 'test' : null },
                   h('td', { text: `${dayFmt.format(new Date(c.created))}, ${timeFmt.format(new Date(c.created))}` }),
                   h(
                     'td',
                     {},
-                    h('strong', { text: c.subject }),
+                    h('button', { type: 'button', class: 'name-link', text: c.subject, onclick: () => openCampaign(c) }),
                     h('div', { class: 'muted small', text: `${c.test ? 'Test · ' : ''}${c.kind === 'news' ? 'News' : 'Offers'} · ${c.audience}` }),
                     c.status === 'sending' ? h('div', { class: 'warn small', text: `Sending: ${n(c.sent)} of ${n(c.recipients)} so far` }) : null,
                     c.failed ? h('div', { class: 'error small', text: `${n(c.failed)} did not go: ${c.error}` }) : null,
-                    ...(c.links || []).map((l) => h('div', { class: 'muted small link-line', text: `${linkWords(l.link)}: ${plural(l.taps, 'tap')} by ${plural(l.people, 'person', 'people')}` })),
                   ),
                   h('td', { class: 'num', text: n(c.sent) }),
-                  h('td', { class: 'num', text: n(c.delivered) + pct(c.delivered, c.sent) }),
-                  h('td', { class: 'num', text: n(c.opened) + pct(c.opened, c.delivered || c.sent) }),
-                  h('td', { class: 'num', text: n(c.clicked) + pct(c.clicked, c.delivered || c.sent) }),
-                  h('td', { class: 'num', text: n(c.unsubscribed) }),
-                  h('td', { class: 'num', text: n(c.bounced + c.complained) }),
-                ),
-              ),
+                  h('td', { class: 'num', text: `${n(c.delivered)}${pctAfter(cr.delivery)}` }),
+                  h('td', { class: 'num', text: `${n(c.opened)}${pctAfter(cr.open)}` }),
+                  h('td', { class: 'num', text: `${n(c.clicked)}${pctAfter(cr.click)}` }),
+                  h('td', { class: 'num', text: n(c.carted) }),
+                  h('td', { class: 'num', text: n(cr.buyers) }),
+                  h('td', { class: 'num', text: c.revenueCents ? money(c.revenueCents) : '' }),
+                  h('td', { class: 'num', text: pctWords(cr.conversion, 2) }),
+                );
+              }),
             ),
           ]
         : [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: 'No emails sent yet. Pick a group above, then "Email these people".' })))]),
     );
+  }
+
+  /** "12%" (or "1.25%"), or a dash with nothing to measure. */
+  function pctWords(v, places = 0) {
+    if (v === null || v === undefined || Number.isNaN(v)) return '—';
+    const shown = v > 0 && v < 1 && places === 0 ? v.toFixed(1) : v.toFixed(places);
+    return `${shown.replace(/\.0+$/, '')}%`;
+  }
+  const pctAfter = (v) => (v === null || v === undefined ? '' : ` (${pctWords(v)})`);
+
+  /** The emails' average, for comparing one email with the rest. */
+  let lastAverage = { rates: null, count: 0 };
+
+  // ---- one email, person by person ------------------------------------------
+
+  function openCampaign(c) {
+    personFor = `campaign:${c.id}`;
+    scrollBefore = window.scrollY;
+    const sheet = $('person');
+    const inner = $('person-inner');
+    inner.replaceChildren(campaignHead(c), h('p', { class: 'muted', text: 'Reading…' }));
+    sheet.hidden = false;
+    sheet.scrollTop = 0;
+    document.body.classList.add('locked');
+    $('person-back').focus();
+    const show = (d) => personFor === `campaign:${c.id}` && inner.replaceChildren(campaignHead(c), ...campaignDetail(c, d));
+    ask({ action: 'campaign', id: c.id })
+      .then(show)
+      .catch((e) => personFor === `campaign:${c.id}` && inner.replaceChildren(campaignHead(c), h('p', { class: 'error', text: e.message })));
+  }
+
+  function campaignHead(c) {
+    return h(
+      'div',
+      { class: 'person-head' },
+      h('button', { type: 'button', class: 'ghost', id: 'person-back', text: '← Back to Emails', onclick: closePerson }),
+      h('h2', { class: 'person-name', id: 'person-name', text: c.subject }),
+      h(
+        'p',
+        { class: 'person-sub' },
+        [`${c.test ? 'Test · ' : ''}${c.kind === 'news' ? 'News' : 'Offers'}`, `sent ${dayYearFmt.format(new Date(c.created))}`, c.audience].filter(Boolean).join(' · '),
+      ),
+    );
+  }
+
+  function campaignDetail(c, d) {
+    const f = d.funnel || {};
+    const r = G.emailRates(f);
+    const others = Math.max(0, (lastAverage.count || 0) - (c.test ? 0 : 1));
+    const v = lastAverage.rates ? G.verdict(r, lastAverage.rates, others) : null;
+    // From sent to sold, each step against the emails delivered.
+    const steps = [
+      ['Sent', f.sent, null],
+      ['Delivered (reached the inbox)', f.delivered, r.delivery],
+      ['Opened (looked at it)', f.opened, r.open],
+      ['Clicked a link', f.clicked, r.click],
+      ['Put something in a cart', f.carted, r.cart === null ? null : (100 * (f.carted || 0)) / (r.base || 1)],
+      ['Bought', r.buyers, r.conversion],
+    ];
+    const top = Math.max(1, Number(f.sent) || 0, Number(f.delivered) || 0);
+    const funnel = h(
+      'div',
+      { class: 'funnel' },
+      ...steps.map(([label, count, rate]) =>
+        h(
+          'div',
+          { class: 'funnel-row' },
+          h('div', { class: 'funnel-label', text: label }),
+          h('div', { class: 'funnel-track' }, h('div', { class: 'funnel-bar', style: { width: `${Math.max(0.5, (100 * (Number(count) || 0)) / top)}%` } })),
+          h('div', { class: 'funnel-count', text: `${n(count)}${rate === null ? '' : ` · ${pctWords(rate, rate < 10 ? 1 : 0)}`}` }),
+        ),
+      ),
+    );
+    const figures = h(
+      'div',
+      { class: 'tiles' },
+      tile('Open rate', pctWords(r.open), 'of emails delivered'),
+      tile('Click rate', pctWords(r.click, 1), `${pctWords(r.clickToOpen)} of those who opened`),
+      tile('Conversion rate', pctWords(r.conversion, 2), `${pctWords(r.clickConversion, 1)} of those who clicked`),
+      tile('Revenue', money(f.revenueCents), `${plural(f.orders || 0, 'order')}${r.averageOrderCents == null ? '' : ` · ${money(r.averageOrderCents)} an order`}`),
+      tile('Revenue per email', r.revenuePerEmailCents == null ? '—' : money(r.revenuePerEmailCents), 'for every email delivered'),
+      tile('Unsubscribed', n(f.unsubscribed), `${n((f.bounced || 0) + (f.complained || 0))} bounced or marked as spam`),
+    );
+    const verdictLine = v
+      ? h('p', { class: 'verdict' }, h('strong', { text: `${v.word}. ` }), `Its ${v.measure === 'conversion' ? 'conversion rate' : 'click rate'} is ${pctWords(v.mine, 2)} against ${pctWords(v.usual, 2)} for your emails on average.`)
+      : h('p', { class: 'muted small', text: c.test ? 'A test email: not counted in the averages.' : 'Your first email to members: the comparison with your average starts with the next one.' });
+    const sites = table(
+      ['Shop', 'Carts', 'Bought', 'Orders', 'Revenue'],
+      (d.sites || []).map((x) => [x.site || 'From an affiliate report', n(x.carted), n(x.bought), n(x.orders), money(x.revenueCents)]),
+      [1, 2, 3, 4],
+    );
+    const reported = h(
+      'div',
+      {},
+      ...(d.reported || []).map((x) =>
+        h(
+          'div',
+          { class: 'reported-line' },
+          h('span', { text: `${x.site || 'A shop'}: ${plural(x.carts, 'cart')}, ${plural(x.orders, 'order')}, ${money(x.revenueCents)}${x.note ? ` (${x.note})` : ''}, added ${dayFmt.format(new Date(x.at))}` }),
+          h('button', { type: 'button', class: 'ghost small', text: 'Remove', onclick: () => ask({ action: 'email-reported-remove', id: x.id, campaign: c.id }).then((nd) => refreshCampaign(c, nd)) }),
+        ),
+      ),
+    );
+    const addForm = h(
+      'form',
+      { class: 'settings inline-form' },
+      h('h4', { text: 'Add totals a shop sent you' }),
+      h('p', { class: 'muted small', text: 'When a shop tells you how this email did (from its own statistics, by the utm_campaign tag), put the totals here. They count for the email, not for any one person.' }),
+      h('label', { for: 'rep-site', text: 'Shop' }),
+      h('input', { id: 'rep-site', type: 'text', placeholder: 'twoguyscigars.com' }),
+      h('label', { for: 'rep-carts', text: 'Carts' }),
+      h('input', { id: 'rep-carts', type: 'number', min: '0', step: '1', value: '0' }),
+      h('label', { for: 'rep-orders', text: 'Orders' }),
+      h('input', { id: 'rep-orders', type: 'number', min: '0', step: '1', value: '0' }),
+      h('label', { for: 'rep-revenue', text: 'Sales, dollars' }),
+      h('input', { id: 'rep-revenue', type: 'number', min: '0', step: '0.01', value: '0' }),
+      h('label', { for: 'rep-note', text: 'Note (only you see it)' }),
+      h('input', { id: 'rep-note', type: 'text' }),
+      h('button', { type: 'submit', class: 'ghost', text: 'Add' }),
+      h('span', { class: 'muted small', id: 'rep-msg' }),
+    );
+    addForm.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const body = {
+        action: 'email-reported',
+        campaign: c.id,
+        site: $('rep-site').value.trim(),
+        carts: Math.max(0, Math.round(Number($('rep-carts').value) || 0)),
+        orders: Math.max(0, Math.round(Number($('rep-orders').value) || 0)),
+        revenueCents: Math.max(0, Math.round((Number($('rep-revenue').value) || 0) * 100)),
+        note: $('rep-note').value.trim(),
+      };
+      if (!body.carts && !body.orders && !body.revenueCents) {
+        $('rep-msg').textContent = 'Put in at least one figure.';
+        return;
+      }
+      ask(body).then((nd) => refreshCampaign(c, nd)).catch((e) => ($('rep-msg').textContent = e.message));
+    });
+    const pasteForm = h(
+      'form',
+      { class: 'settings inline-form' },
+      h('h4', { text: 'Paste an affiliate report' }),
+      h('p', { class: 'muted small', text: "Each email's links carry a reference for that person, which CJ, Awin and Impact show as the sub-ID (sid, clickref, subId1). Paste the rows of a sales report: each row with a reference counts as a purchase by that person, with the first amount on the row." }),
+      h('textarea', { id: 'paste-report', rows: '5', placeholder: '3f9a1c2b7d4e5f60, Order GPA-1234, $86.40' }),
+      h('button', { type: 'submit', class: 'ghost', text: 'Count these sales' }),
+      h('span', { class: 'muted small', id: 'paste-msg' }),
+    );
+    pasteForm.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const text = $('paste-report').value;
+      if (!text.trim()) return;
+      ask({ action: 'email-report-paste', campaign: c.id, text })
+        .then((nd) => {
+          refreshCampaign(c, nd);
+          $('paste-msg') && ($('paste-msg').textContent = `${plural(nd.pasted.lines, 'row')} with a reference, ${plural(nd.pasted.counted, 'new sale')} counted.`);
+        })
+        .catch((e) => ($('paste-msg').textContent = e.message));
+    });
+    const people = d.people || [];
+    const yes = (t) => (t ? 'Yes' : '');
+    const peopleTable = table(
+      ['Person', 'Email', 'Delivered', 'Opened', 'Clicked', 'Links', 'Cart', 'Bought'],
+      people.map((p) => [
+        p.name || '',
+        p.email,
+        p.bounced ? 'Bounced' : yes(p.delivered),
+        p.opened ? `${n(p.opens)} ${p.opens === 1 ? 'time' : 'times'}` : '',
+        p.clicked ? `${n(p.clicks)} ${p.clicks === 1 ? 'time' : 'times'}` : '',
+        (p.links || []).map(linkWords).join(', '),
+        yes(p.carted),
+        p.orders ? `${money(p.spentCents)}${p.orders > 1 ? ` (${n(p.orders)} orders)` : ''}` : '',
+      ]),
+      [],
+    );
+    const download = h('button', {
+      type: 'button',
+      class: 'ghost',
+      text: 'Download as a spreadsheet',
+      onclick: () => {
+        const cols = [
+          { label: 'Name', get: (p) => p.name },
+          { label: 'Email', get: (p) => p.email },
+          { label: 'Delivered', get: (p) => (p.delivered ? 'yes' : p.bounced ? 'bounced' : '') },
+          { label: 'Opens', get: (p) => p.opens },
+          { label: 'Clicks', get: (p) => p.clicks },
+          { label: 'Links', get: (p) => (p.links || []).map(linkWords) },
+          { label: 'Cart', get: (p) => (p.carted ? 'yes' : '') },
+          { label: 'Orders', get: (p) => p.orders },
+          { label: 'Spent', get: (p) => (p.spentCents ? (p.spentCents / 100).toFixed(2) : '') },
+          { label: 'Unsubscribed', get: (p) => (p.unsubscribed ? 'yes' : '') },
+        ];
+        const blob = new Blob([G.csv(people, cols, {})], { type: 'text/csv;charset=utf-8' });
+        const link = h('a', { href: URL.createObjectURL(blob), download: `cigar-locker-email-${c.id.slice(0, 8)}.csv` });
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+      },
+    });
+    return [
+      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: 'From sent to sold' }), funnel, verdictLine), h('div', {}, h('h4', { text: 'How it did' }), figures)),
+      h(
+        'p',
+        { class: 'muted small' },
+        'Opens are counted when a mail app loads the email’s pictures; Apple Mail loads them for everyone, so opens run high and clicks are the surer sign. Carts and sales come from shops that report them (send them cigarlocker.app/partners.html), affiliate reports pasted below, and totals shops send you.',
+      ),
+      h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: 'By shop' }), sites, reported), h('div', {}, addForm, pasteForm)),
+      h('div', { class: 'card-head' }, h('h4', { text: `Person by person (${n(people.length)}${people.length >= 500 ? ', the 500 most engaged' : ''})` }), download),
+      peopleTable,
+    ];
+  }
+
+  function refreshCampaign(c, d) {
+    if (personFor !== `campaign:${c.id}`) return;
+    $('person-inner').replaceChildren(campaignHead(c), ...campaignDetail(c, d));
   }
 
   /** A link as a shop's address and page, without the tags added for its statistics. */

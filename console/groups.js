@@ -233,7 +233,67 @@
     return `﻿${lines.join('\r\n')}\r\n`;
   }
 
-  const api = { FIELDS, byKey, matches, pick, choicesFor, describe, describeAll, reachable, csv, usualTime, milesBetween, strengthWords };
+  // -- how well an email worked (2026-10-31, his words: "how many people
+  // looked at the email how many people opened it how many people clicked on
+  // the link and how many people put something in their cart at the link
+  // site how many people bought something / And over all effectiveness of
+  // the campaign / And conversion rate") ------------------------------------
+
+  /** Part of a whole as a percentage, or null when there is no whole. */
+  const share = (part, whole) => (whole > 0 ? (100 * (Number(part) || 0)) / whole : null);
+
+  /**
+   * An email's funnel (email_funnel) as rates. Rates are of the emails
+   * delivered (else sent); buyers are the people traced to a purchase plus
+   * the orders shops reported in totals (one buyer each, the best guess).
+   */
+  function emailRates(f) {
+    const sent = Number(f.sent) || 0;
+    const delivered = Number(f.delivered) || 0;
+    const base = delivered || sent;
+    const buyers = (Number(f.bought) || 0) + (Number(f.reportedOrders) || 0);
+    const orders = Number(f.orders) || 0;
+    const revenue = Number(f.revenueCents) || 0;
+    return {
+      base,
+      buyers,
+      delivery: share(delivered, sent),
+      open: share(f.opened, base),
+      click: share(f.clicked, base),
+      clickToOpen: share(f.clicked, f.opened),
+      cart: share(f.carted, f.clicked),
+      conversion: share(buyers, base),
+      clickConversion: share(buyers, f.clicked),
+      revenuePerEmailCents: base ? revenue / base : null,
+      averageOrderCents: orders ? revenue / orders : null,
+      unsubscribe: share(f.unsubscribed, base),
+    };
+  }
+
+  /** The average rates of several emails (members only, not tests), weighting each by its size. */
+  function averageRates(funnels) {
+    const total = { sent: 0, delivered: 0, opened: 0, clicked: 0, carted: 0, bought: 0, reportedOrders: 0, orders: 0, revenueCents: 0, unsubscribed: 0 };
+    for (const f of funnels) for (const k of Object.keys(total)) total[k] += Number(f[k]) || 0;
+    return emailRates(total);
+  }
+
+  /**
+   * How an email did against his own average, in a word: the conversion
+   * rate when anyone bought, else the click rate. Null with nothing to
+   * compare (his first email, or one not yet delivered).
+   */
+  function verdict(rates, average, others) {
+    if (!others || !rates.base) return null;
+    const pick = (rates.conversion || average.conversion) ? 'conversion' : 'click';
+    const mine = rates[pick] ?? 0;
+    const usual = average[pick] ?? 0;
+    if (!usual) return mine > 0 ? { word: 'Better than usual', measure: pick, mine, usual } : null;
+    const ratio = mine / usual;
+    const word = ratio >= 1.15 ? 'Better than usual' : ratio <= 0.85 ? 'Below usual' : 'About usual';
+    return { word, measure: pick, mine, usual };
+  }
+
+  const api = { FIELDS, byKey, matches, pick, choicesFor, describe, describeAll, reachable, csv, usualTime, milesBetween, strengthWords, emailRates, averageRates, verdict };
   root.CigarGroups = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
