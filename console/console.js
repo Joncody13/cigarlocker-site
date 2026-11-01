@@ -1405,6 +1405,13 @@
         ? h('h4', { text: `Sensors (${n(Math.max(m.sensors || 0, (d.sensors || []).length))}), as their phone last sent them` })
         : null,
       m.sensors || (d.sensors || []).length ? sensors : null,
+      // How their phone's last SensorPush check went (085): when it last worked, and why it failed if it did.
+      d.sensorCheck
+        ? h('p', {
+            class: d.sensorCheck.lastError ? 'error' : 'muted small',
+            text: `SensorPush: last worked ${d.sensorCheck.lastSync ? ago(d.sensorCheck.lastSync) : 'never'} · reported ${ago(d.sensorCheck.sentAt)} from ${d.sensorCheck.platform || 'a phone'} ${d.sensorCheck.appVersion || ''}${d.sensorCheck.lastError ? ` · last check failed: ${d.sensorCheck.lastError}` : ''}`,
+          })
+        : null,
       h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: d.installs > 1 ? `Days in the app (on ${n(d.installs)} phones)` : 'Days in the app' }), days), h('div', {}, h('h4', { text: 'About' }), about)),
       h('h4', { text: `Ratings (${n(d.ratings.length)})` }),
       rated,
