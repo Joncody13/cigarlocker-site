@@ -1412,6 +1412,24 @@
             text: `SensorPush: last worked ${d.sensorCheck.lastSync ? ago(d.sensorCheck.lastSync) : 'never'} · reported ${ago(d.sensorCheck.sentAt)} from ${d.sensorCheck.platform || 'a phone'} ${d.sensorCheck.appVersion || ''}${d.sensorCheck.lastError ? ` · last check failed: ${d.sensorCheck.lastError}` : ''}`,
           })
         : null,
+      // Phone alerts (086): on or off, the last check, their phones and the last alerts sent.
+      d.alerts && (d.alerts.linked || (d.alerts.recent || []).length)
+        ? h('div', {},
+            h('h4', { text: `Alerts ${d.alerts.linked ? 'on' : 'off'}` }),
+            h('p', {
+              class: d.alerts.error || d.alerts.pushError ? 'error' : 'muted small',
+              text: [
+                d.alerts.linked ? `${n(d.alerts.watched)} sensors watched` : '',
+                d.alerts.checkedAt ? `checked ${ago(d.alerts.checkedAt)}` : '',
+                d.alerts.error ? `SensorPush: ${d.alerts.error}` : '',
+                d.alerts.pushError ? `sending: ${d.alerts.pushError === 'not-set-up' ? 'no push key at expo.dev yet' : d.alerts.pushError}` : '',
+                d.alerts.quiet ? '' : 'quiet sensors off',
+                (d.alerts.devices || []).map((x) => `${x.platform} ${x.version}`).join(', '),
+              ].filter(Boolean).join(' · '),
+            }),
+            ...(d.alerts.recent || []).slice(0, 8).map((a) =>
+              h('p', { class: 'small', text: `${ago(a.at)} · ${a.title}: ${a.body}${a.error ? ` (${a.error})` : ''}` })))
+        : null,
       h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: d.installs > 1 ? `Days in the app (on ${n(d.installs)} phones)` : 'Days in the app' }), days), h('div', {}, h('h4', { text: 'About' }), about)),
       h('h4', { text: `Ratings (${n(d.ratings.length)})` }),
       rated,

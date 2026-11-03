@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cigar Locker Support</title>
-  <meta name="description" content="Help with Cigar Locker: signing in, the 21 and over check, scanning, importing a collection, SensorPush sensors, Friends, backups and deleting your account.">
+  <meta name="description" content="Help with Cigar Locker: signing in, the 21 and over check, scanning, importing a collection, humidity, Friends, backups and deleting your account.">
   <meta name="theme-color" content="#0f0906">
   <link rel="canonical" href="https://cigarlocker.app/support.html">
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
@@ -53,7 +53,7 @@
       <details>
         <summary>What is Cigar Locker?</summary>
         <div>
-          <p>A collection, inventory and journal app for iPhone and Android. It keeps every humidor you own and every purchase in it, identifies cigars from a photo of the band or box, looks up their details, shows your SensorPush humidity readings, keeps your journal, and lets you share what you're enjoying with friends you choose.</p>
+          <p>A collection, inventory and journal app for iPhone and Android. It keeps every humidor you own and every purchase in it, identifies cigars from a photo of the band or box, looks up their details, keeps your journal, and lets you share what you're enjoying with friends you choose. Humidity sensors of its own are on the way.</p>
         </div>
       </details>
 
@@ -203,59 +203,26 @@
     </section>
 
     <section class="faq-group" aria-labelledby="faq-humidity">
-      <h2 id="faq-humidity">Humidity and SensorPush</h2>
+      <h2 id="faq-humidity">Humidity</h2>
 
       <details>
         <summary>Which sensors does Cigar Locker work with?</summary>
         <div>
-          <p>SensorPush temperature and humidity sensors, through your own SensorPush account.</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>Do I need a SensorPush gateway?</summary>
-        <div>
-          <p>Yes. SensorPush sensors talk over Bluetooth, and their readings reach SensorPush's cloud, and so Cigar Locker, only through a SensorPush WiFi Gateway near them. If your humidors are in more than one house, each house needs its own gateway.</p>
+          <p>Cigar Locker's own temperature and humidity sensors are on the way. The app will show each humidor's readings shelf by shelf, with a chart of the day, week, month and year. Until they're here, you can look around with the sample.</p>
         </div>
       </details>
 
       <details>
         <summary>Can I see it without sensors?</summary>
         <div>
-          <p>Yes. Add a humidor first, then go to Settings &gt; Humidity &gt; SensorPush sensors &gt; Connect SensorPush and tap <strong>No sensors yet? See a sample</strong>. Six sample sensors with a month of pretend readings appear in your humidor, drawn as a cabinet map. Remove them any time from the same screen.</p>
+          <p>Yes. Add a humidor first, then go to <span class="path">Settings &gt; Humidity &gt; Humidity sensors</span> and tap <strong>See a sample</strong>. Six sample sensors with a month of pretend readings appear in your humidor, drawn as a cabinet map. Remove them any time from the same screen.</p>
         </div>
       </details>
 
       <details>
-        <summary>How do I connect my sensors?</summary>
+        <summary>How does Cigar Locker show when the humidity drifts?</summary>
         <div>
-          <ol>
-            <li>If you have never used another app with SensorPush, sign in once at SensorPush's dashboard website (dashboard.sensorpush.com) and accept their terms. Until then SensorPush won't let any app connect.</li>
-            <li>In Cigar Locker, go to <span class="path">Settings &gt; Humidity &gt; SensorPush sensors</span> and sign in with your SensorPush email and password.</li>
-            <li>Put each sensor in the humidor it sits in.</li>
-          </ol>
-          <p>For a big cabinet with several sensors, names that say where each one is (Top Left, Middle Right, Bottom Left) let Cigar Locker place them on the cabinet map. You can also place them by hand.</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>Is my SensorPush password safe?</summary>
-        <div>
-          <p>It is kept in your phone's secure storage and sent only to SensorPush, never to us. Your readings come straight from SensorPush to your phone.</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>Will Cigar Locker warn me when the humidity drifts?</summary>
-        <div>
-          <p>Cigar Locker checks your sensors while it is open, and shows each humidor in green when it's on target, amber when it's too dry, too humid or uneven, and gray when a sensor hasn't reported for 90 minutes. It doesn't send alerts while it's closed, so keep SensorPush's own alerts on if you rely on them.</p>
-        </div>
-      </details>
-
-      <details>
-        <summary>A sensor shows gray. Why?</summary>
-        <div>
-          <p>Gray means no reading for 90 minutes. Check that the gateway is plugged in and online, and that the sensor is in range of it and has battery.</p>
+          <p>Each humidor shows in green when it's on target, amber when it's too dry, too humid or uneven, and gray when a sensor hasn't reported for 90 minutes. A tall cabinet with several sensors is drawn as a map, and each shelf can have its own target.</p>
         </div>
       </details>
     </section>
@@ -352,7 +319,6 @@
         <p class="foot-brand"><img src="assets/mark.svg" alt="" width="21" height="26">Cigar Locker</p>
         <p>&copy; 2026 Atlantis Dev, LLC. All rights reserved.</p>
         <p>Cigar Locker is a collection, inventory and journal app for adults 21 and over. It does not sell tobacco.</p>
-        <p>SensorPush is a trademark of its owner.</p>
       </div>
       <nav aria-label="Footer">
         <a href="index.html">Home</a>
