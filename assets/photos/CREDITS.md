@@ -25,3 +25,17 @@ word: the bundles were used "too many times", at the top and in the home
 screen already), is a single cigar on a wooden bar by Cesar
 (https://www.pexels.com/photo/macro-shot-of-cigar-on-a-wooden-surface-10233497/),
 cropped below its band so no brand shows.
+
+The cigars' own photos on the home screens (`../screens/home-*.webp`, and
+the humidor page), put in on his word on 2026-11-03 ("Can you put photos
+in these"): the demo's cigars had none, since his own stay private. Each was
+given one of these in the browser preview through the app's own "Add a
+photo", cropped so no band, label or person shows:
+
+| Shows | Photographer | Source |
+|---|---|---|
+| Cigars in their wooden molds (two crops) | Thibault Luycx | https://www.pexels.com/photo/3975066/ |
+| A bundle of cigars on a bench by the press (two crops) | Thibault Luycx | https://www.pexels.com/photo/3975055/ |
+| A pile of cigars on a bench, the worker cropped out | Thibault Luycx | https://www.pexels.com/photo/3975064/ |
+| Paper-banded bundles, end on | Thibault Luycx | https://www.pexels.com/photo/stacks-of-raw-packed-cigars-in-fabric-3975067/ |
+| A single cigar on a wooden bar, below its band (two crops) | Cesar | https://www.pexels.com/photo/macro-shot-of-cigar-on-a-wooden-surface-10233497/ |
