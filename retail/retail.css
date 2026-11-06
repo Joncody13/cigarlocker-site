@@ -444,3 +444,11 @@ html.scanning, html.scanning body { overflow: hidden; }
 .list button.item { width: 100%; background: none; border: 0; border-top: 1px solid var(--line); text-align: left; font: inherit; color: inherit; }
 .list button.item:first-child { border-top: 0; }
 @media (prefers-reduced-motion: reduce) { .reg-tile:active, .reg-var:active { transform: none; } }
+
+/* Linking a factory barcode at the register (009). */
+.reg-linking { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin: 10px 0; border-radius: 14px; background: var(--info-bg); color: var(--info); border: 2px solid var(--info); }
+.reg-linking .grow { flex: 1; min-width: 0; }
+.reg-linking .name { font-weight: 750; color: var(--ink); }
+.reg-linking .sub { font-size: 13px; }
+.reg-linkcode { font: 700 26px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.04em; margin: 0 0 6px; overflow-wrap: anywhere; }
+.reg-banner .btn.primary { background: var(--brand); color: var(--on-brand); border-color: var(--brand); }

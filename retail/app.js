@@ -1541,10 +1541,45 @@
       } catch (e) { results.replaceChildren(h('p', { class: 'error', text: errorText(e) })); }
     }
     search.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); find(); } });
+    // Its barcodes (009): each in use with how it comes, checked or not, its scans; retired ones and corrections kept.
+    var codesBox = h('div', { class: 'field' }, h('span', {}, 'Barcodes'), busy('Reading its barcodes'));
+    var UNIT_SAYS = { single: 'on one cigar', box: 'on a box', pack: 'on a pack', unknown: 'package not said' };
+    var SOURCE_SAYS = { register: 'linked at the register', shared: 'known at other shops', labeling: 'labeling boxes', scan: 'labeling boxes', product: 'typed on the product' };
+    async function loadCodes() {
+      var r;
+      try { r = await rpc('retail_product_codes', { p_store: state.store.id, p_product: p.id }); }
+      catch (e) { codesBox.replaceChildren(h('span', {}, 'Barcodes'), h('p', { class: 'error', text: errorText(e) })); return; }
+      var rows = r.codes.map(function (c) {
+        var says = UNIT_SAYS[c.unit] + (c.unitQuantity && c.unit !== 'single' ? ' of ' + c.unitQuantity : '');
+        var sub = c.active
+          ? [c.verified ? 'Checked' + (c.verifiedBy ? ' by ' + c.verifiedBy : '') : 'Not checked yet', n(c.scans) + (c.scans === 1 ? ' scan' : ' scans'),
+             c.lastUsedAt ? 'last ' + day(c.lastUsedAt) : '', SOURCE_SAYS[c.source] || c.source].filter(Boolean).join(' · ')
+          : 'Retired ' + day(c.retiredAt) + ' · ' + n(c.scans) + (c.scans === 1 ? ' scan' : ' scans');
+        return h('div', { class: 'item' + (c.active ? '' : ' muted') }, h('div', { class: 'grow' }, h('div', { class: 'name', text: c.code + ' · ' + says }), h('div', { class: 'sub', text: sub })),
+          c.active && can('manager') && !c.verified ? h('button', { class: 'btn small', type: 'button', onclick: async function () {
+            try { await rpc('retail_code_verify', { p_store: state.store.id, p_identifier: c.id }); loadCodes(); } catch (e) { toast(errorText(e)); }
+          } }, 'It is right') : null,
+          c.active && can('manager') ? h('button', { class: 'btn small quiet', type: 'button', onclick: async function () {
+            var why = prompt('Retire ' + c.code + '? It stops finding this cigar (kept in the history). Why?', '');
+            if (why === null) return;
+            try { await rpc('retail_code_retire', { p_store: state.store.id, p_identifier: c.id, p_note: why }); loadCodes(); } catch (e) { toast(errorText(e)); }
+          } }, 'Retire') : null);
+      });
+      var fixes = r.corrections.map(function (c) {
+        return h('div', { class: 'item muted' }, h('div', { class: 'grow' }, h('div', { class: 'sub', text: day(c.at) + ' · ' + c.code + ' · '
+          + (c.to ? (c.from === c.to ? 'changed to ' + UNIT_SAYS[c.toUnit] : 'moved from ' + (c.fromName || 'another cigar') + ' to ' + (c.toName || 'another cigar')) : 'retired')
+          + (c.by ? ' by ' + c.by : '') + (c.note ? ' · ' + c.note : '') })));
+      });
+      codesBox.replaceChildren.apply(codesBox, [h('span', {}, 'Barcodes'),
+        rows.length ? h('div', { class: 'list' }, rows) : h('p', { class: 'muted small' }, 'None yet. Scan one at the register: an unknown barcode is linked there in a tap.'),
+        fixes.length ? h('p', { class: 'over' }, 'Corrections') : null, fixes.length ? h('div', { class: 'list' }, fixes) : null].filter(Boolean));
+    }
+    if (p) loadCodes();
     var close = sheet(p ? productName(p) : 'Add a product', h('div', {},
       h('div', { class: 'row-fields' }, field('Brand', brand), field('Line', line), field('Size name', vitola), field('Size', size)),
       h('div', { class: 'row-fields' }, field('Cost per cigar, $', cost), field('Retail price per cigar, $', price), field('Cigars per box', box)),
       h('div', { class: 'row-fields' }, field('SKU', sku), field('UPC / barcode', upc)),
+      p ? codesBox : null,
       h('div', { class: 'row-fields' }, field('Wrapper', leaf.wrapper), field('Binder', leaf.binder), field('Filler', leaf.filler)),
       h('div', { class: 'row-fields' }, field('Country', leaf.country), field('Strength', leaf.strength), field('How it comes', leaf.box_config), field('Supplier', leaf.supplier_name)),
       h('label', { class: 'field', style: { display: 'flex', gap: '10px', alignItems: 'center' } }, active, h('span', { style: { margin: 0 } }, 'Active (counted and listed)')),
@@ -2654,7 +2689,7 @@
         h('h2', { style: { marginTop: 0 } }, 'Cigar labels'),
         units.units.length
           ? h('p', {}, n(units.available) + ' on cigars · ' + n(units.sold) + ' sold' + (units.other ? ' · ' + n(units.other) + ' void, damaged or missing' : ''))
-          : h('p', { class: 'muted' }, 'Its cigars have no labels of their own. With them, a cigar scanned out at the counter leaves this box, and the count, once.'),
+          : h('p', { class: 'muted' }, 'Its cigars have no labels of their own, and need none: a cigar with the maker\'s barcode on its cellophane or tube is scanned by that at the counter, and leaves the oldest open box. Labels of our own are an option for cigars without one.'),
         extra > 0 ? h('p', { class: 'warn-text' }, n(extra) + (extra === 1 ? ' label is' : ' labels are') + ' on the list for cigars no longer in the box. Scan them out, or mark them missing.') : null,
         h('div', { class: 'btns' },
           b.state === 'open' && without ? h('button', { class: 'btn brand', type: 'button', onclick: function () { makeUnitLabels(boxId).catch(function (e) { msg.textContent = errorText(e); }); } },
@@ -3362,7 +3397,7 @@
       saveJson(regKey('regcache'), c);
     }
 
-    var banner = h('div', { class: 'reg-banner idle', role: 'status', 'aria-live': 'polite' }, 'Ready: scan, search or tap');
+    var banner = h('div', { class: 'reg-banner idle', role: 'status', 'aria-live': 'polite' }, 'Ready: scan a barcode, search or tap');
     var linesEl = h('div', { class: 'reg-lines' });
     var totalEl = h('div', { class: 'reg-total' });
     var completeBtn = h('button', { class: 'btn primary big wide', type: 'button' });
@@ -3418,7 +3453,7 @@
             delete reviews[l.key];
             keep(); draw(); drawPick();
           } }, '×'));
-      }) : [h('div', { class: 'reg-empty' }, 'Scan a label, search, or tap a brand.')]);
+      }) : [h('div', { class: 'reg-empty' }, 'Scan a cigar\'s barcode, search, or tap a brand.')]);
       drawTotals(t);
     }
     function drawTotals(t0) {
@@ -3467,11 +3502,22 @@
         if (!ix.products[r.box.product.id]) ix.products[r.box.product.id] = { id: r.box.product.id, name: r.box.product.name, price: r.box.product.priceCents };
         hit = Reg.resolve(ix, code, Codes);
       }
+      // A factory barcode this register does not know: the server may (linked at
+      // another register, or known at other shops); else it is linked here, once.
+      if (hit.kind === 'unknown' && !Codes.ownCode(code)) {
+        hit = await askServer(code, input);
+        if (!hit) return;
+      }
       var res = Reg.scan(sale, hit, ix);
       if (res.status === 'added') {
-        took(res, input);
-        say('good', '✓ ' + res.words);
+        took(res, input, code);
+        say('good', '✓ ' + res.words + priceWords(res));
         if (hit.kind === 'unit') check(hit.code, res.key);
+        return;
+      }
+      if (res.status === 'box-code') {
+        say('warn', res.words);
+        boxCodeButtons(hit, code, input);
         return;
       }
       if (res.status === 'duplicate' && hit.kind === 'unit') {
@@ -3489,15 +3535,161 @@
       }
       say(res.tone, res.words);
     }
-    /** A line just added: kept, drawn, and marked with how it went in (the first way, when it grows). */
-    function took(res, entry) {
+    function priceWords(res) {
+      return res.price === null || res.price === undefined ? '' : ' · ' + money(res.price * (res.quantity || 1), true);
+    }
+    /** A line just added: kept, drawn, and marked with how it went in and the barcode it was read by (the first, when it grows). */
+    function took(res, entry, code) {
       sale = res.sale;
       lastKey = res.key;
-      sale.lines.forEach(function (l) { if (l.key === res.key && !l.entry) l.entry = entry; });
+      sale.lines.forEach(function (l) {
+        if (l.key !== res.key) return;
+        if (!l.entry) l.entry = entry;
+        if (!l.code && code && !Codes.ownCode(code)) l.code = String(code).trim();
+      });
       keep();
       draw();
       drawPick();
     }
+    // ---- factory barcodes: unknown here, known elsewhere, a box's ------------------------------------
+
+    function canLink() {
+      return can('manager') || ix.mapRole !== 'manager';
+    }
+    function unitWords(unit, quantity) {
+      return unit === 'box' ? ' (a box' + (quantity ? ' of ' + quantity : '') + ')' : unit === 'pack' ? ' (a pack' + (quantity ? ' of ' + quantity : '') + ')' : '';
+    }
+    function bannerButton(words, onTap, primary) {
+      banner.appendChild(h('button', { class: 'btn small' + (primary ? ' primary' : ''), type: 'button', onclick: function (ev) { ev.currentTarget.blur(); onTap(); } }, words));
+    }
+    /** Asks the server about a barcode this register does not know. Answers a hit to add, or null (the banner says why). */
+    async function askServer(code, input) {
+      var r = null;
+      var offline = false;
+      say('idle', 'Looking up ' + code + '…');
+      try { r = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code }); }
+      catch (e) {
+        offline = O.isNetworkError(e, navigator.onLine);
+        if (!offline) { say('bad', errorText(e)); return null; }
+      }
+      if (r && r.kind === 'product' && r.status === 'matched' && r.candidates.length === 1 && ix.products[r.candidates[0].id]) {
+        var c = r.candidates[0];
+        if (c.identifier) Reg.addMapping(ix, { code: code, product: c.id, unit: c.unit, unitQuantity: c.unitQuantity, verified: c.verified, id: c.identifier });
+        else (ix.byUpc[Reg.normDigits(code)] = [c.id]);
+        return Reg.resolve(ix, code, Codes);
+      }
+      if (r && r.kind === 'product' && r.status === 'matched' && r.candidates.length > 1) {
+        say('bad', 'PRODUCT NEEDS REVIEW: ' + code + ' names ' + r.candidates.length + ' cigars here (' + r.candidates.map(function (x) { return x.name; }).join(', ') + '). A manager corrects it on the cigar\'s page in Products.');
+        return null;
+      }
+      if (r && r.kind === 'product' && r.status === 'possible') {
+        var known = r.candidates.filter(function (x) { return x.product && ix.products[x.product.id]; })[0];
+        if (known) {
+          var p = ix.products[known.product.id];
+          say('warn', 'KNOWN AT OTHER SHOPS · ' + code + ' is ' + p.name + unitWords(known.unit, known.unitQuantity) + '. Is it?');
+          if (canLink()) {
+            bannerButton('Yes, link it', function () {
+              saveMapping(code, p.id, known.unit && known.unit !== 'unknown' ? known.unit : 'single', known.unitQuantity, 'shared', input);
+            }, true);
+            bannerButton('No, choose the cigar', function () { startLinking(code, input); });
+          }
+          return null;
+        }
+      }
+      if (r && r.kind === 'box' && r.box) {
+        say('bad', code + ' is the serial on box ' + r.box.code + '. Scan the box\'s Cigar Locker label.');
+        return null;
+      }
+      say('bad', 'UNKNOWN BARCODE · ' + code + (offline ? ' (no connection to look it up)' : ''));
+      if (!offline && canLink()) bannerButton('Link it to a cigar', function () { startLinking(code, input); }, true);
+      else if (!offline) banner.appendChild(h('span', { class: 'small' }, 'A manager links new barcodes at this store.'));
+      return null;
+    }
+    /** A box's barcode at the register: a whole box goes by its own label; one cigar on request. */
+    function boxCodeButtons(hit, code, input) {
+      bannerButton('Add one cigar', function () {
+        var r2 = Reg.scan(sale, Object.assign({}, hit, { single: true }), ix);
+        if (r2.status === 'added') { took(r2, input, code); say('good', '✓ ' + r2.words + priceWords(r2)); }
+        else say(r2.tone, r2.words);
+      }, true);
+      if (can('manager')) bannerButton('It is on single cigars', function () { saveMapping(code, hit.product.id, 'single', 1, 'register', input); });
+    }
+
+    // Linking: the search and the tiles choose the cigar; the next tap opens the link, not the sale.
+    var linking = null;
+    function startLinking(code, input) {
+      reset(false);
+      linking = { code: String(code).trim(), input: input || 'scanner' };
+      drawPick();
+      say('idle', 'Linking ' + linking.code + ': find the cigar it is on, then tap it.');
+      if (fine) search.focus({ preventScroll: true });
+    }
+    function linkingStrip() {
+      if (!linking) return null;
+      return h('div', { class: 'reg-linking' },
+        h('div', { class: 'grow' }, h('div', { class: 'name' }, 'Link barcode ', h('b', {}, linking.code)),
+          h('div', { class: 'sub' }, 'Search or tap through the brands to the cigar it is on.')),
+        h('button', { class: 'btn small', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); linking = null; drawPick(); say('idle', 'Ready: scan, search or tap'); } }, 'Cancel'));
+    }
+    function linkSheet(it) {
+      var code = linking.code;
+      var input = linking.input;
+      var unit = 'single';
+      var qty = it.product.boxCount || null;
+      var seg = h('div', { class: 'seg' });
+      var qtyField = field('Cigars in it', stepper(qty, function (v) { qty = v; }));
+      function drawSeg() {
+        seg.replaceChildren.apply(seg, [['single', 'One cigar'], ['box', 'A box'], ['pack', 'A pack']].map(function (o) {
+          return h('button', { type: 'button', class: unit === o[0] ? 'on' : '', onclick: function () { unit = o[0]; drawSeg(); } }, o[1]);
+        }));
+        qtyField.hidden = unit === 'single';
+      }
+      drawSeg();
+      var msg = h('p', { class: 'error' });
+      var close = sheet('Link this barcode', h('div', {},
+        h('p', { class: 'reg-linkcode' }, code),
+        h('p', {}, 'is on ', h('b', {}, it.name), it.size ? ' · ' + it.size : ''),
+        h('div', { class: 'field' }, h('span', {}, 'It is printed on'), seg),
+        qtyField,
+        h('p', { class: 'muted small' }, 'From now on this barcode finds this cigar at once, at every register here. '
+          + (can('manager') ? 'Saved by a manager, it is also offered to other Cigar Locker shops.' : 'A manager checks it later.')),
+        msg,
+        h('button', { class: 'btn primary wide', type: 'button', onclick: async function (ev) {
+          if (unit !== 'single' && !(qty >= (unit === 'pack' ? 2 : 1))) { msg.textContent = 'How many cigars in the ' + unit + '?'; return; }
+          ev.currentTarget.disabled = true;
+          close();
+          await saveMapping(code, it.id, unit, unit === 'single' ? 1 : qty, 'register', input);
+        } }, 'Save mapping')));
+    }
+    /** Saves a mapping, takes it into this register's list at once, and adds the cigar when the code is on one. */
+    async function saveMapping(code, pid, unit, qty, source, input) {
+      var r;
+      say('idle', 'Saving…');
+      try {
+        r = await rpc('retail_code_map', { p_store: state.store.id, p_code: code, p_product: pid, p_unit: unit, p_quantity: qty || null,
+                                            p_type: null, p_source: source || 'register', p_note: '' });
+      } catch (e) { say('bad', errorText(e)); return; }
+      var m = r.mapping;
+      Reg.addMapping(ix, m);
+      cacheRaw.codes = (cacheRaw.codes || []).filter(function (x) { return x[0] !== m.norm; }).concat([[m.norm, m.product, m.unit, m.unitQuantity, m.verified, m.id]]);
+      saveJson(regKey('regcache'), cacheRaw);
+      linking = null;
+      reset(false);
+      var name = (ix.products[pid] || {}).name || 'the cigar';
+      var hit = Reg.resolve(ix, code, Codes);
+      var res = Reg.scan(sale, hit, ix);
+      if (res.status === 'added') {
+        took(res, input || 'scanner', code);
+        say('good', '✓ Linked and added · ' + res.words + priceWords(res));
+        logScan(code, 'good', 'linked · ' + name, input || 'scanner');
+      } else if (res.status === 'box-code') {
+        say('good', 'Linked: ' + code + ' is the barcode on a box' + (m.unitQuantity ? ' of ' + m.unitQuantity : '') + ' of ' + name + '. To sell a whole box, scan its Cigar Locker label.');
+        boxCodeButtons(hit, code, input);
+      } else {
+        say(res.tone, 'Linked: ' + code + ' is ' + name + '. ' + res.words);
+      }
+    }
+
     /** The server's word on a labeled cigar just added (sold at another register meanwhile?). */
     function check(token, key) {
       rpc('retail_code_resolve', { p_store: state.store.id, p_code: token }).then(function (r) {
@@ -3588,6 +3780,7 @@
 
     /** One cigar (or qty) chosen by hand, into the sale; then back to the start. */
     function add(it, entry, qty) {
+      if (linking) return linkSheet(it);
       var res = null;
       var added = 0;
       for (var i = 0; i < (qty || 1); i++) {
@@ -3612,13 +3805,14 @@
       search.value = '';
       path = { brand: null, line: null, version: null, auto: {} };
       hi = -1;
+      linking = null;
       drawPick();
       if (hadFocus || (afterAdd && fine)) search.focus({ preventScroll: true });
     }
     state.registerReset = function () { reset(false); };
 
     function fillPick() {
-      pickEl.replaceChildren.apply(pickEl, Array.prototype.filter.call(arguments, Boolean));
+      pickEl.replaceChildren.apply(pickEl, [linkingStrip()].concat(Array.prototype.slice.call(arguments)).filter(Boolean));
     }
     function drawPick() {
       var q = Pick.parse(search.value);
@@ -3699,7 +3893,9 @@
       fillPick(head,
         on.length ? grid(on.map(function (r, i) { return variantBtn(r.item, { full: true, entry: 'search', hi: i === hi || (hi < 0 && sole && r === sole) }); }), 'reg-grid vars') : null,
         off.length ? h('p', { class: 'over' }, 'Not on hand') : null,
-        off.length ? h('div', { class: 'list' }, off.map(function (r) {
+        // Linking a barcode, a cigar with none on hand can be chosen too.
+        off.length && linking ? grid(off.map(function (r) { return variantBtn(r.item, { full: true, entry: 'search' }); }), 'reg-grid vars') : null,
+        off.length && !linking ? h('div', { class: 'list' }, off.map(function (r) {
           return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: r.item.name }), h('div', { class: 'sub', text: 'None on hand' + (r.item.price === null ? '' : ' · ' + money(r.item.price, true)) })));
         })) : null);
     }
@@ -3729,7 +3925,8 @@
       var q = Pick.parse(text);
       if (!/\s/.test(text)) {
         var hit = Reg.resolve(ix, text, Codes);
-        if (hit.kind !== 'unknown') {
+        // A code (or a barcode's digits typed) is a scan, known or not.
+        if (hit.kind !== 'unknown' || /^[0-9]{8,14}$/.test(text)) {
           reset(false);
           return onScan(text, { typed: true });
         }
@@ -3781,6 +3978,8 @@
         drawNet();
         say('warn', 'Sale kept on this register (no connection): sent once when it is back.');
       }
+      // What this sale's scans counted goes to the server now, not at the next quarter minute.
+      flushScanLog();
       localSold = Pick.noteSold(localSold, done.lines.map(function (x) { return x.product; }));
       saveJson(regKey('recent'), localSold);
       items = Pick.items(ix);
@@ -3803,14 +4002,14 @@
       keep();
       draw();
       reset(false);
-      say('idle', 'Sale cancelled. Ready: scan, search or tap');
+      say('idle', 'Sale cancelled. Ready: scan a barcode, search or tap');
     }
     function camera(ev) {
       if (ev) ev.currentTarget.blur();
       state.registerCamera = true;
       self.RetailScanner.open({
         title: 'Register · ' + registerName(),
-        hint: 'A cigar\'s label, a box\'s, or a barcode. Each adds to the sale.',
+        hint: 'A cigar\'s barcode, a box\'s Cigar Locker label, or a cigar\'s own label. Each adds to the sale.',
         onClose: function () { state.registerCamera = false; draw(); },
         onCode: async function (code) {
           // The camera's own flash beeps once for it.
@@ -3897,11 +4096,26 @@
     drawTerm();
     var test = h('div', { class: 'reg-test', tabindex: '0' }, 'Tap here, then scan any code.');
     var rule = null;
+    var mapRole = null;
     var ruleSeg = h('div', { class: 'seg' });
     var ruleMsg = h('p', { class: 'muted small' });
+    var roleSeg = h('div', { class: 'seg' });
+    var roleMsg = h('p', { class: 'muted small' });
+    function drawRole() {
+      roleSeg.replaceChildren.apply(roleSeg, [['employee', 'Anyone at the register'], ['manager', 'Managers only']].map(function (o) {
+        return h('button', { type: 'button', class: mapRole === o[0] ? 'on' : '', disabled: !can('manager'), onclick: async function () {
+          try { mapRole = await rpc('retail_code_mapping_role_set', { p_store: state.store.id, p_role: o[0] }); drawRole(); } catch (e) { roleMsg.textContent = errorText(e); }
+        } }, o[1]);
+      }));
+      roleMsg.textContent = mapRole === 'manager'
+        ? 'A barcode the store does not know yet waits for a manager to link it.'
+        : 'Anyone at the register links a barcode the store does not know yet; a manager checks it later on the cigar\'s page in Products.';
+    }
     async function drawRule() {
       if (rule === null) {
-        try { rule = (await rpc('retail_register_cache', { p_store: state.store.id })).rule; } catch (e) { rule = 'fifo'; }
+        try { var c = await rpc('retail_register_cache', { p_store: state.store.id }); rule = c.rule; mapRole = c.mapRole || 'employee'; }
+        catch (e) { rule = 'fifo'; mapRole = 'employee'; }
+        drawRole();
       }
       ruleSeg.replaceChildren.apply(ruleSeg, [['fifo', 'The open box opened first, then loose'], ['labels', 'Only loose cigars']].map(function (o) {
         return h('button', { type: 'button', class: rule === o[0] ? 'on' : '', disabled: !can('manager'), onclick: async function () {
@@ -3933,6 +4147,7 @@
       field('A scanner types each key within (ms)', stepper(gap, function (v) { gap = Math.max(5, Math.min(300, v || 50)); })),
       h('p', { class: 'muted small' }, 'Raise it if a Bluetooth scanner\'s reads are missed; a person typing is slower than this, so typing is never taken for a scan.'),
       h('div', { class: 'field' }, h('span', {}, 'A barcode (not a cigar\'s own label) takes'), ruleSeg, ruleMsg),
+      h('div', { class: 'field' }, h('span', {}, 'Who may link a new barcode to a cigar'), roleSeg, roleMsg),
       h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: save }, 'Save'))), function () { state.hidTest = null; });
     setTimeout(function () { test.focus(); }, 50);
   }

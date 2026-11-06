@@ -21,7 +21,8 @@
   /** The server's compact cache, as lookups. */
   function index(raw) {
     var r = raw || {};
-    var ix = { at: r.at || null, rule: r.rule === 'labels' ? 'labels' : 'fifo', products: {}, byCode: {}, boxes: {}, boxById: {}, units: {}, loose: {}, pins: [] };
+    var ix = { at: r.at || null, rule: r.rule === 'labels' ? 'labels' : 'fifo', mapRole: r.mapRole === 'manager' ? 'manager' : 'employee',
+      products: {}, byCode: {}, byUpc: {}, codeMeta: {}, boxes: {}, boxById: {}, units: {}, loose: {}, pins: [] };
     var num = function (v) { return v === null || v === undefined || v === '' ? null : Number(v); };
     (r.products || []).forEach(function (p) {
       // 006's seven, then 008's: brand, line, size name, size text, wrapper, length, ring, sold in 90 days, last sold, reorder level.
@@ -30,16 +31,21 @@
         sold: Number(p[14] || 0), lastSold: p[15] || null, reorder: num(p[16]) };
     });
     (r.pins || []).forEach(function (x) { ix.pins.push({ kind: x[0], product: x[1] || null, brand: x[2] || '', position: Number(x[3] || 0) }); });
-    function code(v, pid) {
+    function code(map, v, pid) {
       if (!v) return;
-      (ix.byCode[v] = ix.byCode[v] || []).indexOf(pid) < 0 && ix.byCode[v].push(pid);
+      (map[v] = map[v] || []).indexOf(pid) < 0 && map[v].push(pid);
     }
+    // A barcode's own mapping (009: one in use a code, with how it comes); a product's
+    // UPC field only when the code has none, so a corrected mapping is never undone by it.
     Object.keys(ix.products).forEach(function (id) {
       var p = ix.products[id];
-      if (p.upc) code(normDigits(p.upc), id);
-      if (p.sku) code('sku:' + p.sku.toUpperCase(), id);
+      if (p.upc) code(ix.byUpc, normDigits(p.upc), id);
+      if (p.sku) code(ix.byCode, 'sku:' + p.sku.toUpperCase(), id);
     });
-    (r.codes || []).forEach(function (c) { code(c[0], c[1]); });
+    (r.codes || []).forEach(function (c) {
+      code(ix.byCode, c[0], c[1]);
+      ix.codeMeta[c[0]] = { product: c[1], unit: c[2] || 'unknown', quantity: c[3] === null || c[3] === undefined ? null : Number(c[3]), verified: !!c[4], id: c[5] || null };
+    });
     (r.boxes || []).forEach(function (b) {
       var box = { id: b[0], code: b[1], state: b[2], remaining: Number(b[3]), original: Number(b[4]), product: b[5], labeled: Number(b[6] || 0), opened: b[7] || null };
       ix.boxes[box.code] = box;
@@ -82,9 +88,15 @@
     }
     var v = normDigits(text);
     var ids = (ix.byCode[v] || []).slice();
+    if (!ids.length) ids = (ix.byUpc[v] || []).slice();
     (ix.byCode['sku:' + text.toUpperCase()] || []).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); });
     ids = ids.filter(function (id) { return ix.products[id]; });
-    if (ids.length === 1) return { kind: 'product', code: text, product: ix.products[ids[0]] };
+    if (ids.length === 1) {
+      var m = ix.codeMeta[v];
+      var mine = m && m.product === ids[0];
+      return { kind: 'product', code: text, product: ix.products[ids[0]], unit: mine ? m.unit : 'unknown', quantity: mine ? m.quantity : null,
+        identifier: mine ? m.id : null, factory: !!(ix.byCode[v] || ix.byUpc[v]) };
+    }
     if (ids.length > 1) return { kind: 'ambiguous', code: text, products: ids.map(function (id) { return ix.products[id]; }) };
     return { kind: 'unknown', code: text };
   }
@@ -156,15 +168,24 @@
       return out('good', 'added', p.name + ' · from open box ' + b.code, 'q:' + b.id);
     }
     if (hit.kind === 'product') {
-      if (freeFor(ix, sale, p.id) <= 0) {
+      // A box's barcode names the product, not which box: a whole box goes by its own label.
+      if (hit.unit === 'box' && !hit.single) {
+        return out('warn', 'box-code', 'BOX BARCODE · ' + p.name + (hit.quantity ? ' · a box of ' + hit.quantity : '') + '. To sell the whole box, scan its Cigar Locker label.');
+      }
+      var take = hit.unit === 'pack' && hit.quantity > 1 && !hit.single ? hit.quantity : 1;
+      if (freeFor(ix, sale, p.id) < take) {
+        if (take > 1 && freeFor(ix, sale, p.id) > 0) return out('bad', 'review', 'PRODUCT NEEDS REVIEW: a pack of ' + take + ' ' + p.name + ', and only ' + freeFor(ix, sale, p.id) + ' on the records.');
         if (labeledOpen(ix, p.id)) return out('bad', 'needs-label', 'PRODUCT NEEDS REVIEW: ' + p.name + ' carries its own labels. Scan the cigar\'s label.');
         if (sealedOf(ix, p.id)) return out('bad', 'needs-label', 'PRODUCT NEEDS REVIEW: no ' + p.name + ' open. Open a box, or scan the box\'s label to sell it whole.');
         return out('bad', 'review', 'PRODUCT NEEDS REVIEW: no ' + p.name + ' on the records.');
       }
       var have = lines.filter(function (l) { return l.kind === 'product' && l.product === p.id && !l.override; })[0];
-      if (have) lines = lines.map(function (l) { return l === have ? Object.assign({}, l, { quantity: l.quantity + 1 }) : l; });
-      else lines.push({ key: 'p:' + p.id, kind: 'product', product: p.id, name: p.name, price: p.price, quantity: 1, by: hit.by === 'hand' ? 'hand' : 'code' });
-      return out('good', 'added', p.name + (hit.by === 'hand' ? '' : ' · by its factory code'), 'p:' + p.id);
+      if (have) lines = lines.map(function (l) { return l === have ? Object.assign({}, l, { quantity: l.quantity + take }) : l; });
+      else lines.push({ key: 'p:' + p.id, kind: 'product', product: p.id, name: p.name, price: p.price, quantity: take, by: hit.by === 'hand' ? 'hand' : 'code' });
+      var r = out('good', 'added', p.name + (take > 1 ? ' · a pack of ' + take : ''), 'p:' + p.id);
+      r.price = p.price;
+      r.quantity = take;
+      return r;
     }
     if (hit.kind === 'ambiguous') {
       return out('bad', 'review', 'PRODUCT NEEDS REVIEW: ' + hit.code + ' names ' + hit.products.length + ' products (' + hit.products.map(function (x) { return x.name; }).join(', ') + '). Scan the cigar\'s own label.');
@@ -207,6 +228,19 @@
     return { id: sale.id, started: sale.started, lines: lines };
   }
 
+  /** A barcode just linked (009), into the register's own list at once: the code now answers for that product only. */
+  function addMapping(ix, m) {
+    var v = m.norm || normDigits(m.code);
+    ix.byCode[v] = [m.product];
+    ix.codeMeta[v] = { product: m.product, unit: m.unit || 'unknown', quantity: m.unitQuantity === undefined ? null : m.unitQuantity, verified: !!m.verified, id: m.id || null };
+    return ix;
+  }
+  /** Is this a factory barcode (not one of Cigar Locker's own codes, not a SKU)? */
+  function isFactory(text, Codes) {
+    var t = String(text || '').trim();
+    return !!t && !Codes.ownCode(t) && /^[0-9 ]{6,}$|^[A-Za-z0-9\-_.:/]{6,}$/.test(t);
+  }
+
   /** The server's word on one of Cigar Locker's own codes this register did not hold. */
   function serverWords(r) {
     if (!r) return { tone: 'bad', words: 'UNKNOWN CODE' };
@@ -235,8 +269,9 @@
       var e = l.override ? 'override' : l.entry || '';
       if (l.kind === 'unit') return { kind: 'unit', token: l.token, entry: e };
       if (l.kind === 'king') return { kind: 'king', box: l.box, entry: e };
-      if (l.kind === 'queen') return { kind: 'queen', box: l.box, quantity: l.quantity, entry: e };
-      return { kind: 'product', product: l.product, quantity: l.quantity, override: !!l.override, entry: e };
+      // code: the factory barcode the line was scanned by, kept with it (009).
+      if (l.kind === 'queen') return { kind: 'queen', box: l.box, quantity: l.quantity, entry: e, code: l.code || '' };
+      return { kind: 'product', product: l.product, quantity: l.quantity, override: !!l.override, entry: e, code: l.code || '' };
     });
   }
 
@@ -291,5 +326,6 @@
   }
 
   return { index: index, normDigits: normDigits, resolve: resolve, newSale: newSale, scan: scan, override: override, serverWords: serverWords,
-    forServer: forServer, totals: totals, remove: remove, setQuantity: setQuantity, afterSale: afterSale, freeFor: freeFor, toQueen: toQueen };
+    forServer: forServer, totals: totals, remove: remove, setQuantity: setQuantity, afterSale: afterSale, freeFor: freeFor, toQueen: toQueen,
+    addMapping: addMapping, isFactory: isFactory };
 });
