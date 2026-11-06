@@ -340,3 +340,11 @@ html.scanning, html.scanning body { overflow: hidden; }
 .lbl.collar { border: 0.5pt dashed #9a9a9a; }
 .lbl.collar .lbl-words { flex: 0 0 1.3in; }
 .lbl-wrap { flex: 1; align-self: stretch; display: flex; align-items: center; justify-content: center; border-left: 0.5pt dotted #b5b5b5; font-size: 5.5pt; color: #777; letter-spacing: 0.4pt; text-align: center; padding: 0 0.05in; }
+
+/* Perpetual inventory: the connection's word in the bar, the dispositions. */
+.bar-net { border: 0; border-radius: 999px; padding: 6px 12px; min-height: 36px; font-weight: 700; font-size: 13px; cursor: pointer; background: var(--surface-2); color: var(--ink); margin-left: auto; }
+.bar-net.warn { background: var(--warn-bg); color: var(--warn); }
+.bar-net.bad { background: var(--bad-bg); color: var(--bad); }
+.bar-net + .bar-me { margin-left: 8px; }
+.seg.disp { display: flex; }
+.seg.disp button { flex: 1 1 auto; min-width: 88px; }

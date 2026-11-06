@@ -14,9 +14,26 @@
   var P = self.RetailPhotos;
   var Codes = self.RetailCodes;
   var Pr = self.RetailPrinters;
+  var O = self.RetailOutbox;
+  // This device's own id, sent with every request so each event says which
+  // tablet or phone made it (never used for permission).
+  var DEVICE = (function () {
+    try {
+      var v = localStorage.getItem('cl-retail-device');
+      if (!v) {
+        v = 'd-' + O.uuid().replace(/-/g, '').slice(0, 12);
+        localStorage.setItem('cl-retail-device', v);
+      }
+      return v;
+    } catch (e) {
+      return 'd-private';
+    }
+  })();
   var sb = self.supabase.createClient(C.url, C.key, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'cl-retail-auth' },
+    global: { headers: { 'x-cl-device': DEVICE } },
   });
+  var outbox = O.create(self.localStorage || { getItem: function () { return null; }, setItem: function () {} }, 'cl-retail-outbox');
 
   var main = document.getElementById('main');
   var state = { user: null, stores: null, store: null, role: null, timers: [], cache: {} };
@@ -156,6 +173,81 @@
     if (r.error) throw new Error(errorText(r.error));
     return r.data;
   }
+  /**
+   * A change that is one operation (an id made here): sent now, or, without
+   * a connection, kept on this device and sent when it is back (the server
+   * does each id once). Answers the server's answer, or {queued: true}.
+   */
+  async function rpcOp(name, args, label) {
+    var a = Object.assign({}, args, { p_op: O.uuid() });
+    try {
+      return await rpc(name, a);
+    } catch (e) {
+      if (!O.isNetworkError(e, navigator.onLine)) throw e;
+      outbox.add({ op: a.p_op, fn: name, args: a, label: label || name, store: state.store ? state.store.id : null, at: Date.now() });
+      drawNet();
+      return { queued: true };
+    }
+  }
+  /** A change that needs its answer now, tried once more on a dropped connection with the same id. */
+  async function rpcOnce(name, args) {
+    var a = Object.assign({}, args, { p_op: O.uuid() });
+    try {
+      return await rpc(name, a);
+    } catch (e) {
+      if (!O.isNetworkError(e, navigator.onLine)) throw e;
+      await new Promise(function (r) { setTimeout(r, 1500); });
+      return await rpc(name, a);
+    }
+  }
+  var flushing = false;
+  async function flushOutbox() {
+    if (flushing || !outbox.list().length || !navigator.onLine) return drawNet();
+    flushing = true;
+    drawNet();
+    try {
+      var r = await outbox.flush(function (it) { return rpc(it.fn, it.args); }, function () { return navigator.onLine; });
+      if (r.sent) { forget(); toast(r.sent + (r.sent === 1 ? ' change' : ' changes') + ' made offline went through.'); }
+      if (r.failed) toast(r.failed + (r.failed === 1 ? ' change' : ' changes') + ' made offline could not be done. See the bar.');
+    } finally {
+      flushing = false;
+      drawNet();
+    }
+  }
+  /** The bar's word on the connection: offline, waiting, or what could not be done. */
+  function drawNet() {
+    var pill = document.getElementById('bar-net');
+    if (!pill) {
+      var bar = document.getElementById('bar');
+      if (!bar) return;
+      pill = h('button', { id: 'bar-net', class: 'bar-net', type: 'button', hidden: true });
+      bar.insertBefore(pill, document.getElementById('bar-me'));
+    }
+    var waiting = outbox.list().length;
+    var failed = outbox.failed().length;
+    var off = !navigator.onLine;
+    pill.hidden = !off && !waiting && !failed;
+    pill.className = 'bar-net' + (failed ? ' bad' : off ? ' warn' : '');
+    pill.textContent = failed ? failed + ' not done' : off ? 'Offline' + (waiting ? ' · ' + waiting + ' waiting' : '') : flushing ? 'Sending ' + waiting + '…' : waiting + ' waiting';
+    pill.onclick = function () {
+      sheet('Changes made offline', h('div', {},
+        h('p', {}, off ? 'This device has no connection. Scans and baskets are kept here and sent, in order, when it is back.' : 'Kept on this device until they go through.'),
+        waiting ? h('div', { class: 'list' }, outbox.list().map(function (it) {
+          return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: it.label }), h('div', { class: 'sub', text: new Date(it.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) })), chip('Waiting'));
+        })) : null,
+        failed ? h('h2', { text: 'Could not be done' }) : null,
+        failed ? h('div', { class: 'list' }, outbox.failed().map(function (it) {
+          return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: it.label }), h('div', { class: 'sub warn-text', text: it.words })));
+        })) : null,
+        h('div', { class: 'btns' },
+          waiting && !off ? h('button', { class: 'btn primary', type: 'button', onclick: function () { flushOutbox(); } }, 'Send now') : null,
+          failed ? h('button', { class: 'btn', type: 'button', onclick: function () { outbox.clearFailed(); drawNet(); toast('Cleared.'); } }, 'Seen: clear them') : null)));
+    };
+  }
+  window.addEventListener('online', function () { flushOutbox(); });
+  window.addEventListener('offline', drawNet);
+  setInterval(flushOutbox, 20000);
+
   async function rows(table, cols, filter) {
     var out = [];
     for (var from = 0; from < 100000; from += 1000) {
@@ -275,6 +367,8 @@
 
   var TABS = [
     { key: 'home', label: 'Dashboard', least: 'employee', path: '' },
+    { key: 'first', label: 'First inventory', least: 'employee', path: '/first' },
+    { key: 'out', label: 'Cigars out', least: 'employee', path: '/out' },
     { key: 'count', label: 'Count', least: 'employee', path: '/count' },
     { key: 'scan', label: 'Scan', least: 'employee', path: '/scan' },
     { key: 'inventory', label: 'Inventory', least: 'employee', path: '/inventory' },
@@ -366,6 +460,8 @@
       state.role = store.role;
       var page = parts[2] || 'home';
       chrome(page);
+      drawNet();
+      flushOutbox();
       show(busy());
       if (page === 'home') return await dashboard();
       if (page === 'count') return parts[3] ? (parts[4] ? await countPlace(parts[3], parts[4]) : await board(parts[3])) : await countStart();
@@ -374,6 +470,8 @@
       if (page === 'label') return await labelView();
       if (page === 'labels') return await labelsView();
       if (page === 'scan') return await scanView();
+      if (page === 'first') return await firstView(parts[3]);
+      if (page === 'out') return await outView();
       if (page === 'box' && parts[3]) return await boxPage(parts[3]);
       if (page === 'locations' && can('manager')) return await locationsView();
       if (page === 'products' && can('manager')) return await productsView();
@@ -491,7 +589,9 @@
   // ---- dashboard -------------------------------------------------------------------
 
   async function dashboard() {
-    var d = await rpc('retail_dashboard', { p_store: state.store.id });
+    var both = await Promise.all([rpc('retail_dashboard', { p_store: state.store.id }), rpc('retail_dashboard_more', { p_store: state.store.id })]);
+    var d = both[0];
+    var more = both[1];
     var base = '#/s/' + state.store.id;
     var open = d.open;
     var last = d.last;
@@ -521,10 +621,15 @@
       h('h1', { text: state.store.name }),
       tiles,
       primary,
-      d.units && !d.boxesLabeled ? h('div', { class: 'card' }, h('h2', { style: { marginTop: 0 } }, 'Next: label the boxes'),
-        h('p', {}, 'Give each box on the shelves its own Cigar Locker label, once: scan its barcode, say sealed or open, print. From then on an inventory is a walk with the scanner: sealed boxes are verified with one scan each, only open ones are counted.'),
-        h('a', { class: 'btn brand', href: base + '/label' }, 'Label boxes')) : null,
+      more.onboarding ? h('div', { class: 'card' }, h('h2', { style: { marginTop: 0 } }, 'First inventory under way'),
+        h('p', {}, n(more.onboarding.done) + ' of ' + n(more.onboarding.places) + ' places complete.'),
+        h('a', { class: 'btn primary', href: base + '/first' }, 'Continue the first inventory')) : null,
+      !more.onboarding && !more.baselineAt && (d.units || d.products) ? h('div', { class: 'card' }, h('h2', { style: { marginTop: 0 } }, 'Next: the first inventory'),
+        h('p', {}, 'Once, cabinet by cabinet: every box gets its permanent label (scan its barcode, then a blank pre-printed label), open boxes are counted, loose cigars too. The spreadsheet\'s numbers are kept beside what is found, and what is verified becomes the starting truth for perpetual inventory.'),
+        h('a', { class: 'btn brand', href: base + '/first' }, 'First inventory'),
+        more.blankLabels ? h('p', { class: 'muted small' }, n(more.blankLabels) + ' blank labels ready.') : null) : null,
       h('div', { class: 'btns grid' },
+        h('a', { class: 'btn', href: base + '/out' }, 'Cigars out'),
         h('a', { class: 'btn', href: base + '/scan' }, 'Scan a box'),
         h('a', { class: 'btn', href: base + '/receive' }, 'Receive inventory'),
         h('a', { class: 'btn', href: base + '/inventory' }, 'Inventory'),
@@ -606,7 +711,10 @@
     var counted = done.reduce(function (t, p) { return t + (p.counted_units || 0); }, 0);
     var timer = h('div', { class: 'timer', text: clock(elapsedOf(s)) });
     if (s.status === 'open') every(1000, function () { timer.textContent = clock(elapsedOf(s)); });
-    if (s.status === 'complete') return complete(s, places, d);
+    if (s.status === 'complete') {
+      s.summary = await rpc('retail_session_summary', { p_session: sid }).catch(function () { return s.summary; }) || s.summary;
+      return complete(s, places, d);
+    }
     if (s.status === 'cancelled') return show(h('h1', { text: s.name }), h('p', { class: 'lead' }, 'This inventory was cancelled.'), h('a', { class: 'btn', href: '#' + base }, 'Dashboard'));
     // Others' progress comes in every 15 seconds.
     every(15000, function () { if (!document.querySelector('.veil') && !document.documentElement.classList.contains('scanning')) route(); });
@@ -668,6 +776,10 @@
 
   // ---- counting boxes: pass 1 Kings, pass 2 Queens ------------------------------------------
 
+  /** "1 King", "3 Kings". */
+  function plural(k, one, many) {
+    return n(k) + ' ' + (k === 1 ? one : many || one + 's');
+  }
   function signed(x) {
     return (x > 0 ? '+' : x < 0 ? '−' : '') + n(Math.abs(x));
   }
@@ -709,7 +821,8 @@
           if (counted === null || counted === undefined) { msg.textContent = 'How many are in it?'; return; }
           var btn = ev.currentTarget; btn.disabled = true;
           try {
-            var r = await rpc('retail_session_box_count', { p_session: sid, p_box: box.id, p_counted: counted, p_source: source, p_location: state.scanAt || null });
+            var r = await rpcOp('retail_session_box_count_op', { p_session: sid, p_box: box.id, p_counted: counted, p_source: source, p_location: state.scanAt || null }, 'Queen ' + box.code + ': ' + counted);
+            if (r.queued) r = { counted: counted, variance: 0, queued: true };
             onSaved(r);
           } catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
         } }, 'Save count'),
@@ -725,7 +838,8 @@
       onClose: function () { route(); },
       onCode: async function (code, format, ctl) {
         if (Codes.unitCode(code)) return { tone: 'warn', words: 'That is one cigar\'s label (' + code + '). Scan the box\'s label: an open box is counted in pass 2.' };
-        var r = await rpc('retail_session_box_scan', { p_session: sid, p_code: code, p_location: state.scanAt || null });
+        var r = await rpcOp('retail_session_box_scan_op', { p_session: sid, p_code: code, p_location: state.scanAt || null }, 'Count scan ' + code);
+        if (r.queued) return { tone: 'warn', words: 'No connection: ' + code + ' is kept on this device and checked when it is back.' };
         var b = r.box;
         var name = b ? b.code + ' · ' + b.product.name : code;
         var moved = r.elsewhere ? ' · recorded at ' + b.path + ', so noted as moved here' : '';
@@ -877,7 +991,10 @@
       }))];
     }
     var secs = sum.seconds || 0;
+    var A = sum.accuracy || {};
     return h('div', {},
+      A.expected ? group('Accuracy', [['System expected', n(A.expected)], ['Physical verified', n(A.verified)], ['Variance', signed(A.variance), A.variance ? 'warn' : 'good'],
+        ['Absolute variance', n(A.absVariance), '', 'over and short alike'], ['Accuracy', A.accuracy + '%', A.accuracy >= 99.5 ? 'good' : 'warn', A.queensUncounted ? n(A.queensUncounted) + ' open boxes not counted' : '']]) : null,
       group('Kings · sealed boxes', [['Expected', n(K.expected)], ['Verified', n(K.verified), 'good'], ['Missing', n(K.missing), K.missing ? 'bad' : ''], ['Moved', n(K.moved), '', 'seen in another place']]),
       group('Queens · open boxes', [['Expected cigars', n(Q.expectedUnits)], ['Counted cigars', n(Q.countedUnits)], ['Variance', signed(Q.variance), Q.variance ? 'warn' : 'good', 'on ' + n(Q.counted) + (Q.counted === 1 ? ' Queen' : ' Queens') + ' counted']]),
       group('Total', [['Expected cigars', n(sum.total.expected)], ['Counted cigars', n(sum.total.counted)], ['Needs review', n(sum.needsReview), sum.needsReview ? 'warn' : 'good'],
@@ -893,7 +1010,9 @@
         h('p', { class: 'over' }, 'Inventory complete'),
         h('div', { class: 'timer', style: { margin: '10px 0' } }, R.duration(sum.seconds || elapsedOf(s))),
         h('p', { class: 'muted' }, 'Total time · ' + day(s.started_at) + (s.completed_at ? ', ' + new Date(s.started_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' to ' + new Date(s.completed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''))),
-      sum.hasBoxes ? boxResults(sum) : null,
+      sum.hasBoxes ? boxResults(sum) : sum.accuracy && sum.accuracy.expected ? h('div', { class: 'tiles' },
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Accuracy'), h('div', { class: 'figure' }, sum.accuracy.accuracy + '%'),
+          h('div', { class: 'sub' }, n(sum.accuracy.verified) + ' verified of ' + n(sum.accuracy.expected) + ' expected · ' + n(sum.accuracy.absVariance) + ' off'))) : null,
       sum.hasBoxes ? h('h2', { text: 'Loose cigars, by place' }) : null,
       h('div', { class: 'tiles' },
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Expected units'), h('div', { class: 'figure' }, n(sum.expectedDone || sum.expected))),
@@ -1738,7 +1857,8 @@
         template === 'collar' ? h('div', { class: 'lbl-wrap' }, 'wrap beside the band · tape paper to paper') : null);
     }
     return h('div', { class: 'lbl' }, h('div', { class: 'lbl-qr' }, qrNode(l.code)),
-      h('div', { class: 'lbl-words' }, h('div', { class: 'lbl-brand' }, 'CIGAR LOCKER'), h('div', { class: 'lbl-code' }, l.code), h('div', { class: 'lbl-name' }, Codes.labelName(l.name))));
+      h('div', { class: 'lbl-words' }, h('div', { class: 'lbl-brand' }, 'CIGAR LOCKER'), h('div', { class: 'lbl-code' }, l.code),
+        h('div', { class: 'lbl-name' }, l.kind === 'blank' ? 'No. ' + l.no : Codes.labelName(l.name))));
   }
 
   /**
@@ -1932,20 +2052,65 @@
     return wrap;
   }
 
-  /** Receiving or labeling by scanning: one scanner, box after box. */
-  async function boxesByScan(mode, whereId, onEach) {
+  /** Pre-printed labels, or labels made as boxes are scanned: the choice, remembered, and the words for it. */
+  function labelModeSeg(blank) {
+    if (state.preprinted === undefined) state.preprinted = blank > 0;
+    return h('div', { class: 'field' }, h('div', { class: 'seg' },
+      h('button', { type: 'button', class: state.preprinted ? 'on' : '', onclick: function () { state.preprinted = true; route(); } }, 'Pre-printed labels (' + n(blank) + ' blank)'),
+      h('button', { type: 'button', class: state.preprinted ? '' : 'on', onclick: function () { state.preprinted = false; route(); } }, 'Make labels as I go')),
+      h('p', { class: 'muted small' }, state.preprinted
+        ? 'Scan the box\'s barcode, then the blank label you stick on it: they are bound for good. Print blank labels under Labels.'
+        : 'Each box scanned gets a new label, printed after.'));
+  }
+
+  /**
+   * Receiving or labeling by scanning: one scanner, box after box. With
+   * opts.preprinted, each box is its barcode then the blank pre-printed label
+   * put on it (bound for good), then one decision: sealed or open. Without,
+   * labels are made as boxes are scanned and printed after.
+   */
+  async function boxesByScan(mode, whereId, onEach, opts) {
+    var o = opts || {};
     var ctx = { d: await storeData(true) };
     var made = 0;
     var labels = 0;
+    var pending = null;
     var Scanner = self.RetailScanner;
-    Scanner.open({
-      title: (mode === 'received' ? 'Receive boxes · ' : 'Label boxes · ') + pathOf(ctx.d, whereId),
-      hint: 'Point the camera at the box\'s barcode or QR code.',
+    var hint = o.preprinted ? 'Scan the box\'s barcode, then the blank label you put on it.' : 'Point the camera at the box\'s barcode or QR code.';
+    function count() {
+      ctl0.tally(made + (made === 1 ? ' box ' : ' boxes ') + (mode === 'received' ? 'received' : 'labeled') + (o.preprinted ? '' : ' · ' + labels + (labels === 1 ? ' label' : ' labels') + ' to print'));
+    }
+    var ctl0 = Scanner.open({
+      title: (o.onboarding ? 'First inventory · ' : mode === 'received' ? 'Receive boxes · ' : 'Label boxes · ') + pathOf(ctx.d, whereId),
+      hint: hint,
       onClose: function () { forget(); route(); },
       onCode: async function (code, format, ctl) {
         if (Codes.unitCode(code)) return { tone: 'warn', words: 'That is one cigar\'s label. Scan the box\'s barcode.' };
         if (Codes.boxCode(code)) {
           var known = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code });
+          if (known.kind === 'label') {
+            if (!known.blank) return { tone: 'bad', words: 'Label No. ' + known.no + ' was voided. Use the next one.' };
+            if (!o.preprinted) return { tone: 'warn', words: 'A blank pre-printed label (No. ' + known.no + '). Choose Pre-printed labels to use them.' };
+            if (!pending) return { tone: 'warn', words: 'A blank label (No. ' + known.no + '). Scan the box\'s barcode first, then this label.' };
+            var pp = pending;
+            pending = null;
+            var r0 = await rpcOnce('retail_boxes_create', {
+              p_store: state.store.id, p_product: pp.p.id, p_location: whereId, p_count: 1, p_box_quantity: pp.per,
+              p_mode: mode, p_open_remaining: null, p_cost_cents: null, p_note: '', p_label: code,
+            });
+            made += 1;
+            count();
+            if (onEach) onEach(r0);
+            tone('good');
+            return await new Promise(function (resolve) {
+              ctl.panel(kingOrQueen(r0.boxes[0], pp.p, pp.per, function (what) {
+                ctl.resume();
+                ctl.say(hint);
+                resolve({ tone: r0.beyondList ? 'warn' : 'good',
+                  words: (what === 'queen' ? 'Queen: ' : 'King: ') + productName(pp.p) + ' · ' + code + (r0.beyondList ? ' · ' + n(r0.beyondList) + ' more than the records had' : '') });
+              }));
+            });
+          }
           return { tone: 'warn', words: known.box ? 'Already labeled: ' + code + ', ' + known.box.product.name + ', ' + known.box.path : 'That is a Cigar Locker label, not a factory code.' };
         }
         ctl.say('Looking up ' + code + '…');
@@ -1956,6 +2121,28 @@
         }
         var p = it.product;
         tone('good');
+        if (o.preprinted) {
+          if (p.box_count) {
+            pending = { p: p, per: p.box_count };
+            ctl.say('Now scan the blank label you put on this box.');
+            return { tone: 'good', words: productName(p) + ' · ' + p.box_count + ' a box · now its label' };
+          }
+          return await new Promise(function (resolve) {
+            var per = null;
+            var m0 = h('p', { class: 'error' });
+            ctl.panel(h('div', { class: 'scan-choice' }, h('p', { class: 'over good-text' }, 'Matched'), h('div', { class: 'scan-product' }, productName(p)),
+              field('Cigars in a full box', stepper(null, function (v) { per = v; })), m0,
+              h('div', { class: 'btns' },
+                h('button', { class: 'btn primary big', type: 'button', onclick: function () {
+                  if (!(per >= 1 && per <= 500)) { m0.textContent = 'How many in a full box?'; return; }
+                  pending = { p: p, per: per };
+                  ctl.resume();
+                  ctl.say('Now scan the blank label you put on this box.');
+                  resolve({ tone: 'good', words: productName(p) + ' · now its label' });
+                } }, 'Next: scan its label'),
+                h('button', { class: 'btn quiet', type: 'button', onclick: function () { ctl.resume(); resolve({ tone: 'warn', words: 'Skipped.' }); } }, 'Not now'))));
+          });
+        }
         return await new Promise(function (resolve) {
           ctl.panel(boxesPanel(p, { mode: mode, status: it.status }, async function (c) {
             var r = await rpc('retail_boxes_create', {
@@ -1964,7 +2151,7 @@
             });
             made += r.boxes.length;
             labels = queueLabels(r.boxes, productName(p));
-            ctl.tally(made + (made === 1 ? ' box ' : ' boxes ') + (mode === 'received' ? 'received' : 'labeled') + ' · ' + labels + (labels === 1 ? ' label' : ' labels') + ' to print');
+            count();
             if (onEach) onEach(r);
             ctl.panel(sealedOrOpen(r.boxes, p, c.per, function (queens) {
               ctl.resume();
@@ -1997,11 +2184,12 @@
     where.addEventListener('change', function () { state.receiveAt = where.value; });
     var recent = (await sb.from('store_box_events').select('box_instance_id,store_product_id,to_location_id,at').eq('store_id', state.store.id).eq('kind', 'received').order('at', { ascending: false }).limit(40)).data || [];
     var waiting = labelQueue().length;
+    var more = await rpc('retail_dashboard_more', { p_store: state.store.id });
     show(h('h1', { text: 'Receive inventory' }),
       h('p', { class: 'lead' }, 'Scan each new box\'s barcode: the product is found, you say how many boxes, and each gets its own Cigar Locker label.'),
       seg, h('div', { style: { height: '12px' } }),
-      h('div', { class: 'card' }, field('Put them in', where),
-        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { state.receiveAt = where.value; boxesByScan('received', where.value); } }, 'Scan boxes'),
+      h('div', { class: 'card' }, field('Put them in', where), labelModeSeg(more.blankLabels),
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { state.receiveAt = where.value; boxesByScan('received', where.value, null, { preprinted: state.preprinted }); } }, 'Scan boxes'),
         h('p', { class: 'muted small' }, 'A code this store has not confirmed is never taken on its own: you choose the product once, and it is known from then on.')),
       waiting ? h('a', { class: 'btn brand wide', href: base + '/labels' }, 'Print ' + n(waiting) + (waiting === 1 ? ' label' : ' labels')) : null,
       recent.length ? h('h2', { text: 'Boxes received lately' }) : null,
@@ -2029,6 +2217,7 @@
     where.addEventListener('change', function () { state.labelAt = where.value; });
     var labeled = d.boxes.length;
     var waiting = labelQueue().length;
+    var more = await rpc('retail_dashboard_more', { p_store: state.store.id });
     function byHand() {
       state.labelAt = where.value;
       var q = h('input', { class: 'input', type: 'search', placeholder: 'Brand, line, size or SKU' });
@@ -2065,8 +2254,10 @@
       h('div', { class: 'tiles' },
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Boxes labeled'), h('div', { class: 'figure' }, n(labeled))),
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Labels to print'), h('div', { class: 'figure' }, n(waiting)))),
-      h('div', { class: 'card' }, field('Labeling in', where),
-        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { state.labelAt = where.value; boxesByScan('labeled', where.value); } }, 'Scan boxes here'),
+      more.onboarding ? h('div', { class: 'card' }, h('p', {}, 'The first inventory is under way: label boxes place by place there, so each place can be marked complete.'),
+        h('a', { class: 'btn brand', href: base + '/first' }, 'First inventory')) : null,
+      h('div', { class: 'card' }, field('Labeling in', where), labelModeSeg(more.blankLabels),
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { state.labelAt = where.value; boxesByScan('labeled', where.value, null, { preprinted: state.preprinted }); } }, 'Scan boxes here'),
         h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: byHand }, 'A box with no barcode')),
         h('p', { class: 'muted small' }, 'Labeling moves a box\'s cigars from the spreadsheet\'s count into the box, so nothing is counted twice. Put the label where it does not cover the maker\'s codes or stamps.')),
       waiting ? h('a', { class: 'btn brand big wide', href: base + '/labels' }, 'Print ' + n(waiting) + (waiting === 1 ? ' label' : ' labels')) : null);
@@ -2132,7 +2323,12 @@
           h('p', { class: 'over' }, 'Label stock'), h('div', { class: 'field' }, stockSeg),
           per > 1 ? field('Sheet partly used? Start at label number', stepper(skip + 1, function (v) { skip = Math.max(0, Math.min(per - 1, (v || 1) - 1)); draw(); })) : null,
           h('p', { class: 'muted small' }, Pr.TEMPLATES[m.template].care),
-          h('div', { class: 'btns' }, h('button', { class: 'btn primary big', type: 'button', onclick: function () { window.print(); } }, 'Print ' + n(list.length) + (list.length === 1 ? ' label' : ' labels')),
+          h('div', { class: 'btns' }, h('button', { class: 'btn primary big', type: 'button', onclick: function () {
+            var batches = {};
+            list.forEach(function (l) { if (l.batch) batches[l.batch] = true; });
+            Object.keys(batches).forEach(function (b) { rpc('retail_label_batch_printed', { p_store: state.store.id, p_batch: b }).catch(function () {}); });
+            window.print();
+          } }, 'Print ' + n(list.length) + (list.length === 1 ? ' label' : ' labels')),
             h('button', { class: 'btn', type: 'button', onclick: function () {
               if (!confirm('Clear these ' + list.length + ' from the list? Do this once they are printed. They can be printed again from the box\'s page.')) return;
               setLabelQueue(all.filter(function (l) { return kind === 'unit' ? l.kind !== 'unit' : l.kind === 'unit'; }));
@@ -2143,17 +2339,52 @@
       ]);
       pagesEl.parentElement && (pagesEl.parentElement.hidden = !list.length);
     }
+    var blank = await rpc('retail_labels_blank', { p_store: state.store.id, p_batch: null });
+    function queueBlank(list, batch) {
+      var have = {};
+      var q = labelQueue();
+      q.forEach(function (x) { have[x.code] = true; });
+      list.forEach(function (l) { if (!have[l.code]) q.push({ kind: 'blank', code: l.code, no: l.no, batch: batch, name: '' }); });
+      setLabelQueue(q);
+      state.labelKind = 'box';
+    }
+    var howMany = 300;
+    var bmsg = h('p', { class: 'error' });
+    var blankCard = h('div', { class: 'card' },
+      h('h2', { style: { marginTop: 0 } }, 'Pre-printed box labels'),
+      h('p', {}, n(blank.blank) + ' blank, ready to put on boxes · ' + n(blank.bound) + ' on boxes.'),
+      h('p', { class: 'muted small' }, 'Printed ahead, before anyone starts: each is a unique code on no box yet. Scanning a box\'s barcode and then a blank label binds the label to that box for good. Numbered on the sheet for people; the code itself holds nothing else.'),
+      can('manager') ? h('div', { class: 'row-fields' }, field('How many to make', stepper(howMany, function (v) { howMany = Math.max(1, Math.min(1000, v || 1)); })),
+        h('button', { class: 'btn brand', type: 'button', onclick: async function (ev) {
+          var btn = ev.currentTarget;
+          btn.disabled = true;
+          try {
+            var r = await rpc('retail_label_batch', { p_store: state.store.id, p_count: howMany });
+            queueBlank(r.labels, r.batch);
+            toast(n(r.labels.length) + ' blank labels made: Nos. ' + r.labels[0].no + ' to ' + r.labels[r.labels.length - 1].no + '.');
+            route();
+          } catch (e) { bmsg.textContent = errorText(e); btn.disabled = false; }
+        } }, 'Make blank labels')) : null,
+      bmsg,
+      blank.batches.length ? h('div', { class: 'list' }, blank.batches.map(function (b) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: 'Nos. ' + b.from + ' to ' + b.to }), h('div', { class: 'sub', text: day(b.at) + ' · ' + n(b.blank) + ' still blank' + (b.printed ? ' · printed' : '') })),
+          b.blank ? h('button', { class: 'btn small', type: 'button', onclick: async function () {
+            var r = await rpc('retail_labels_blank', { p_store: state.store.id, p_batch: b.id });
+            queueBlank(r.labels, b.id);
+            route();
+          } }, 'Print the blank ones') : null);
+      })) : null);
     show(h('div', { class: 'no-print' }, h('h1', { text: 'Labels to print' }),
       h('p', { class: 'lead' }, all.length ? 'In the order they were made. Each code holds only its own Cigar Locker code: no price, count or place.' : 'No labels waiting. Box labels come from receiving and labeling boxes; cigar labels from an open box\'s page.'),
-      area),
+      area, blankCard),
       h('div', { class: 'scroll-x label-preview' }, pagesEl));
     draw();
   }
 
   // ---- a box's page, and scanning to find one -------------------------------------------------
 
-  var UNIT_WORDS = { available: 'On a cigar', sold: 'Sold', void: 'Void', damaged: 'Damaged', missing: 'Missing' };
-  var UNIT_TONE = { available: 'good', sold: '', void: '', damaged: 'bad', missing: 'bad' };
+  var UNIT_WORDS = { available: 'On a cigar', sold: 'Sold', void: 'Void', damaged: 'Damaged', missing: 'Missing', comped: 'Comp', sample: 'Sample', gifted: 'Gift', other: 'Other' };
+  var UNIT_TONE = { available: 'good', sold: '', void: '', damaged: 'bad', missing: 'bad', comped: '', sample: '', gifted: '', other: '' };
 
   /** Labels made for a Queen's cigars go on the list to print. */
   function queueUnits(units, product) {
@@ -2198,12 +2429,24 @@
       async function open(anyway) {
         try {
           var r = await rpc('retail_box_open', { p_store: state.store.id, p_box: boxId, p_anyway: anyway });
-          if (r.warning === 'queen_exists') return warn(r);
+          if (r.warning) return warn(r);
           forget();
           offer(r.opened);
         } catch (e) { fill(body, [h('p', { class: 'error', text: errorText(e) })]); }
       }
       function warn(r) {
+        if (r.warning === 'older_king') {
+          var old = r.older[0];
+          return fill(body, [
+            h('p', { class: 'over warn-text' }, 'An older King is waiting'),
+            h('p', { class: 'lead' }, 'Oldest first: ' + old.code + ' has waited ' + n(old.ageDays) + ' days' + (old.path ? ', in ' + old.path : '') + '. This one, ' + n(r.ageDays) + '.'),
+            r.older.length > 1 ? h('p', { class: 'muted small' }, n(r.older.length) + ' older Kings of this cigar in all.') : null,
+            h('div', { class: 'btns' },
+              h('a', { class: 'btn primary', href: base + '/box/' + old.id, onclick: function () { close(); } }, 'Open the oldest instead'),
+              h('button', { class: 'btn', type: 'button', onclick: function () { open(true); } }, 'Open this one anyway')),
+            h('p', { class: 'muted small' }, 'A suggestion only. Opening this one is recorded, with who chose it.'),
+          ]);
+        }
         fill(body, [
           h('p', { class: 'over warn-text' }, 'An active Queen already exists'),
           h('p', { class: 'lead' }, 'Current remaining quantity: ' + n(r.remaining) + (r.queens.length > 1 ? ' in ' + r.queens.length + ' open boxes' : '')),
@@ -2212,8 +2455,10 @@
               h('div', { class: 'grow' }, h('div', { class: 'name', text: q.code }), h('div', { class: 'sub', text: q.path || '' })), h('div', { class: 'qty', text: n(q.remaining) }));
           })),
           h('p', {}, 'Some stores keep open boxes of one cigar in two places on purpose.'),
+          r.older.length ? h('p', { class: 'muted small' }, 'An older King of it is waiting too: ' + r.older[0].code + ', ' + n(r.older[0].ageDays) + ' days.') : null,
           h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: function () { open(true); } }, 'Open another anyway'),
             h('button', { class: 'btn', type: 'button', onclick: close }, 'Cancel')),
+          h('p', { class: 'muted small' }, 'Opening another anyway is recorded, with who chose it.'),
         ]);
       }
       function offer(q) {
@@ -2317,6 +2562,7 @@
           h('button', { class: 'btn', type: 'button', onclick: function () { mark('damaged', false, 'damaged'); } }, 'Damaged'),
           h('button', { class: 'btn', type: 'button', onclick: function () { mark('missing', false, 'missing'); } }, 'Missing'),
           h('button', { class: 'btn', type: 'button', onclick: function () { mark('void', true, 'label reprinted'); } }, 'Label lost or spoiled: print a new one')) : null,
+        u.status === 'available' ? h('p', { class: 'muted small' }, 'For a comp, a sample or a gift, use Cigars out: scan it, then confirm.') : null,
         u.status !== 'available' && u.status !== 'void' && can('manager') ? h('button', { class: 'btn', type: 'button', onclick: function () { mark('available', false, 'back in the box'); } }, 'Back in its box (a mistake or a return)') : null,
         m2));
     }
@@ -2351,7 +2597,8 @@
     var HISTORY = { received: 'Received', labeled: 'Labeled', opened: 'Opened', counted: 'Counted', sold: 'Sold', taken: 'Taken out', moved: 'Moved', damaged: 'Damaged',
       missing: 'Marked missing', found: 'Found', emptied: 'Emptied', archived: 'Archived', corrected: 'Corrected', unit_labels: 'Cigar labels made',
       baseline_opened: 'Moved to Queen', 
-      unit_sold: 'A cigar sold by its label', unit_damaged: 'A cigar damaged', unit_missing: 'A cigar missing', unit_void: 'A cigar label voided', unit_returned: 'A cigar back in the box' };
+      unit_sold: 'A cigar sold by its label', unit_damaged: 'A cigar damaged', unit_missing: 'A cigar missing', unit_void: 'A cigar label voided', unit_returned: 'A cigar back in the box',
+      unit_comped: 'A cigar comped', unit_sample: 'A cigar as a sample', unit_gifted: 'A cigar given', unit_other: 'A cigar out (other)' };
     show(
       h('p', { class: 'over' }, b.path || 'No place'),
       h('h1', { text: p.name || 'Box' }),
@@ -2410,9 +2657,15 @@
               h('p', {}, chip(UNIT_WORDS[u.status], UNIT_TONE[u.status]), u.statusAt ? ' ' + day(u.statusAt) : ''),
               h('div', { class: 'btns' },
                 u.status === 'available' ? h('button', { class: 'btn primary', type: 'button', onclick: async function () {
-                  try { var s = await rpc('retail_unit_sell', { p_store: state.store.id, p_token: u.token, p_reason: 'sold' }); var w = sellWords(s); ctl.resume(); ctl.flash(w.tone, w.words); }
-                  catch (e) { ctl.resume(); ctl.flash('bad', errorText(e)); }
-                } }, 'Sold') : null,
+                  try {
+                    var pk = await rpc('retail_out_peek', { p_store: state.store.id, p_code: u.token });
+                    if (!pk.ok) { ctl.resume(); return ctl.flash('bad', pk.words); }
+                    var l = basket();
+                    if (!l.some(function (x) { return x.type === 'unit' && x.token === u.token; })) { l.push(pk.item); setBasket(l); }
+                    ctl.resume();
+                    ctl.flash('good', 'In the Cigars out basket: ' + basketCount(l) + ' to confirm');
+                  } catch (e) { ctl.resume(); ctl.flash('bad', errorText(e)); }
+                } }, 'Add to Cigars out') : null,
                 h('a', { class: 'btn', href: '#' + base + '/box/' + r.box.id, onclick: function () { ctl.close(); } }, 'Its box'),
                 h('button', { class: 'btn quiet', type: 'button', onclick: function () { ctl.resume(); } }, 'Scan another'))));
             return { tone: u.status === 'available' ? 'good' : 'warn', words: u.token };
@@ -2440,29 +2693,436 @@
         },
       });
     }
-    function sellScanner() {
-      var sold = 0;
-      self.RetailScanner.open({
-        title: 'Cigars out by their labels',
-        hint: 'Scan each cigar\'s own label. Each takes that cigar out of its box once; a label scanned again is refused.',
-        onClose: function () { forget(); },
-        onCode: async function (code, format, ctl) {
-          if (!Codes.unitCode(code)) return { tone: 'bad', words: Codes.boxCode(code) ? 'That is a box\'s label. Scan the cigar\'s own label.' : 'That is not a Cigar Locker cigar label.' };
-          var r = await rpc('retail_unit_sell', { p_store: state.store.id, p_token: code, p_reason: 'sold' });
-          if (r.result === 'sold') {
-            sold += 1;
-            ctl.tally(sold + (sold === 1 ? ' cigar' : ' cigars') + ' out this time');
-          }
-          return sellWords(r);
-        },
-      });
-    }
     show(h('h1', { text: 'Scan' }), h('p', { class: 'lead' }, 'Scan a box\'s Cigar Locker label to open its page: open it, take cigars out, count it or move it. A cigar\'s own label shows that cigar.'),
       h('div', { class: 'btns grid' },
         h('button', { class: 'btn primary big', type: 'button', onclick: openScanner }, 'Open the scanner'),
-        h('button', { class: 'btn big', type: 'button', onclick: sellScanner }, 'Cigars out by their labels')),
-      h('p', { class: 'muted small' }, 'Cigars out by their labels takes each scanned cigar out of its open box and the store\'s count. It records no price or payment.'),
+        h('a', { class: 'btn big', href: '#' + base + '/out' }, 'Cigars out')),
+      h('p', { class: 'muted small' }, 'Cigars out: scan each cigar (or an open box), then confirm them together as sold, damaged, a comp, a sample, a gift, missing or other. Nothing changes before you confirm.'),
       d.boxes.length ? null : h('div', { class: 'card' }, h('p', {}, 'No box is labeled yet. Start with Label boxes.'), h('a', { class: 'btn', href: '#' + base + '/label' }, 'Label boxes')));
+  }
+
+  // ---- the first inventory (onboarding) -------------------------------------------------------
+  //
+  // Once, before perpetual inventory: the old spreadsheet kept as LEGACY
+  // EXPECTED, then cabinet by cabinet every box labeled a King (open ones
+  // moved to Queen and counted), the loose cigars counted, the cabinet marked
+  // complete. What was verified becomes the starting truth.
+
+  var CAB_WORDS = { pending: 'To do', counting: 'Working', done: 'Complete' };
+  var CAB_TONE = { pending: '', counting: 'info', done: 'good' };
+
+  async function firstView(locId) {
+    var base = '#/s/' + state.store.id;
+    var more = await rpc('retail_dashboard_more', { p_store: state.store.id });
+    var sid = more.onboarding ? more.onboarding.id : null;
+    if (!sid && more.baselineSession) {
+      var fin = await rpc('retail_onboarding', { p_session: more.baselineSession });
+      return show(h('p', { class: 'over' }, 'First inventory · complete'), h('h1', { text: fin.name }),
+        h('p', { class: 'lead' }, 'Completed ' + day(fin.completed) + '. What was verified is the starting truth: from then on every cigar in or out is an event.'),
+        onbReport(fin.report), h('a', { class: 'btn brand big wide', href: base }, 'Dashboard'));
+    }
+    if (!sid) return onbStart(more);
+    if (locId) return cabinetView(sid, locId);
+    var o = await rpc('retail_onboarding', { p_session: sid });
+    var started = Date.now() - (o.seconds || 0) * 1000;
+    var timer = h('div', { class: 'timer', text: clock(o.seconds || 0) });
+    if (o.status === 'open') every(1000, function () { timer.textContent = clock((Date.now() - started) / 1000); });
+    every(20000, function () { if (!document.querySelector('.veil') && !document.documentElement.classList.contains('scanning')) route(); });
+    var rep = o.report;
+    var left = o.places - o.done;
+    var pct = o.places ? Math.round((100 * o.done) / o.places) : 0;
+    show(
+      h('p', { class: 'over' }, 'First inventory'),
+      h('h1', { text: o.name }),
+      h('div', { class: 'card' },
+        h('div', { style: { display: 'flex', gap: '24px', alignItems: 'flex-end', flexWrap: 'wrap' } },
+          h('div', {}, h('p', { class: 'over' }, o.status === 'paused' ? 'Paused' : 'Elapsed'), timer),
+          h('div', { style: { flex: '1', minWidth: '220px' } },
+            h('div', { style: { display: 'flex', justifyContent: 'space-between', fontWeight: '650' } }, h('span', {}, n(o.done) + ' of ' + n(o.places) + ' places complete'), h('span', {}, n(rep.boxes) + ' boxes labeled')),
+            h('div', { class: 'progress' }, h('i', { style: { width: pct + '%' } })))),
+        h('div', { class: 'btns' },
+          o.status === 'open'
+            ? h('button', { class: 'btn', type: 'button', onclick: async function () { await rpc('retail_onboarding_set', { p_session: sid, p_action: 'pause' }); route(); } }, 'Pause')
+            : h('button', { class: 'btn brand', type: 'button', onclick: async function () { await rpc('retail_onboarding_set', { p_session: sid, p_action: 'resume' }); route(); } }, 'Resume'),
+          can('manager') ? h('button', { class: 'btn primary', type: 'button', disabled: left > 0, onclick: function () { finishFirst(sid, rep); } },
+            left > 0 ? left + (left === 1 ? ' place' : ' places') + ' to complete' : 'Complete the first inventory') : null,
+          can('manager') ? h('button', { class: 'btn quiet danger', type: 'button', onclick: async function () {
+            if (!confirm('Cancel the first inventory? Boxes labeled so far keep their labels.')) return;
+            await rpc('retail_onboarding_set', { p_session: sid, p_action: 'cancel' });
+            go('/s/' + state.store.id);
+          } }, 'Cancel') : null)),
+      h('div', { class: 'tiles' },
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'The spreadsheet said'), h('div', { class: 'figure' }, n(rep.legacy)), h('div', { class: 'sub' }, 'legacy expected, kept apart')),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Verified so far'), h('div', { class: 'figure' }, n(rep.verified)), h('div', { class: 'sub' }, plural(rep.kings, 'King') + ' · ' + plural(rep.queens, 'Queen'))),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Products to match'), h('div', { class: 'figure', style: rep.unmatched ? { color: 'var(--warn)' } : null }, n(rep.unmatched)), h('div', { class: 'sub' }, 'labeled but not matched to the catalogue'))),
+      h('h2', { text: 'Cabinet by cabinet' }),
+      h('p', { class: 'muted small' }, 'Open a place, scan each box\'s barcode then the blank label you put on it, say sealed or open, count the loose cigars, and mark it complete. Several people can work different places at once.'),
+      h('div', { class: 'list' }, o.cabinets.map(function (c) {
+        var bits = [n(c.boxes) + (c.boxes === 1 ? ' box' : ' boxes')];
+        if (c.queens) bits.push(n(c.queens) + (c.queens === 1 ? ' Queen' : ' Queens') + ' (' + n(c.queenUnits) + ')');
+        if (c.looseUnits) bits.push(n(c.looseUnits) + ' loose');
+        if (c.review) bits.push(n(c.review) + ' to match');
+        if (c.status === 'done' && c.seconds) bits.push(R.duration(c.seconds));
+        return h('a', { class: 'item tap', href: base + '/first/' + c.location, style: { textDecoration: 'none', color: 'inherit' } },
+          h('div', { class: 'grow' }, h('div', { class: 'name', text: c.path }), h('div', { class: 'sub', text: bits.join(' · ') + (c.reopens ? ' · reopened ' + c.reopens + '×' : '') })),
+          chip(CAB_WORDS[c.status] + (c.status === 'counting' && c.by ? ' · ' + c.by : ''), CAB_TONE[c.status]),
+          h('div', { class: 'qty', text: n(c.kingUnits + c.queenUnits + c.looseUnits) }));
+      })),
+      h('p', { class: 'muted small' }, 'The figure on the right is what has been verified in each place.'));
+  }
+
+  async function onbStart(more) {
+    var base = '#/s/' + state.store.id;
+    var d = await rpc('retail_dashboard', { p_store: state.store.id });
+    function step(ok, title, words, link, linkWords) {
+      return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: title }), h('div', { class: 'sub', text: words })),
+        chip(ok ? 'Done' : 'To do', ok ? 'good' : ''), link && can('manager') ? h('a', { class: 'btn small', href: base + link }, linkWords) : null);
+    }
+    var msg = h('p', { class: 'error' });
+    show(h('p', { class: 'over' }, 'Once, before perpetual inventory'), h('h1', { text: 'First inventory' }),
+      h('p', { class: 'lead' }, 'Every box in the store gets its permanent label, cabinet by cabinet; open boxes are counted; loose cigars are counted. The spreadsheet\'s numbers are kept beside what is found, never forced onto it, and what is verified becomes the starting truth.'),
+      h('h2', { text: 'Before you start' }),
+      h('div', { class: 'list' },
+        step(d.products > 0, '1. Bring in the spreadsheet', n(d.products) + ' products · ' + n(d.units) + ' cigars on the records', '/import', 'Import'),
+        step(d.products > 0 && !d.unmatched, '2. Match the products', d.unmatched ? n(d.unmatched) + ' still to match or confirm' : 'every product matched', '/products', 'Products'),
+        step(d.locations > 0, '3. Map the places', n(d.locations) + ' rooms, cabinets and shelves', '/locations', 'Locations'),
+        step(more.blankLabels > 0, '4. Print blank box labels', n(more.blankLabels) + ' blank labels ready (one for each box, and some spare)', '/labels', 'Labels')),
+      can('manager')
+        ? h('div', { class: 'card' }, msg, h('button', { class: 'btn primary big wide', type: 'button', disabled: !d.locations, onclick: async function (ev) {
+          var btn = ev.currentTarget;
+          btn.disabled = true;
+          try { await rpc('retail_onboarding_start', { p_store: state.store.id, p_name: 'First inventory' }); route(); }
+          catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
+        } }, 'Begin the first inventory'), h('p', { class: 'muted small' }, 'The clock starts now. The spreadsheet\'s numbers are kept at this moment as the legacy expected inventory.'))
+        : h('div', { class: 'card' }, h('p', {}, 'A manager begins it; then each place is done here.')));
+  }
+
+  function looseKey(sid, locId) {
+    return 'cl-retail-loose:' + sid + ':' + locId;
+  }
+
+  async function cabinetView(sid, locId) {
+    var base = '#/s/' + state.store.id;
+    var d = await storeData(true);
+    var place = d.loc[locId];
+    if (!place) return show(h('p', { class: 'error', text: 'That place is not in this store.' }));
+    var c;
+    try {
+      c = await rpc('retail_cabinet_open', { p_session: sid, p_location: locId });
+    } catch (e) {
+      return show(h('h1', { text: place.name }), h('div', { class: 'card' }, h('p', { class: 'lead', text: errorText(e) }), h('a', { class: 'btn', href: base + '/first' }, 'Back to the places')));
+    }
+    var done = c.status === 'done';
+    var loose = [];
+    try { loose = JSON.parse(localStorage.getItem(looseKey(sid, locId)) || '[]'); } catch (e) { loose = []; }
+    function keep() { try { localStorage.setItem(looseKey(sid, locId), JSON.stringify(loose)); } catch (e) { /* page only */ } }
+    var boxesHere = d.boxes.filter(function (b) { return b.location_id === locId && (b.state === 'sealed' || b.state === 'open'); });
+    var looseList = h('div', { class: 'list' });
+    function drawLoose() {
+      looseList.replaceChildren.apply(looseList, loose.length ? loose.map(function (x, i) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(d.products[x.product_id]) })),
+          stepper(x.counted, function (v) { x.counted = Math.max(0, v || 0); keep(); }),
+          h('button', { class: 'btn small quiet', type: 'button', 'aria-label': 'Remove', onclick: function () { loose.splice(i, 1); keep(); drawLoose(); } }, '×'));
+      }) : [h('div', { class: 'item muted' }, 'None counted yet.')]);
+    }
+    drawLoose();
+    function addLoose() {
+      var q = h('input', { class: 'input', type: 'search', placeholder: 'Brand, line, size or SKU' });
+      var list = h('div', { class: 'list' });
+      function fillList() {
+        var w = S.plain(q.value).split(' ').filter(Boolean);
+        var all = Object.keys(d.products).map(function (id) { return d.products[id]; }).filter(function (p) {
+          var hay = S.plain([p.brand, p.line, p.vitola, p.size_text, p.sku].join(' '));
+          return p.active && w.every(function (x) { return hay.indexOf(x) >= 0; });
+        }).slice(0, 40);
+        list.replaceChildren.apply(list, all.map(function (p) {
+          return h('div', { class: 'item tap', onclick: function () {
+            var have = loose.filter(function (x) { return x.product_id === p.id; })[0];
+            if (have) have.counted += 1; else loose.push({ product_id: p.id, counted: 1 });
+            keep(); drawLoose(); close();
+          } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(p) }), h('div', { class: 'sub', text: productDetail(p) })));
+        }));
+      }
+      q.addEventListener('input', fillList);
+      fillList();
+      var close = sheet('Loose cigars here', h('div', {}, h('p', { class: 'muted small' }, 'Cigars here with no box: singles, a bundle, cigars out of their box.'), q, h('div', { style: { height: '10px' } }), list));
+    }
+    function markComplete() {
+      var units = loose.reduce(function (t, x) { return t + (x.counted || 0); }, 0);
+      var msg = h('p', { class: 'error' });
+      var close = sheet('Mark ' + place.name + ' complete?', h('div', {},
+        h('p', { class: 'lead' }, n(c.boxes) + (c.boxes === 1 ? ' box' : ' boxes') + ' labeled here (' + plural(c.kings, 'King') + ', ' + plural(c.queens, 'Queen') + ') and ' + n(units) + ' loose ' + (units === 1 ? 'cigar' : 'cigars') + '.'),
+        h('p', {}, 'Once complete, this place is frozen: nothing more is labeled into it until a manager reopens it. Its loose cigars on the records become the ones counted here.'),
+        msg,
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: async function (ev) {
+          var btn = ev.currentTarget;
+          btn.disabled = true;
+          try {
+            await rpc('retail_cabinet_complete', { p_session: sid, p_location: locId, p_loose: loose.filter(function (x) { return x.counted > 0; }) });
+            try { localStorage.removeItem(looseKey(sid, locId)); } catch (e) { /* fine */ }
+            close(); forget(); toast(place.name + ' marked complete.');
+            go('/s/' + state.store.id + '/first');
+          } catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
+        } }, 'Mark complete')));
+    }
+    function reopen() {
+      var why = h('input', { class: 'input', placeholder: 'For example: a box was missed' });
+      var msg = h('p', { class: 'error' });
+      var close = sheet('Reopen ' + place.name, h('div', {}, field('Why', why), msg,
+        h('button', { class: 'btn primary wide', type: 'button', onclick: async function () {
+          try { await rpc('retail_cabinet_reopen', { p_session: sid, p_location: locId, p_reason: why.value.trim() }); close(); forget(); route(); }
+          catch (e) { msg.textContent = errorText(e); }
+        } }, 'Reopen')));
+    }
+    var path = pathOf(d, locId);
+    show(
+      h('p', { class: 'over' }, 'First inventory' + (path.indexOf(' › ') > 0 ? ' · ' + path.slice(0, path.lastIndexOf(' › ')) : '')),
+      h('h1', { text: place.name }),
+      h('p', {}, chip(CAB_WORDS[c.status], CAB_TONE[c.status]), c.reopens ? ' Reopened ' + c.reopens + '× · ' + c.reopenReason : ''),
+      h('div', { class: 'tiles' },
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Boxes labeled'), h('div', { class: 'figure' }, n(c.boxes)), h('div', { class: 'sub' }, plural(c.kings, 'King') + ' · ' + plural(c.queens, 'Queen'))),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Queen cigars counted'), h('div', { class: 'figure' }, n(c.queenUnits))),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'The spreadsheet said here'), h('div', { class: 'figure' }, n(c.legacy))),
+        c.review ? h('div', { class: 'tile' }, h('div', { class: 'label' }, 'To match'), h('div', { class: 'figure', style: { color: 'var(--warn)' } }, n(c.review)), h('div', { class: 'sub' }, 'products labeled but not matched')) : null),
+      done
+        ? h('div', { class: 'card' }, h('p', { class: 'lead' }, 'Complete' + (c.by ? ' · ' + c.by : '') + (c.seconds ? ' · ' + R.duration(c.seconds) : '') + '. ' + n(c.looseUnits) + ' loose cigars counted.'),
+          h('p', { class: 'muted' }, 'This place is frozen. A manager can reopen it, with the reason recorded.'),
+          can('manager') ? h('button', { class: 'btn', type: 'button', onclick: reopen }, 'Reopen this place') : null)
+        : h('div', { class: 'card' },
+          h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { boxesByScan('labeled', locId, null, { preprinted: true, onboarding: sid }); } }, 'Scan boxes here'),
+          h('p', { class: 'muted small' }, 'Scan a box\'s barcode, then the next blank label as you put it on: the box is a King. Then say sealed or open; an open one is moved to Queen with its cigars counted.')),
+      done ? null : h('h2', { text: 'Loose cigars here' }),
+      done ? null : looseList,
+      done ? null : h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: addLoose }, 'Add loose cigars')),
+      done ? null : h('button', { class: 'btn brand big wide', type: 'button', onclick: markComplete }, 'Mark this place complete'),
+      boxesHere.length ? h('h2', { text: 'Boxes here' }) : null,
+      boxesHere.length ? h('div', { class: 'list' }, boxesHere.map(function (b) {
+        return h('a', { class: 'item tap', href: base + '/box/' + b.id, style: { textDecoration: 'none', color: 'inherit' } },
+          h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(d.products[b.store_product_id]) }), h('div', { class: 'sub', text: b.cl_code })), boxChip(b.state), h('div', { class: 'qty', text: n(boxUnits(b)) }));
+      })) : null,
+      h('div', { class: 'btns' }, h('a', { class: 'btn quiet', href: base + '/first' }, 'All places')));
+  }
+
+  function finishFirst(sid, rep) {
+    var msg = h('p', { class: 'error' });
+    var close = sheet('Complete the first inventory?', h('div', {},
+      h('p', { class: 'lead' }, 'Verified: ' + n(rep.verified) + ' cigars. The spreadsheet said ' + n(rep.legacy) + '.'),
+      h('p', {}, 'What was verified becomes the store\'s starting inventory. From then on every cigar in or out is an event.'),
+      msg,
+      h('button', { class: 'btn primary big wide', type: 'button', onclick: async function (ev) {
+        var btn = ev.currentTarget;
+        btn.disabled = true;
+        try { await rpc('retail_onboarding_complete', { p_session: sid }); close(); forget(); route(); }
+        catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
+      } }, 'Complete')));
+  }
+
+  /** The first inventory's report: the spreadsheet against what was verified. */
+  function onbReport(rep) {
+    function tile(label, figure, sub, color) {
+      return h('div', { class: 'tile' }, h('div', { class: 'label' }, label), h('div', { class: 'figure', style: color ? { color: 'var(--' + color + ')' } : null }, figure), sub ? h('div', { class: 'sub' }, sub) : null);
+    }
+    return h('div', {},
+      h('div', { class: 'tiles' },
+        tile('Legacy spreadsheet', n(rep.legacy), 'what it said'),
+        tile('Verified physical', n(rep.verified), 'found and labeled', 'good'),
+        tile('Variance', signed(rep.variance), 'verified less the spreadsheet', rep.variance ? 'warn' : 'good'),
+        tile('Absolute variance', n(rep.absVariance), 'every difference, over and short'),
+        tile('Spreadsheet accuracy', rep.accuracy === null || rep.accuracy === undefined ? '—' : rep.accuracy + '%', n(rep.productsDifferent) + ' of ' + n(rep.products) + ' products differ')),
+      h('div', { class: 'tiles' },
+        tile('Boxes labeled', n(rep.boxes), plural(rep.kings, 'King') + ' · ' + plural(rep.queens, 'Queen')),
+        tile('Found open', n(rep.queensFoundOpen), 'moved to Queen and counted'),
+        tile('Cigar labels', n(rep.cigarLabels)),
+        tile('Products to match', n(rep.unmatched), '', rep.unmatched ? 'warn' : ''),
+        tile('Time', R.duration(rep.seconds || 0), (rep.seconds || 0) <= 5400 ? 'under 90 minutes' : '')),
+      rep.differences.length ? h('h2', { text: 'Where the spreadsheet differs' }) : null,
+      rep.differences.length ? h('div', { class: 'scroll-x' }, h('table', { class: 'table' },
+        h('tr', {}, h('th', {}, 'Product'), h('th', { class: 'n' }, 'Spreadsheet'), h('th', { class: 'n' }, 'Verified'), h('th', { class: 'n' }, 'Difference'), h('th', {}, 'Found as')),
+        rep.differences.slice(0, 300).map(function (x) {
+          var how = [x.kings ? x.kings + ' King' + (x.kings === 1 ? '' : 's') : '', x.queens ? x.queens + ' Queen' + (x.queens === 1 ? '' : 's') : '', x.loose ? x.loose + ' loose' : ''].filter(Boolean).join(' · ') || 'none found';
+          return h('tr', {}, h('td', { text: x.name }), h('td', { class: 'n', text: n(x.legacy) }), h('td', { class: 'n', text: n(x.verified) }), h('td', { class: 'n', text: signed(x.variance) }), h('td', { text: how }));
+        }))) : h('p', { class: 'muted' }, 'The spreadsheet and the shelves agree.'));
+  }
+
+  // ---- a box bound to a pre-printed label: sealed or open -------------------------------------
+
+  /** One decision after a label is bound: sealed (a King, done) or open (Move to Queen, counted). */
+  function kingOrQueen(box, p, per, onDone) {
+    var wrap = h('div', { class: 'scan-choice' });
+    function first() {
+      fill(wrap, [
+        h('p', { class: 'over good-text' }, 'Label on · ' + box.code + (box.no ? ' · No. ' + box.no : '')),
+        h('div', { class: 'scan-product' }, productName(p)),
+        h('p', { class: 'lead' }, 'Is this box sealed or open?'),
+        h('div', { class: 'btns grid' },
+          h('button', { class: 'btn primary big', type: 'button', onclick: function () { onDone('king'); } }, 'Sealed · King'),
+          h('button', { class: 'btn big', type: 'button', onclick: queen }, 'Open · Move to Queen')),
+      ]);
+    }
+    function queen() {
+      var count = null;
+      var when = h('input', { class: 'input', type: 'date', max: new Date().toISOString().slice(0, 10) });
+      var msg = h('p', { class: 'error' });
+      fill(wrap, [
+        h('p', { class: 'over warn-text' }, 'Move to Queen · ' + box.code),
+        h('div', { class: 'scan-product' }, productName(p)),
+        field('How many cigars are in this box now?', stepper(null, function (v) { count = v; })),
+        field('Opened on (only if you know it)', when), msg,
+        h('div', { class: 'btns' },
+          h('button', { class: 'btn primary big', type: 'button', onclick: async function (ev) {
+            if (!(count >= 1 && count <= per)) { msg.textContent = 'From 1 to ' + per + '.'; return; }
+            var btn = ev.currentTarget;
+            btn.disabled = true;
+            try {
+              var r = await rpc('retail_box_baseline_open', { p_store: state.store.id, p_box: box.id, p_count: count, p_opened_on: when.value || null });
+              forget();
+              fill(wrap, [
+                h('p', { class: 'over good-text' }, 'Queen · ' + box.code),
+                h('div', { class: 'scan-product' }, productName(p)),
+                h('p', { class: 'lead' }, n(r.box.remaining) + ' cigars in it, opened ' + (r.box.openedAt ? day(r.box.openedAt) : 'before tracking') + '.'),
+                h('div', { class: 'btns' },
+                  h('button', { class: 'btn', type: 'button', onclick: async function (e2) {
+                    var b2 = e2.currentTarget;
+                    b2.disabled = true;
+                    try {
+                      var u = await rpc('retail_box_units_make', { p_store: state.store.id, p_box: box.id, p_count: null });
+                      queueUnits(u.units, u.product);
+                      b2.textContent = u.units.length + ' cigar labels to print';
+                    } catch (e) { b2.textContent = errorText(e); }
+                  } }, 'Print ' + n(r.box.remaining) + ' cigar labels'),
+                  h('button', { class: 'btn primary big', type: 'button', onclick: function () { onDone('queen'); } }, 'Done · next box')),
+              ]);
+            } catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
+          } }, 'Save · Queen'),
+          h('button', { class: 'btn quiet', type: 'button', onclick: first }, 'Back')),
+      ]);
+    }
+    first();
+    return wrap;
+  }
+
+  // ---- cigars out: scan, add, confirm ---------------------------------------------------------
+  //
+  // Each scan adds to a basket on this device; nothing changes until the
+  // basket is confirmed, all at once, as sold, damaged, a comp, a sample, a
+  // gift, missing or other. An abandoned basket changes nothing.
+
+  var DISPOSITIONS = [['sold', 'Sold'], ['damaged', 'Damaged'], ['comp', 'Comp'], ['sample', 'Sample'], ['gift', 'Gift'], ['missing', 'Missing'], ['other', 'Other']];
+  function basketKey() {
+    return 'cl-retail-basket:' + state.store.id;
+  }
+  function basket() {
+    try {
+      var v = JSON.parse(localStorage.getItem(basketKey()) || 'null');
+      if (Array.isArray(v)) return v;
+    } catch (e) { /* below */ }
+    return state.basketMemo && state.basketMemo.store === state.store.id ? state.basketMemo.list.slice() : [];
+  }
+  function setBasket(list) {
+    state.basketMemo = { store: state.store.id, list: list.slice() };
+    try { localStorage.setItem(basketKey(), JSON.stringify(list)); } catch (e) { /* the page keeps it */ }
+  }
+  function basketCount(list) {
+    return list.reduce(function (t, x) { return t + (x.type === 'unit' ? 1 : x.quantity || 0); }, 0);
+  }
+  function basketWords(list) {
+    var k = basketCount(list);
+    return k + (k === 1 ? ' cigar' : ' cigars') + ' in the basket · nothing changes until you confirm';
+  }
+
+  function outScanner() {
+    self.RetailScanner.open({
+      title: 'Cigars out · scan to add',
+      hint: 'Scan each cigar\'s own label, or an open box\'s label and say how many. Nothing changes until you confirm.',
+      onClose: function () { route(); },
+      onCode: async function (code, format, ctl) {
+        var list = basket();
+        if (Codes.unitCode(code) && list.some(function (x) { return x.type === 'unit' && x.token === code; })) return { tone: 'warn', words: 'Already in the basket: ' + code };
+        var r = await rpc('retail_out_peek', { p_store: state.store.id, p_code: code });
+        if (!r.ok) {
+          if (r.result === 'already_sold' || r.result === 'not_available') rpc('retail_out_review_seen', { p_store: state.store.id, p_token: code, p_result: r.result }).catch(function () {});
+          return { tone: 'bad', words: r.words };
+        }
+        var it = r.item;
+        if (it.type === 'unit') {
+          list.push(it);
+          setBasket(list);
+          ctl.tally(basketWords(list));
+          return { tone: 'good', words: 'Added: ' + it.name + ' · ' + it.token };
+        }
+        return await new Promise(function (resolve) {
+          var q = 1;
+          ctl.panel(h('div', { class: 'scan-choice' },
+            h('p', { class: 'over' }, 'Open box · ' + it.boxCode), h('div', { class: 'scan-product' }, it.name), h('p', { class: 'muted small' }, n(it.remaining) + ' in it'),
+            field('How many out of it', stepper(1, function (v) { q = Math.max(1, Math.min(it.remaining, v || 1)); })),
+            h('div', { class: 'btns' },
+              h('button', { class: 'btn primary big', type: 'button', onclick: function () {
+                var l2 = basket();
+                var same = l2.filter(function (x) { return x.type === 'box' && x.box === it.box; })[0];
+                if (same) same.quantity += q; else l2.push(Object.assign({}, it, { quantity: q }));
+                setBasket(l2);
+                ctl.tally(basketWords(l2));
+                ctl.resume();
+                resolve({ tone: 'good', words: 'Added: ' + q + ' · ' + it.name });
+              } }, 'Add'),
+              h('button', { class: 'btn quiet', type: 'button', onclick: function () { ctl.resume(); resolve({ tone: 'warn', words: 'Not added.' }); } }, 'Cancel'))));
+        });
+      },
+    }).tally(basketWords(basket()));
+  }
+
+  async function outView() {
+    var list = basket();
+    var disp = state.outDisp || 'sold';
+    var note = h('input', { class: 'input', placeholder: 'Optional; needed for Other', value: state.outNote || '' });
+    note.addEventListener('input', function () { state.outNote = note.value; });
+    var msg = h('p', { class: 'error' });
+    var k = basketCount(list);
+    var words = (DISPOSITIONS.filter(function (x) { return x[0] === disp; })[0] || [])[1];
+    async function confirmIt(ev) {
+      msg.textContent = '';
+      if (disp === 'other' && !note.value.trim()) { msg.textContent = 'Say what happened to them.'; return; }
+      var btn = ev.currentTarget;
+      btn.disabled = true;
+      var items = list.map(function (x) { return x.type === 'unit' ? { type: 'unit', token: x.token } : { type: 'box', box: x.box, quantity: x.quantity }; });
+      try {
+        var r = await rpcOp('retail_out_confirm', { p_store: state.store.id, p_disposition: disp, p_items: items, p_note: note.value.trim() }, 'Cigars out: ' + k + ' · ' + words);
+        if (r.queued) {
+          setBasket([]); state.outNote = ''; state.outDisp = 'sold';
+          toast('No connection: kept on this device and sent when it is back.');
+          return route();
+        }
+        if (!r.ok) {
+          msg.textContent = (r.item ? 'Line ' + r.item + ': ' : '') + r.words + ' Nothing was changed.';
+          btn.disabled = false;
+          return;
+        }
+        setBasket([]); state.outNote = ''; state.outDisp = 'sold';
+        forget();
+        tone('good');
+        toast(n(r.cigars) + (r.cigars === 1 ? ' cigar' : ' cigars') + ' out · ' + words + (r.repeat ? ' (already done)' : '') + '.');
+        route();
+      } catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
+    }
+    show(h('h1', { text: 'Cigars out' }),
+      h('p', { class: 'lead' }, 'Scan, add, next. Nothing leaves the inventory until you confirm; a basket left unconfirmed changes nothing.'),
+      h('button', { class: 'btn primary big wide', type: 'button', onclick: outScanner }, list.length ? 'Scan more' : 'Scan cigars'),
+      list.length ? h('h2', { text: 'The basket · ' + k + (k === 1 ? ' cigar' : ' cigars') }) : null,
+      list.length ? h('div', { class: 'list' }, list.map(function (x, i) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: x.name }),
+          h('div', { class: 'sub', text: x.type === 'unit' ? x.token + ' · from ' + x.boxCode : 'from open box ' + x.boxCode })),
+          x.type === 'box' ? stepper(x.quantity, function (v) { var l = basket(); var y = l[i]; if (y) { y.quantity = Math.max(1, v || 1); setBasket(l); } }) : h('div', { class: 'qty', text: '1' }),
+          h('button', { class: 'btn small quiet', type: 'button', 'aria-label': 'Take out of the basket', onclick: function () { var l = basket(); l.splice(i, 1); setBasket(l); route(); } }, '×'));
+      })) : h('div', { class: 'card' }, h('p', { class: 'muted' }, 'The basket is empty. Scan a cigar\'s label, or an open box\'s label for cigars without one.')),
+      list.length ? h('div', { class: 'card' },
+        h('p', { class: 'over' }, 'What happened to them'),
+        h('div', { class: 'seg disp' }, DISPOSITIONS.map(function (o) {
+          return h('button', { type: 'button', class: disp === o[0] ? 'on' : '', onclick: function () { state.outDisp = o[0]; route(); } }, o[1]);
+        })),
+        field('Note', note), msg,
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: confirmIt }, 'Confirm ' + k + (k === 1 ? ' cigar' : ' cigars') + ' · ' + words),
+        h('button', { class: 'btn quiet small', type: 'button', onclick: function () { if (confirm('Empty the basket? Nothing was changed by it.')) { setBasket([]); route(); } } }, 'Empty the basket')) : null,
+      h('p', { class: 'muted small' }, 'Records what happened to each cigar, with who and when. It takes no price or payment.'));
   }
 
   // ---- team -----------------------------------------------------------------------------
@@ -2501,12 +3161,61 @@
   // ---- pilot results ----------------------------------------------------------------------
 
   async function pilotView() {
-    var p = await rpc('retail_pilot', { p_store: state.store.id });
+    var res = await Promise.all([rpc('retail_pilot', { p_store: state.store.id }), rpc('retail_kpis', { p_store: state.store.id })]);
+    var p = res[0];
+    var K = res[1];
     var counts = p.sessions.filter(function (s) { return s.kind === 'count'; });
     var L = p.lines || {};
     var pct = function (a, b) { return b ? Math.round((100 * a) / b) + '%' : '—'; };
     var cost = ((p.scans.inputTokens || 0) * 4 + (p.scans.outputTokens || 0) * 20) / 1e6;
-    show(h('h1', { text: 'Pilot results' }), h('p', { class: 'lead' }, 'What the counts so far say about the pilot\'s questions.'),
+    var ob = K.onboarding;
+    var og = K.ongoing || {};
+    function kt(label, figure, sub, color) {
+      return h('div', { class: 'tile' }, h('div', { class: 'label' }, label), h('div', { class: 'figure', style: color ? { color: 'var(--' + color + ')' } : null }, figure), sub ? h('div', { class: 'sub' }, sub) : null);
+    }
+    var proof = K.counts.filter(function (c) { return c.status === 'complete'; });
+    var lastC = proof[proof.length - 1];
+    show(h('h1', { text: 'Pilot results' }), h('p', { class: 'lead' }, 'The proof: from about 8 hours to under 90 minutes, then under 60, with every cigar in or out an event.'),
+      h('h2', { text: 'The first inventory' }),
+      ob ? h('div', { class: 'tiles' },
+        kt('Status', ob.status === 'complete' ? 'Complete' : 'Under way', ob.completed ? day(ob.completed) : 'begun ' + day(ob.started)),
+        kt('Time', R.duration(ob.seconds || 0)),
+        kt('Boxes labeled', n(ob.report.boxes), plural(ob.report.kings, 'King') + ' · ' + plural(ob.report.queens, 'Queen')),
+        kt('Cigar labels', n(ob.report.cigarLabels)),
+        kt('Products unmatched', n(ob.report.unmatched), '', ob.report.unmatched ? 'warn' : ''),
+        kt('Spreadsheet accuracy', ob.report.accuracy === null || ob.report.accuracy === undefined ? '—' : ob.report.accuracy + '%', n(ob.report.legacy) + ' said · ' + n(ob.report.verified) + ' verified'))
+        : h('p', { class: 'muted' }, 'Not begun (First inventory).'),
+      h('h2', { text: K.baselineAt ? 'Since the first inventory' : 'Everything so far' }),
+      h('div', { class: 'tiles' },
+        kt('Sales scans', n(og.salesScans), n(og.cigarsSold) + ' cigars'),
+        kt('Exceptions', n(og.exceptions), 'damaged, comp, sample, gift, lost, adjusted'),
+        kt('Kings opened', n(og.kingsOpened)),
+        kt('Queens emptied', n(og.queensDepleted)),
+        kt('Boxes received', n(og.receiving)),
+        kt('Rescans reviewed', n(K.rescans), 'a label already out, scanned again'),
+        kt('Overrides', n(og.overrides), 'went ahead past a warning, recorded'),
+        kt('Put back', n(og.returns), 'a mistake or a return')),
+      h('h2', { text: 'Each inventory: time and accuracy' }),
+      K.counts.length ? h('div', { class: 'scroll-x' }, h('table', { class: 'table' },
+        h('tr', {}, h('th', {}, 'Inventory'), h('th', { class: 'n' }, 'Total'), h('th', { class: 'n' }, 'Kings'), h('th', { class: 'n' }, 'Queens'), h('th', { class: 'n' }, 'Expected'), h('th', { class: 'n' }, 'Verified'), h('th', { class: 'n' }, 'Abs. variance'), h('th', { class: 'n' }, 'Accuracy'), h('th', { class: 'n' }, 'To review')),
+        K.counts.map(function (c) {
+          var a = c.accuracy || {};
+          return h('tr', {}, h('td', { text: c.name + (c.status !== 'complete' ? ' (' + c.status + ')' : '') }), h('td', { class: 'n', text: R.duration(c.seconds || 0) }),
+            h('td', { class: 'n', text: c.kingSeconds ? R.duration(c.kingSeconds) : '—' }), h('td', { class: 'n', text: c.queenSeconds ? R.duration(c.queenSeconds) : '—' }),
+            h('td', { class: 'n', text: n(a.expected) }), h('td', { class: 'n', text: n(a.verified) }), h('td', { class: 'n', text: n(a.absVariance) }),
+            h('td', { class: 'n', text: a.accuracy === null || a.accuracy === undefined ? '—' : a.accuracy + '%' }), h('td', { class: 'n', text: n(c.discrepancies) }));
+        }))) : h('p', { class: 'muted' }, 'No inventory yet.'),
+      lastC ? h('p', { class: 'muted small' }, 'Latest: ' + R.duration(lastC.seconds || 0) + ((lastC.seconds || 0) <= 3600 ? ', under an hour.' : (lastC.seconds || 0) <= 5400 ? ', under 90 minutes.' : '.')) : null,
+      K.missingByPlace.length ? h('h3', { text: 'Recorded lost, by place' }) : null,
+      K.missingByPlace.length ? h('div', { class: 'list' }, K.missingByPlace.map(function (m) { return h('div', { class: 'item' }, h('div', { class: 'grow', text: m.path || 'No place' }), h('div', { class: 'qty', text: n(m.cigars) })); })) : null,
+      h('h3', { text: 'Activity by person' }),
+      h('p', { class: 'muted small' }, 'For the manager: what each person recorded, as counts. Not a verdict on anyone.'),
+      K.people.length ? h('div', { class: 'scroll-x' }, h('table', { class: 'table' },
+        h('tr', {}, h('th', {}, 'Person'), h('th', { class: 'n' }, 'Events'), h('th', { class: 'n' }, 'Sold'), h('th', { class: 'n' }, 'Exceptions'), h('th', { class: 'n' }, 'Adjustments'), h('th', { class: 'n' }, 'Overrides')),
+        K.people.map(function (x) {
+          return h('tr', {}, h('td', { text: x.name }), h('td', { class: 'n', text: n(x.events) }), h('td', { class: 'n', text: n(x.sold) }), h('td', { class: 'n', text: n(x.exceptions) }), h('td', { class: 'n', text: n(x.adjustments) }), h('td', { class: 'n', text: n(x.overrides) }));
+        }))) : h('p', { class: 'muted' }, 'Nothing yet.'),
+      h('h2', { text: 'The scanning pilot' }),
       h('h2', { text: '1. Time to count the store (goal: under 90 minutes)' }),
       counts.length ? h('div', { class: 'list' }, counts.map(function (s) {
         var sec = s.summary.seconds || 0;

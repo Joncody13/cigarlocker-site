@@ -48,27 +48,38 @@
     return loading;
   }
 
+  /** Sound on or off, kept on this device (vibration where the device has it either way). */
+  function soundOn() {
+    try {
+      return root.localStorage.getItem('cl-retail-sound') !== 'off';
+    } catch (e) {
+      return true;
+    }
+  }
+
   /** A short tone: good one high beep, warn two, bad one low. */
   function tone(kind) {
-    try {
-      if (!audio) audio = new (root.AudioContext || root.webkitAudioContext)();
-      if (audio.state === 'suspended') audio.resume();
-      var t = audio.currentTime;
-      var beeps = kind === 'good' ? [[1760, 0, 0.09]] : kind === 'warn' ? [[880, 0, 0.08], [880, 0.13, 0.08]] : [[220, 0, 0.28]];
-      beeps.forEach(function (b) {
-        var o = audio.createOscillator();
-        var g = audio.createGain();
-        o.type = kind === 'bad' ? 'square' : 'sine';
-        o.frequency.value = b[0];
-        g.gain.setValueAtTime(0.0001, t + b[1]);
-        g.gain.exponentialRampToValueAtTime(0.25, t + b[1] + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + b[1] + b[2]);
-        o.connect(g).connect(audio.destination);
-        o.start(t + b[1]);
-        o.stop(t + b[1] + b[2] + 0.02);
-      });
-    } catch (e) {
-      /* no sound: the flash still says it */
+    if (soundOn()) {
+      try {
+        if (!audio) audio = new (root.AudioContext || root.webkitAudioContext)();
+        if (audio.state === 'suspended') audio.resume();
+        var t = audio.currentTime;
+        var beeps = kind === 'good' ? [[1760, 0, 0.09]] : kind === 'warn' ? [[880, 0, 0.08], [880, 0.13, 0.08]] : [[220, 0, 0.28]];
+        beeps.forEach(function (b) {
+          var o = audio.createOscillator();
+          var g = audio.createGain();
+          o.type = kind === 'bad' ? 'square' : 'sine';
+          o.frequency.value = b[0];
+          g.gain.setValueAtTime(0.0001, t + b[1]);
+          g.gain.exponentialRampToValueAtTime(0.25, t + b[1] + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + b[1] + b[2]);
+          o.connect(g).connect(audio.destination);
+          o.start(t + b[1]);
+          o.stop(t + b[1] + b[2] + 0.02);
+        });
+      } catch (e) {
+        /* no sound: the flash still says it */
+      }
     }
     if (navigator.vibrate) {
       try {
@@ -116,7 +127,13 @@
     torch.hidden = true;
     var done = el('button', 'scan-btn strong', 'Done');
     done.type = 'button';
-    top.append(title, torch, done);
+    var sound = el('button', 'scan-btn', soundOn() ? 'Sound on' : 'Sound off');
+    sound.type = 'button';
+    sound.addEventListener('click', function () {
+      try { root.localStorage.setItem('cl-retail-sound', soundOn() ? 'off' : 'on'); } catch (e) { /* page only */ }
+      sound.textContent = soundOn() ? 'Sound on' : 'Sound off';
+    });
+    top.append(title, sound, torch, done);
     var bottom = el('div', 'scan-bottom');
     var status = el('div', 'scan-status', o.hint || 'Point the camera at a code.');
     status.setAttribute('role', 'status');
@@ -304,6 +321,7 @@
       ev.preventDefault();
       var v = typed.value.trim();
       if (!v) return;
+      v = Codes.ownCode(v) || v;
       typed.value = '';
       if (paused) {
         typedWaiting = v;
