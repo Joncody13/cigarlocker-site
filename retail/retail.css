@@ -348,3 +348,31 @@ html.scanning, html.scanning body { overflow: hidden; }
 .bar-net + .bar-me { margin-left: 8px; }
 .seg.disp { display: flex; }
 .seg.disp button { flex: 1 1 auto; min-width: 88px; }
+
+/* The register: always ready for the next scan. */
+.reg-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.reg-head h1 { margin-bottom: 4px; }
+.reg-banner { border-radius: 14px; padding: 16px 18px; font-size: 20px; font-weight: 750; margin: 12px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; min-height: 64px; }
+.reg-banner.idle { background: var(--surface-2); color: var(--muted); }
+.reg-banner.good { background: var(--good-bg); color: var(--good); }
+.reg-banner.warn { background: var(--warn-bg); color: var(--warn); }
+.reg-banner.bad { background: var(--bad-bg); color: var(--bad); }
+.reg-lines { background: var(--surface); border-radius: 14px; box-shadow: var(--shadow); overflow: hidden; }
+.reg-line { display: grid; grid-template-columns: minmax(0, 1fr) 150px 110px 44px; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.reg-line > .qty { text-align: center; font-size: 18px; font-weight: 700; }
+.reg-line > .stepper { justify-self: center; }
+@media (max-width: 560px) { .reg-line { grid-template-columns: minmax(0, 1fr) auto auto 36px; } }
+.reg-line:last-child { border-bottom: 0; }
+.reg-line .name { font-weight: 700; }
+.reg-line .sub { color: var(--muted); font-size: 13px; }
+.reg-line.fresh { animation: reg-fresh 0.9s ease-out; }
+.reg-line.review { background: var(--bad-bg); }
+.reg-line.review .sub { color: var(--bad); font-weight: 650; }
+@keyframes reg-fresh { from { background: var(--good-bg); } to { background: transparent; } }
+.reg-price { text-align: right; min-width: 84px; font-weight: 700; }
+.reg-empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+.reg-total { display: flex; justify-content: space-between; align-items: baseline; padding: 14px 4px; font-size: 18px; }
+.reg-total b { font-size: 28px; }
+.reg-test { border: 2px dashed var(--line); border-radius: 12px; padding: 18px; text-align: center; margin: 12px 0; min-height: 64px; outline: none; }
+.reg-test:focus { border-color: var(--brand, #0E4A47); }
+@media (prefers-reduced-motion: reduce) { .reg-line.fresh { animation: none; } }

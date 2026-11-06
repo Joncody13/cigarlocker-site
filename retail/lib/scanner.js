@@ -21,6 +21,8 @@
   var Codes = root.RetailCodes;
   var loading = null;
   var audio = null;
+  // The scanner open now, if any: a dedicated scanner's reads go to it (feed).
+  var current = null;
 
   function load() {
     if (root.BarcodeDetectionAPI) return Promise.resolve(root.BarcodeDetectionAPI);
@@ -299,6 +301,7 @@
     function close() {
       if (closed) return;
       closed = true;
+      if (current === ctl) current = null;
       stop();
       veil.remove();
       document.documentElement.classList.remove('scanning');
@@ -355,8 +358,21 @@
       /* fine */
     }
     start();
+    // A code from a dedicated scanner (a keyboard-type reader) while this
+    // one is open: handled as one read by the camera, or waiting its turn.
+    ctl.feed = function (code) {
+      var v = Codes.ownCode(code) || String(code || '').trim();
+      if (!v || closed) return;
+      if (paused) {
+        typedWaiting = v;
+        ctl.say('Next: ' + v);
+        return;
+      }
+      handle(v, '');
+    };
+    current = ctl;
     return ctl;
   }
 
-  root.RetailScanner = { open: open, load: load, tone: tone };
+  root.RetailScanner = { open: open, load: load, tone: tone, active: function () { return current; } };
 })(self);
