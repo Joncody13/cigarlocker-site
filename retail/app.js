@@ -17,6 +17,7 @@
   var O = self.RetailOutbox;
   var Hid = self.RetailHid;
   var Reg = self.RetailRegister;
+  var Pick = self.RetailPick;
   // This device's own id, sent with every request so each event says which
   // tablet or phone made it (never used for permission).
   var DEVICE = (function () {
@@ -446,6 +447,9 @@
     state.timers.forEach(clearInterval);
     state.timers = [];
     state.hidHandler = null;
+    state.typeTarget = null;
+    state.registerReset = null;
+    state.registerKnows = null;
     state.hidTest = null;
     document.querySelectorAll('.veil, .sticky-foot').forEach(function (v) { v.remove(); });
     var parts = location.hash.replace(/^#\/?/, '').split('/').filter(Boolean);
@@ -3216,22 +3220,71 @@
   function editable(t) {
     return !!t && (t.isContentEditable || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT');
   }
+  // A box marked data-scan (the register's search) takes typing and scans
+  // alike: what a scan typed into it is taken back out, and the scan goes on
+  // to the register. On the register, typing with nothing focused goes into
+  // its search (state.typeTarget).
+  var hidLast = -1;
+  var hidSnap = null;
+  function hidUndoTyping() {
+    if (hidSnap && hidSnap.el.isConnected && hidSnap.el.value !== hidSnap.value) {
+      hidSnap.el.value = hidSnap.value;
+      hidSnap.el.dispatchEvent(new Event('input'));
+    }
+    hidSnap = null;
+  }
+  /**
+   * In a box where people type too, a burst is a scan only when it looks like
+   * one: no spaces, and either a scanner's pace (keys 20 ms apart or less) or
+   * a code the register knows. A person typing "tabtor" fast is not a scan.
+   */
+  function scanInBox(scan) {
+    if (/\s/.test(scan.code)) return false;
+    var g = (scan.gaps || []).slice().sort(function (a, b) { return a - b; });
+    var median = g.length ? g[g.length >> 1] : 0;
+    return median <= 20 || !!(state.registerKnows && state.registerKnows(scan.code));
+  }
+  function overlayOpen() {
+    return !!document.querySelector('.veil') || !!(self.RetailScanner && self.RetailScanner.active());
+  }
   document.addEventListener('keydown', function (ev) {
     if (!state.store || ev.ctrlKey || ev.metaKey || ev.altKey) return;
-    if (editable(ev.target)) { hidReader.reset(); return; }
-    var r = hidReader.key(ev.key, ev.timeStamp || performance.now());
+    var t = ev.target;
+    var scanBox = t && t.getAttribute && t.getAttribute('data-scan') === '1' ? t : null;
+    if (editable(t) && !scanBox) { hidReader.reset(); return; }
+    var now = ev.timeStamp || performance.now();
+    var box = scanBox || (state.typeTarget && state.typeTarget.isConnected && !overlayOpen() ? state.typeTarget : null);
+    if (box && ev.key.length === 1 && (!hidReader.pending() || now - hidLast > hidReader.settings.maxGapMs)) hidSnap = { el: box, value: box.value };
+    hidLast = now;
+    var r = hidReader.key(ev.key, now);
+    if (r && r.scan && scanBox && !scanInBox(r.scan)) {
+      // A quick typist, not a scanner: the search's own Enter takes it.
+      hidSnap = null;
+      return;
+    }
     if (r && r.scan) {
       ev.preventDefault();
       ev.stopPropagation();
+      hidUndoTyping();
       routeScan(r.scan.code, r.scan);
-    } else if (r && r.burst && (ev.key === ' ' || ev.key === 'Enter')) {
-      ev.preventDefault();
+      return;
+    }
+    if (r && r.burst && !scanBox && (ev.key === ' ' || ev.key === 'Enter')) { ev.preventDefault(); return; }
+    if (!scanBox && box && !editable(t)) {
+      if (ev.key.length === 1 && ev.key !== ' ') {
+        ev.preventDefault();
+        box.focus();
+        box.value += ev.key;
+        box.dispatchEvent(new Event('input'));
+      } else if (ev.key === 'Escape' && state.registerReset) {
+        state.registerReset();
+      }
     }
   }, true);
   setInterval(function () {
     if (!hidReader.pending()) return;
     var r = hidReader.idle(performance.now());
-    if (r && r.scan) routeScan(r.scan.code, r.scan);
+    if (r && r.scan) { hidUndoTyping(); routeScan(r.scan.code, r.scan); }
   }, 40);
 
   function routeScan(code, meta) {
@@ -3294,20 +3347,28 @@
     } catch (e) {
       cacheRaw = loadJson(regKey('regcache'), null);
       if (!cacheRaw) throw e;
-      offlineNote = 'No connection: scanning with this register\'s list from ' + new Date(cacheRaw.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '.';
+      offlineNote = 'No connection: working from this register\'s list of ' + new Date(cacheRaw.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + '.';
     }
     var ix = Reg.index(cacheRaw);
+    var items = Pick.items(ix);
     var sale = loadJson(regKey('sale'), null);
     if (!sale || !sale.id || !Array.isArray(sale.lines)) sale = Reg.newSale(O.uuid());
     var reviews = {};
     var lastKey = null;
+    function useCache(c) {
+      cacheRaw = c;
+      ix = Reg.index(c);
+      items = Pick.items(ix);
+      saveJson(regKey('regcache'), c);
+    }
 
-    var banner = h('div', { class: 'reg-banner idle', role: 'status', 'aria-live': 'polite' }, 'Ready: scan the next cigar');
+    var banner = h('div', { class: 'reg-banner idle', role: 'status', 'aria-live': 'polite' }, 'Ready: scan, search or tap');
     var linesEl = h('div', { class: 'reg-lines' });
     var totalEl = h('div', { class: 'reg-total' });
     var completeBtn = h('button', { class: 'btn primary big wide', type: 'button' });
     var msg = h('p', { class: 'error' });
     var recentEl = h('div', { class: 'list' });
+    var saleEl = null;
 
     function keep() { saveJson(regKey('sale'), sale); }
     var quiet = false;
@@ -3322,28 +3383,42 @@
         reading = null;
       }
     }
+    function lineSub(l) {
+      if (l.kind === 'unit') return l.token + ' · from ' + l.boxCode;
+      if (l.kind === 'king') return 'Whole box ' + l.boxCode;
+      if (l.kind === 'queen') return (l.chosen ? 'Chosen from open box ' : 'From open box ') + l.boxCode;
+      if (l.override) return 'Manager override · ' + (l.note || '');
+      var opens = openBoxes(l.product);
+      var how = l.by === 'hand' ? 'Chosen by hand' : 'By its factory code';
+      return how + (ix.rule === 'fifo' && opens.length ? ' · oldest open box first' : '');
+    }
+    function openBoxes(pid) {
+      var it = items.filter(function (x) { return x.id === pid; })[0];
+      return it ? it.open.filter(function (b) { return b.remaining - b.labeled > 0; }) : [];
+    }
     function draw() {
       var t = Reg.totals(sale);
       linesEl.replaceChildren.apply(linesEl, sale.lines.length ? sale.lines.slice().reverse().map(function (l) {
-        var sub = l.kind === 'unit' ? l.token + ' · from ' + l.boxCode
-          : l.kind === 'king' ? 'Whole box ' + l.boxCode
-          : l.kind === 'queen' ? 'From open box ' + l.boxCode
-          : l.override ? 'Manager override · ' + (l.note || '') : 'By its factory code';
         var each = l.price === null || l.price === undefined ? 'no price' : money(l.price, true);
-        var line = h('div', { class: 'reg-line' + (l.key === lastKey ? ' fresh' : '') + (reviews[l.key] ? ' review' : '') },
-          h('div', { class: 'grow' }, h('div', { class: 'name', text: l.name }), h('div', { class: 'sub', text: reviews[l.key] || sub })),
+        var sub = h('div', { class: 'sub', text: reviews[l.key] || lineSub(l) });
+        // A cigar chosen by hand comes from the oldest open box unless the cashier picks another.
+        if (!reviews[l.key] && l.kind === 'product' && !l.override && ix.rule === 'fifo' && openBoxes(l.product).length > 1) {
+          sub.appendChild(document.createTextNode(' · '));
+          sub.appendChild(h('button', { class: 'linklike', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); chooseBox(l); } }, 'Another box'));
+        }
+        return h('div', { class: 'reg-line' + (l.key === lastKey ? ' fresh' : '') + (reviews[l.key] ? ' review' : '') },
+          h('div', { class: 'grow' }, h('div', { class: 'name', text: l.name }), sub),
           l.kind === 'queen' || l.kind === 'product'
-            ? stepper(l.quantity, function (v) { sale = Reg.setQuantity(sale, l.key, v); keep(); drawTotals(); })
+            ? stepper(l.quantity, function (v) { sale = Reg.setQuantity(sale, l.key, v); keep(); drawTotals(); drawPick(); })
             : h('div', { class: 'qty', text: n(l.quantity) }),
           h('div', { class: 'reg-price' }, h('div', {}, l.price === null || l.price === undefined ? '—' : money(l.price * l.quantity, true)), h('div', { class: 'sub' }, each + (l.quantity > 1 ? ' each' : ''))),
           h('button', { class: 'btn small quiet', type: 'button', 'aria-label': 'Take ' + l.name + ' off the sale', onclick: function (ev) {
             ev.currentTarget.blur();
             sale = Reg.remove(sale, l.key);
             delete reviews[l.key];
-            keep(); draw();
+            keep(); draw(); drawPick();
           } }, '×'));
-        return line;
-      }) : [h('div', { class: 'reg-empty' }, 'Pass each cigar\'s label in front of the scanner.')]);
+      }) : [h('div', { class: 'reg-empty' }, 'Scan a label, search, or tap a brand.')]);
       drawTotals(t);
     }
     function drawTotals(t0) {
@@ -3354,10 +3429,26 @@
       completeBtn.disabled = !sale.lines.length || held > 0;
       completeBtn.textContent = held ? held + (held === 1 ? ' line needs review' : ' lines need review') : 'Complete sale · ' + n(t.cigars) + (t.cigars === 1 ? ' cigar' : ' cigars');
     }
+    function chooseBox(l) {
+      var list = h('div', { class: 'list' });
+      var close = sheet('Which open box?', h('div', {},
+        h('p', { class: 'muted small' }, 'The store takes the oldest open box first. Choose another when the cigar comes from it.'), list));
+      openBoxes(l.product).forEach(function (b, i) {
+        list.appendChild(h('button', { class: 'item tap', type: 'button', onclick: function () {
+          sale = Reg.toQueen(sale, l.key, b.id, ix);
+          var q = sale.lines.filter(function (x) { return x.kind === 'queen' && x.box === b.id; })[0];
+          if (q && !q.entry) q.entry = l.entry || 'browse';
+          keep(); draw(); close();
+          say('good', l.name + ' · from open box ' + b.code);
+        } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: b.code + (i === 0 ? ' · oldest' : '') }),
+          h('div', { class: 'sub', text: (b.remaining - b.labeled) + ' without labels · opened ' + (b.opened ? new Date(b.opened).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—') }))));
+      });
+    }
 
     /** A scanned code into the sale: at once from this register's list; checked with the server behind it. */
     async function onScan(code, meta) {
-      reading = { code: code, input: quiet ? 'camera' : meta ? 'scanner' : 'typed' };
+      var input = quiet ? 'camera' : meta && meta.typed ? 'typed' : meta ? 'scanner' : 'typed';
+      reading = { code: code, input: input };
       var hit = Reg.resolve(ix, code, Codes);
       if (hit.kind === 'ask') {
         say('idle', 'Checking ' + hit.code + '…');
@@ -3378,10 +3469,7 @@
       }
       var res = Reg.scan(sale, hit, ix);
       if (res.status === 'added') {
-        sale = res.sale;
-        lastKey = res.key;
-        keep();
-        draw();
+        took(res, input);
         say('good', '✓ ' + res.words);
         if (hit.kind === 'unit') check(hit.code, res.key);
         return;
@@ -3393,13 +3481,22 @@
             ev.currentTarget.blur();
             sale = Reg.override(sale, hit.code, ix);
             lastKey = sale.lines[sale.lines.length - 1].key;
-            keep(); draw();
+            keep(); draw(); drawPick();
             say('warn', 'Manager override: one more ' + hit.product.name + ', taken by the store\'s rule and recorded.');
           } }, 'Override: it is a second cigar'));
         }
         return;
       }
       say(res.tone, res.words);
+    }
+    /** A line just added: kept, drawn, and marked with how it went in (the first way, when it grows). */
+    function took(res, entry) {
+      sale = res.sale;
+      lastKey = res.key;
+      sale.lines.forEach(function (l) { if (l.key === res.key && !l.entry) l.entry = entry; });
+      keep();
+      draw();
+      drawPick();
     }
     /** The server's word on a labeled cigar just added (sold at another register meanwhile?). */
     function check(token, key) {
@@ -3412,6 +3509,250 @@
       }).catch(function () { /* offline: the server checks it at Complete sale */ });
     }
 
+    // ---- choosing by hand: the search, the tiles, the lists ----------------------------------------
+
+    var path = { brand: null, line: null, version: null, auto: {} };
+    var homeTab = localStorage.getItem('cl-retail-reghome') || 'brands';
+    var brandSort = localStorage.getItem('cl-retail-brandsort') || 'sold';
+    var arrange = false;
+    var hi = -1;
+    var shown = [];
+    var localSold = loadJson(regKey('recent'), {});
+    var search = h('input', { class: 'input reg-search', type: 'search', 'data-scan': '1', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
+      enterkeyhint: 'go', placeholder: 'Search: brand, line, size, SKU, or a code', 'aria-label': 'Search this store\'s cigars' });
+    var clearBtn = h('button', { class: 'reg-clear', type: 'button', 'aria-label': 'Clear the search' }, '×');
+    var crumbsEl = h('div', { class: 'reg-crumbs' });
+    var pickEl = h('div', { class: 'reg-pickbody' });
+    var arrangeBtn = can('manager') ? h('button', { class: 'btn small', type: 'button' }, 'Arrange') : null;
+    var fine = window.matchMedia && window.matchMedia('(pointer: fine)').matches;
+
+    function inSaleOf(pid) {
+      return sale.lines.reduce(function (s, l) { return s + (l.product === pid ? l.quantity : 0); }, 0);
+    }
+    function variantBtn(it, opts) {
+      var o = opts || {};
+      var free = Reg.freeFor(ix, sale, it.id);
+      var left = it.onHand - inSaleOf(it.id);
+      var pinned = Pick.isPinned(ix.pins, 'product', it.id);
+      var title = o.full ? it.name : it.vitola || it.size || it.name;
+      var stock = it.onHand ? n(Math.max(0, left)) + ' on hand' : 'None on hand';
+      // The oldest open box, less what this sale already takes from it (by the rule, or chosen).
+      var fromOldest = it.queen ? sale.lines.reduce(function (s0, l) {
+        return s0 + ((l.kind === 'product' && l.product === it.id) || (l.kind === 'queen' && l.boxCode === it.queen.code) ? l.quantity : 0);
+      }, 0) : 0;
+      var queen = it.queen && ix.rule === 'fifo' ? 'Open box: ' + n(Math.max(0, it.queen.remaining - fromOldest)) + ' left' : it.sealed && !it.open.length ? 'Sealed boxes only' : '';
+      var b = h('button', { class: 'reg-var' + (free <= 0 ? ' dim' : '') + (o.hi ? ' hi' : '') + (arrange && pinned ? ' pinned' : ''), type: 'button',
+        'data-product': it.id, 'aria-label': it.name + (it.price === null ? '' : ', ' + money(it.price, true)) + ', ' + stock },
+        h('div', { class: 'v-top' }, h('span', { class: 'v-name', text: title }), it.low ? h('span', { class: 'chip warn', text: 'Low' }) : null,
+          arrange ? h('span', { class: 'v-pin', text: pinned ? '★' : '☆' }) : null),
+        o.full || !it.size || it.size === title ? (o.full && it.size ? h('div', { class: 'v-size', text: it.size }) : null) : h('div', { class: 'v-size', text: it.size }),
+        h('div', { class: 'v-foot' }, h('b', { text: it.price === null || it.price === undefined ? 'No price' : money(it.price, true) }),
+          h('span', { class: 'v-stock', text: stock + (queen ? ' · ' + queen : '') })));
+      b.addEventListener('click', function (ev) {
+        ev.currentTarget.blur();
+        if (arrange) return pin('product', it.id, null, !pinned);
+        add(it, o.entry || 'browse', 1);
+      });
+      return b;
+    }
+    function tile(name, sub, onTap, extra) {
+      return h('button', { class: 'reg-tile' + (extra && extra.cls ? ' ' + extra.cls : ''), type: 'button', onclick: function (ev) { ev.currentTarget.blur(); onTap(); } },
+        h('span', { class: 't-name', text: name }), sub ? h('span', { class: 't-sub', text: sub }) : null, extra && extra.star ? h('span', { class: 't-star', text: extra.star }) : null);
+    }
+    function grid(nodes, cls) {
+      return h('div', { class: cls || 'reg-grid' }, nodes);
+    }
+    // A pin shows at once; the server's list follows (the newest request's answer only).
+    var pinSeq = 0;
+    async function pin(kind, product, brand, on) {
+      var before = ix.pins.slice();
+      var same = function (p) { return p.kind === kind && (kind === 'product' ? p.product === product : Pick.plain(p.brand) === Pick.plain(brand)); };
+      var last = ix.pins.filter(function (p) { return p.kind === kind; }).reduce(function (m, p) { return Math.max(m, p.position); }, 0);
+      ix.pins = on ? ix.pins.filter(function (p) { return !same(p); }).concat([{ kind: kind, product: product || null, brand: brand || '', position: last + 1 }])
+        : ix.pins.filter(function (p) { return !same(p); });
+      say('good', (on ? 'Pinned to the register\'s home: ' : 'Taken off the register\'s home: ') + (brand || (ix.products[product] || {}).name || ''));
+      drawPick();
+      var mine = ++pinSeq;
+      try {
+        var pins = await rpc('retail_register_pin', { p_store: state.store.id, p_kind: kind, p_product: product, p_brand: brand, p_on: on });
+        if (mine !== pinSeq) return;
+        cacheRaw.pins = pins;
+        ix.pins = pins.map(function (x) { return { kind: x[0], product: x[1] || null, brand: x[2] || '', position: Number(x[3] || 0) }; });
+        saveJson(regKey('regcache'), cacheRaw);
+      } catch (e) {
+        if (mine === pinSeq) ix.pins = before;
+        say('bad', errorText(e));
+      }
+      drawPick();
+    }
+
+    /** One cigar (or qty) chosen by hand, into the sale; then back to the start. */
+    function add(it, entry, qty) {
+      var res = null;
+      var added = 0;
+      for (var i = 0; i < (qty || 1); i++) {
+        res = Reg.scan(sale, { kind: 'product', product: it.product, by: 'hand' }, ix);
+        if (res.status !== 'added') break;
+        took(res, entry);
+        added++;
+      }
+      if (!added) {
+        say(res.tone, it.sealed && !it.open.length && ix.rule === 'fifo'
+          ? 'No ' + it.name + ' open: open a box, or scan the box\'s label to sell it whole.'
+          : res.words);
+      } else {
+        var where = it.open.length && ix.rule === 'fifo' ? ' · from the oldest open box' : '';
+        say(added < qty ? 'warn' : 'good', '✓ ' + (added > 1 ? added + ' × ' : '') + it.name + where + (added < qty ? ' · only ' + added + ' could be added: ' + res.words : ''));
+      }
+      reset(true);
+    }
+    /** Back to where a sale starts: the search empty, the brands showing. */
+    function reset(afterAdd) {
+      var hadFocus = document.activeElement === search;
+      search.value = '';
+      path = { brand: null, line: null, version: null, auto: {} };
+      hi = -1;
+      drawPick();
+      if (hadFocus || (afterAdd && fine)) search.focus({ preventScroll: true });
+    }
+    state.registerReset = function () { reset(false); };
+
+    function fillPick() {
+      pickEl.replaceChildren.apply(pickEl, Array.prototype.filter.call(arguments, Boolean));
+    }
+    function drawPick() {
+      var q = Pick.parse(search.value);
+      clearBtn.hidden = !search.value;
+      if (q.tokens.length) return drawResults(q);
+      shown = [];
+      var st = Pick.step(items, path, brandSort, ix.pins);
+      path = st.path;
+      drawCrumbs(st);
+      if (st.level === 'brands') return drawHome(st.options);
+      if (st.level === 'lines' || st.level === 'versions') {
+        pickEl.replaceChildren(grid(st.options.map(function (g) {
+          return tile(g.name, n(g.count) + (g.count === 1 ? ' size' : ' sizes'), function () {
+            if (st.level === 'lines') path = { brand: path.brand, line: g.key, version: null, auto: {} };
+            else path = { brand: path.brand, line: path.line, version: g.key, auto: { line: path.auto.line } };
+            drawPick();
+          });
+        }), 'reg-grid tiles'));
+        return;
+      }
+      pickEl.replaceChildren(grid(st.options.map(function (it) { return variantBtn(it, { entry: 'browse' }); }), 'reg-grid vars'));
+    }
+    function drawCrumbs(st) {
+      if (st.level === 'brands') { crumbsEl.replaceChildren(); crumbsEl.hidden = true; return; }
+      crumbsEl.hidden = false;
+      var parts = [h('button', { class: 'btn small reg-back', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); path = Pick.back(path); drawPick(); } }, '‹ Back'),
+        h('button', { class: 'crumb', type: 'button', onclick: function () { path = Pick.upTo(path, 'home'); drawPick(); } }, 'All brands')];
+      st.crumbs.forEach(function (c, i) {
+        parts.push(h('span', { class: 'sep', text: '›' }));
+        var last = i === st.crumbs.length - 1 && st.level === 'sizes';
+        parts.push(c.auto || last ? h('span', { class: 'crumb here', text: c.name })
+          : h('button', { class: 'crumb', type: 'button', onclick: function () { path = Pick.upTo(path, c.level); drawPick(); } }, c.name));
+      });
+      crumbsEl.replaceChildren.apply(crumbsEl, parts);
+    }
+    function drawHome(brandGroups) {
+      var favs = Pick.favorites(items, ix.pins);
+      var seg = h('div', { class: 'seg' }, [['brands', 'Brands'], ['recent', 'Recent'], ['most', 'Most sold']].map(function (o) {
+        return h('button', { type: 'button', class: homeTab === o[0] ? 'on' : '', onclick: function () { homeTab = o[0]; try { localStorage.setItem('cl-retail-reghome', o[0]); } catch (e) { /* page only */ } drawPick(); } }, o[1]);
+      }));
+      var body;
+      if (homeTab === 'recent' || homeTab === 'most') {
+        var list = homeTab === 'recent' ? Pick.recent(items, localSold, 16) : Pick.mostSold(items, 16);
+        body = list.length ? grid(list.map(function (it) { return variantBtn(it, { full: true, entry: homeTab === 'recent' ? 'recent' : 'most_sold' }); }), 'reg-grid vars')
+          : h('p', { class: 'muted reg-none' }, homeTab === 'recent' ? 'Nothing sold yet: cigars appear here as they sell.' : 'No sales in the last 90 days yet.');
+      } else {
+        var sortSeg = h('div', { class: 'seg small' }, [['sold', 'Most sold'], ['pinned', 'Pinned'], ['alpha', 'A–Z']].map(function (o) {
+          return h('button', { type: 'button', class: brandSort === o[0] ? 'on' : '', onclick: function () { brandSort = o[0]; try { localStorage.setItem('cl-retail-brandsort', o[0]); } catch (e) { /* page only */ } drawPick(); } }, o[1]);
+        }));
+        body = h('div', {}, h('div', { class: 'reg-sortrow' }, h('span', { class: 'muted small' }, 'Brands on hand'), sortSeg),
+          brandGroups.length ? grid(brandGroups.map(function (g) {
+            var star = g.pinned !== null ? '★' : arrange ? '☆' : '';
+            var t = tile(g.name, n(g.count) + (g.count === 1 ? ' size' : ' sizes'), function () {
+              if (arrange) return pin('brand', null, g.name, g.pinned === null);
+              path = { brand: g.key, line: null, version: null, auto: {} };
+              drawPick();
+            }, { star: star, cls: 'brand' });
+            return t;
+          }), 'reg-grid tiles') : h('p', { class: 'muted reg-none' }, 'No cigars on hand yet. Receive or count them, and their brands appear here.'));
+      }
+      fillPick(
+        favs.length ? h('div', { class: 'reg-favs' }, h('p', { class: 'over' }, 'Favorites'), grid(favs.map(function (it) { return variantBtn(it, { full: true, entry: 'favorite' }); }), 'reg-grid vars')) : null,
+        arrange ? h('p', { class: 'info-text small' }, 'Arranging: tap a brand or a cigar to pin it to this home, or to take it off. Pinned brands lead when sorted by Pinned.') : null,
+        seg, body);
+    }
+    function drawResults(q) {
+      crumbsEl.hidden = true;
+      var results = Pick.search(items, q, { recent: localSold });
+      var on = results.filter(function (r) { return r.stocked; }).slice(0, 24);
+      var off = results.filter(function (r) { return !r.stocked; }).slice(0, 6);
+      shown = on.map(function (r) { return r.item; });
+      if (hi >= shown.length) hi = shown.length - 1;
+      var sole = Pick.sole(results);
+      var head = on.length
+        ? h('p', { class: 'muted small reg-hint' }, sole ? 'Enter adds ' + (q.qty > 1 ? q.qty + ' × ' : '') + sole.item.name + '.' : n(on.length) + (on.length === 1 ? ' cigar' : ' cigars') + ' on hand. ↑ ↓ to choose, Enter to add.')
+        : h('div', { class: 'reg-none' }, h('p', { class: 'muted' }, 'Nothing on hand matches “' + q.text + '”.'),
+          h('button', { class: 'btn small', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); demandSheet('register', null, q.text); } }, 'Note it as asked for'));
+      fillPick(head,
+        on.length ? grid(on.map(function (r, i) { return variantBtn(r.item, { full: true, entry: 'search', hi: i === hi || (hi < 0 && sole && r === sole) }); }), 'reg-grid vars') : null,
+        off.length ? h('p', { class: 'over' }, 'Not on hand') : null,
+        off.length ? h('div', { class: 'list' }, off.map(function (r) {
+          return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: r.item.name }), h('div', { class: 'sub', text: 'None on hand' + (r.item.price === null ? '' : ' · ' + money(r.item.price, true)) })));
+        })) : null);
+    }
+
+    search.addEventListener('input', function () { hi = -1; drawPick(); });
+    search.addEventListener('keydown', function (ev) {
+      if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+        if (!shown.length) return;
+        ev.preventDefault();
+        hi = ev.key === 'ArrowDown' ? Math.min(shown.length - 1, hi + 1) : Math.max(0, hi - 1);
+        drawPick();
+        var el = pickEl.querySelector('.reg-var.hi');
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+      } else if (ev.key === 'Escape') {
+        ev.preventDefault();
+        reset(false);
+      } else if (ev.key === 'Enter') {
+        ev.preventDefault();
+        enter();
+      }
+    });
+    clearBtn.addEventListener('click', function () { reset(false); search.focus(); });
+    /** Enter in the search: a code typed is a scan; else the cigar chosen, or the only one that fits. */
+    function enter() {
+      var text = search.value.trim();
+      if (!text) return;
+      var q = Pick.parse(text);
+      if (!/\s/.test(text)) {
+        var hit = Reg.resolve(ix, text, Codes);
+        if (hit.kind !== 'unknown') {
+          reset(false);
+          return onScan(text, { typed: true });
+        }
+      }
+      var results = Pick.search(items, q, { recent: localSold });
+      var pick = hi >= 0 && shown[hi] ? shown[hi] : (Pick.sole(results) || {}).item;
+      if (pick) return add(pick, 'search', q.qty);
+      var on = results.filter(function (r) { return r.stocked; });
+      if (!on.length) return say('bad', 'Nothing on hand matches “' + q.text + '”.');
+      hi = 0;
+      drawPick();
+      say('warn', n(on.length) + ' cigars match. ↑ ↓ to choose, then Enter.');
+    }
+    if (arrangeBtn) {
+      arrangeBtn.addEventListener('click', function (ev) {
+        ev.currentTarget.blur();
+        arrange = !arrange;
+        arrangeBtn.textContent = arrange ? 'Done arranging' : 'Arrange';
+        arrangeBtn.classList.toggle('primary', arrange);
+        drawPick();
+      });
+    }
+
     async function complete(ev) {
       if (ev) ev.currentTarget.blur();
       msg.textContent = '';
@@ -3422,7 +3763,7 @@
       completeBtn.disabled = true;
       var done = sale;
       try {
-        var r = await rpc('retail_sale_complete', args);
+        var r = await rpc('retail_register_complete', args);
         if (!r.ok) {
           var l = r.line ? sale.lines[r.line - 1] : null;
           if (l) reviews[l.key] = r.words;
@@ -3435,19 +3776,22 @@
       } catch (e) {
         if (!O.isNetworkError(e, navigator.onLine)) { msg.textContent = errorText(e); drawTotals(); return; }
         // Completed at the counter with no connection: kept here and sent once when it is back.
-        outbox.add({ op: done.id, fn: 'retail_sale_complete', args: args, label: 'Sale · ' + t.cigars + (t.cigars === 1 ? ' cigar' : ' cigars'), store: state.store.id, at: Date.now() });
+        outbox.add({ op: done.id, fn: 'retail_register_complete', args: args, label: 'Sale · ' + t.cigars + (t.cigars === 1 ? ' cigar' : ' cigars'), store: state.store.id, at: Date.now() });
         Reg.afterSale(ix, done);
         drawNet();
         say('warn', 'Sale kept on this register (no connection): sent once when it is back.');
       }
+      localSold = Pick.noteSold(localSold, done.lines.map(function (x) { return x.product; }));
+      saveJson(regKey('recent'), localSold);
+      items = Pick.items(ix);
       sale = Reg.newSale(O.uuid());
       reviews = {};
       lastKey = null;
       keep();
       draw();
-      saveJson(regKey('regcache'), cacheRaw);
+      reset(false);
       refreshRecent();
-      rpc('retail_register_cache', { p_store: state.store.id }).then(function (c) { cacheRaw = c; ix = Reg.index(c); saveJson(regKey('regcache'), c); }).catch(function () {});
+      rpc('retail_register_cache', { p_store: state.store.id }).then(function (c) { useCache(c); drawPick(); }).catch(function () {});
     }
     completeBtn.addEventListener('click', complete);
 
@@ -3458,14 +3802,8 @@
       reviews = {};
       keep();
       draw();
-      say('idle', 'Sale cancelled. Ready: scan the next cigar');
-    }
-    function typeCode(ev) {
-      if (ev) ev.currentTarget.blur();
-      var input = h('input', { class: 'input', autocapitalize: 'characters', autocomplete: 'off', placeholder: 'CLS-…, CLB-… or a barcode\'s digits' });
-      var close = sheet('Type a code', h('form', { onsubmit: function (e) { e.preventDefault(); var v = input.value.trim(); close(); if (v) onScan(v); } },
-        h('p', { class: 'muted small' }, 'For a label too torn to scan.'), input, h('button', { class: 'btn primary wide', type: 'submit' }, 'Add')));
-      setTimeout(function () { input.focus(); }, 50);
+      reset(false);
+      say('idle', 'Sale cancelled. Ready: scan, search or tap');
     }
     function camera(ev) {
       if (ev) ev.currentTarget.blur();
@@ -3495,27 +3833,50 @@
     }
 
     state.hidHandler = onScan;
+    state.typeTarget = search;
+    state.registerKnows = function (code) { return Reg.resolve(ix, code, Codes).kind !== 'unknown'; };
     draw();
+    drawPick();
     show(
       h('div', { class: 'reg-head' }, h('div', {}, h('p', { class: 'over' }, 'Register'), h('h1', { text: registerName() })),
         h('div', { class: 'btns' },
-          h('button', { class: 'btn small', type: 'button', onclick: typeCode }, 'Type a code'),
           h('button', { class: 'btn small', type: 'button', onclick: camera }, 'Camera'),
           h('button', { class: 'btn small', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); demandSheet('register'); } }, 'Asked for, not stocked'),
+          arrangeBtn,
           h('button', { class: 'btn small', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); scannerSetup(); } }, 'Scanner setup'))),
       offlineNote ? h('p', { class: 'warn-text small' }, offlineNote) : null,
-      banner,
-      linesEl,
-      totalEl,
-      msg,
-      h('div', { class: 'btns' }, completeBtn),
-      h('div', { class: 'btns' }, h('button', { class: 'btn quiet', type: 'button', onclick: cancel }, 'Cancel sale')),
-      h('p', { class: 'muted small' }, 'Take payment as you do today, then Complete sale: only then do the cigars leave the inventory, all at once. Cigar Locker takes no payment.'),
+      h('div', { class: 'reg-wrap' },
+        banner,
+        h('section', { class: 'reg-pick', 'aria-label': 'Find a cigar' },
+          h('div', { class: 'reg-searchrow' }, search, clearBtn),
+          crumbsEl,
+          pickEl),
+        saleEl = h('section', { class: 'reg-sale', 'aria-label': 'The sale' },
+          linesEl,
+          totalEl,
+          msg,
+          h('div', { class: 'btns' }, completeBtn),
+          h('div', { class: 'btns' }, h('button', { class: 'btn quiet', type: 'button', onclick: cancel }, 'Cancel sale')),
+          h('p', { class: 'muted small' }, 'Take payment as you do today, then Complete sale: only then do the cigars leave the inventory, all at once. Cigar Locker takes no payment.'))),
       h('h2', { text: 'Recent sales' }),
       recentEl);
+    // Beside the tiles (a tablet across, a desk), what was just added sits on top of the
+    // sale, which stays in view; on a narrow screen it sticks above the tiles.
+    var wide = window.matchMedia ? window.matchMedia('(min-width: 740px)') : { matches: true };
+    function placeBanner() {
+      if (wide.matches) saleEl.insertBefore(banner, saleEl.firstChild);
+      else saleEl.parentNode.insertBefore(banner, saleEl.parentNode.firstChild);
+    }
+    placeBanner();
+    if (wide.addEventListener) wide.addEventListener('change', placeBanner);
+    if (fine) search.focus({ preventScroll: true });
     refreshRecent();
     every(30000, function () {
-      rpc('retail_register_cache', { p_store: state.store.id }).then(function (c) { cacheRaw = c; ix = Reg.index(c); saveJson(regKey('regcache'), c); }).catch(function () {});
+      rpc('retail_register_cache', { p_store: state.store.id }).then(function (c) {
+        useCache(c);
+        // Redrawn only while nothing is being typed, so the list never jumps under a finger.
+        if (!search.value) drawPick();
+      }).catch(function () {});
     });
   }
 
@@ -3631,8 +3992,8 @@
   // ---- demand the sales cannot show ------------------------------------------------------------
 
   /** "A customer asked for a cigar we do not have": the cigar, how many, and what kind of ask. */
-  function demandSheet(context, after) {
-    var what = h('input', { class: 'input', placeholder: 'Brand, line and size' });
+  function demandSheet(context, after, prefill) {
+    var what = h('input', { class: 'input', placeholder: 'Brand, line and size', value: prefill || '' });
     var howMany = null;
     var kind = 'requested_not_stocked';
     var seg = h('div', { class: 'seg' });

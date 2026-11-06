@@ -21,10 +21,15 @@
   /** The server's compact cache, as lookups. */
   function index(raw) {
     var r = raw || {};
-    var ix = { at: r.at || null, rule: r.rule === 'labels' ? 'labels' : 'fifo', products: {}, byCode: {}, boxes: {}, boxById: {}, units: {}, loose: {} };
+    var ix = { at: r.at || null, rule: r.rule === 'labels' ? 'labels' : 'fifo', products: {}, byCode: {}, boxes: {}, boxById: {}, units: {}, loose: {}, pins: [] };
+    var num = function (v) { return v === null || v === undefined || v === '' ? null : Number(v); };
     (r.products || []).forEach(function (p) {
-      ix.products[p[0]] = { id: p[0], name: p[1] || 'Cigar', price: p[2] === null || p[2] === undefined ? null : Number(p[2]), upc: p[3] || '', sku: p[4] || '', boxCount: p[5], match: p[6] };
+      // 006's seven, then 008's: brand, line, size name, size text, wrapper, length, ring, sold in 90 days, last sold, reorder level.
+      ix.products[p[0]] = { id: p[0], name: p[1] || 'Cigar', price: num(p[2]), upc: p[3] || '', sku: p[4] || '', boxCount: p[5], match: p[6],
+        brand: p[7] || '', line: p[8] || '', vitola: p[9] || '', sizeText: p[10] || '', wrapper: p[11] || '', length: num(p[12]), ring: num(p[13]),
+        sold: Number(p[14] || 0), lastSold: p[15] || null, reorder: num(p[16]) };
     });
+    (r.pins || []).forEach(function (x) { ix.pins.push({ kind: x[0], product: x[1] || null, brand: x[2] || '', position: Number(x[3] || 0) }); });
     function code(v, pid) {
       if (!v) return;
       (ix.byCode[v] = ix.byCode[v] || []).indexOf(pid) < 0 && ix.byCode[v].push(pid);
@@ -36,7 +41,7 @@
     });
     (r.codes || []).forEach(function (c) { code(c[0], c[1]); });
     (r.boxes || []).forEach(function (b) {
-      var box = { id: b[0], code: b[1], state: b[2], remaining: Number(b[3]), original: Number(b[4]), product: b[5], labeled: Number(b[6] || 0) };
+      var box = { id: b[0], code: b[1], state: b[2], remaining: Number(b[3]), original: Number(b[4]), product: b[5], labeled: Number(b[6] || 0), opened: b[7] || null };
       ix.boxes[box.code] = box;
       ix.boxById[box.id] = box;
     });
@@ -158,8 +163,8 @@
       }
       var have = lines.filter(function (l) { return l.kind === 'product' && l.product === p.id && !l.override; })[0];
       if (have) lines = lines.map(function (l) { return l === have ? Object.assign({}, l, { quantity: l.quantity + 1 }) : l; });
-      else lines.push({ key: 'p:' + p.id, kind: 'product', product: p.id, name: p.name, price: p.price, quantity: 1 });
-      return out('good', 'added', p.name + ' · by its factory code', 'p:' + p.id);
+      else lines.push({ key: 'p:' + p.id, kind: 'product', product: p.id, name: p.name, price: p.price, quantity: 1, by: hit.by === 'hand' ? 'hand' : 'code' });
+      return out('good', 'added', p.name + (hit.by === 'hand' ? '' : ' · by its factory code'), 'p:' + p.id);
     }
     if (hit.kind === 'ambiguous') {
       return out('bad', 'review', 'PRODUCT NEEDS REVIEW: ' + hit.code + ' names ' + hit.products.length + ' products (' + hit.products.map(function (x) { return x.name; }).join(', ') + '). Scan the cigar\'s own label.');
@@ -173,6 +178,33 @@
     if (!l) return sale;
     var key = 'o:' + token + ':' + sale.lines.filter(function (x) { return x.override; }).length;
     return { id: sale.id, started: sale.started, lines: sale.lines.concat([{ key: key, kind: 'product', product: l.product, name: l.name, price: l.price, quantity: 1, override: true, note: 'second cigar labeled ' + token }]) };
+  }
+
+  /**
+   * A cigar chosen by hand from one open box rather than by the store's rule
+   * (the oldest open box first): as many of the line as that box can give,
+   * the rest left to the rule.
+   */
+  function toQueen(sale, key, boxId, ix) {
+    var l = sale.lines.filter(function (x) { return x.key === key && x.kind === 'product' && !x.override; })[0];
+    var b = ix.boxById[boxId];
+    if (!l || !b || b.product !== l.product || b.state !== 'open') return sale;
+    var have = sale.lines.filter(function (x) { return x.kind === 'queen' && x.box === b.id; })[0];
+    var free = b.remaining - b.labeled - (have ? have.quantity : 0);
+    var take = Math.min(l.quantity, Math.max(0, free));
+    if (!take) return sale;
+    var lines = [];
+    sale.lines.forEach(function (x) {
+      if (x === l) {
+        if (l.quantity > take) lines.push(Object.assign({}, l, { quantity: l.quantity - take }));
+        if (!have) lines.push({ key: 'q:' + b.id, kind: 'queen', box: b.id, boxCode: b.code, product: l.product, name: l.name, price: l.price, quantity: take, chosen: true });
+      } else if (x === have) {
+        lines.push(Object.assign({}, x, { quantity: x.quantity + take }));
+      } else {
+        lines.push(x);
+      }
+    });
+    return { id: sale.id, started: sale.started, lines: lines };
   }
 
   /** The server's word on one of Cigar Locker's own codes this register did not hold. */
@@ -198,11 +230,13 @@
 
   /** The lines as the server takes them. */
   function forServer(sale) {
+    // entry: how the line went in (the scanner, the search, the tiles...), kept with it (008).
     return sale.lines.map(function (l) {
-      if (l.kind === 'unit') return { kind: 'unit', token: l.token };
-      if (l.kind === 'king') return { kind: 'king', box: l.box };
-      if (l.kind === 'queen') return { kind: 'queen', box: l.box, quantity: l.quantity };
-      return { kind: 'product', product: l.product, quantity: l.quantity, override: !!l.override };
+      var e = l.override ? 'override' : l.entry || '';
+      if (l.kind === 'unit') return { kind: 'unit', token: l.token, entry: e };
+      if (l.kind === 'king') return { kind: 'king', box: l.box, entry: e };
+      if (l.kind === 'queen') return { kind: 'queen', box: l.box, quantity: l.quantity, entry: e };
+      return { kind: 'product', product: l.product, quantity: l.quantity, override: !!l.override, entry: e };
     });
   }
 
@@ -257,5 +291,5 @@
   }
 
   return { index: index, normDigits: normDigits, resolve: resolve, newSale: newSale, scan: scan, override: override, serverWords: serverWords,
-    forServer: forServer, totals: totals, remove: remove, setQuantity: setQuantity, afterSale: afterSale, freeFor: freeFor };
+    forServer: forServer, totals: totals, remove: remove, setQuantity: setQuantity, afterSale: afterSale, freeFor: freeFor, toQueen: toQueen };
 });
