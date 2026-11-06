@@ -875,6 +875,62 @@
         if (filter.miles === undefined) filter.miles = 100;
         return h('div', { class: 'editor' }, numberBox(filter, 'miles', 'miles'), h('span', { class: 'muted', text: 'miles of' }), where, h('button', { type: 'button', class: 'ghost', text: 'Find', onclick: look }), found);
       }
+      case 'brand': {
+        // Matched on the server from the marketing profile (096); only members
+        // who allow personalized offers are ever chosen by it.
+        const brand = h('input', {
+          type: 'text',
+          class: 'text-box',
+          placeholder: 'Padrón',
+          value: filter.brand || '',
+          oninput: (ev) => {
+            filter.brand = ev.target.value;
+            people();
+          },
+        });
+        const bought = filter.bought === true ? ['Has bought it'] : filter.bought === false ? ['Never bought it'] : [];
+        return h(
+          'div',
+          { class: 'editor wrap-editor' },
+          brand,
+          toggles(['Has bought it', 'Never bought it'], bought, (x) => x, (v) => {
+            const want = v === 'Has bought it';
+            filter.bought = filter.bought === want ? null : want;
+            renderFilters();
+          }),
+          h('span', { class: 'muted small', text: 'fondness at least' }),
+          numberBox(filter, 'likesAtLeast', '0 to 1'),
+          h('span', { class: 'muted small', text: 'left at most' }),
+          numberBox(filter, 'leftAtMost', 'cigars'),
+          h('span', { class: 'muted small', text: 'likely rating at least' }),
+          numberBox(filter, 'likelyAtLeast', 'of 10'),
+          h('span', { class: 'muted small', text: 'runs out within' }),
+          numberBox(filter, 'runsOutWithin', 'days'),
+        );
+      }
+      case 'retailer': {
+        const name = h('input', {
+          type: 'text',
+          class: 'text-box',
+          placeholder: 'Two Guys',
+          value: filter.retailer || '',
+          oninput: (ev) => {
+            filter.retailer = ev.target.value;
+            people();
+          },
+        });
+        if (filter.bought === undefined) filter.bought = true;
+        const chosen = filter.bought === false ? ['Never bought there'] : ['Has bought there'];
+        return h(
+          'div',
+          { class: 'editor' },
+          name,
+          toggles(['Has bought there', 'Never bought there'], chosen, (x) => x, (v) => {
+            filter.bought = v === 'Has bought there';
+            renderFilters();
+          }),
+        );
+      }
       default:
         return h('span');
     }
@@ -1315,15 +1371,14 @@
       [2, 3, 4],
     );
     const mails = table(
-      ['Sent', 'Email', 'Delivered', 'Opened', 'Clicked', 'Cart', 'Bought'],
+      // Carts and sales are the email's, never a person's (097).
+      ['Sent', 'Email', 'Delivered', 'Opened', 'Clicked'],
       (d.emails || []).map((e) => [
         dayYearFmt.format(new Date(e.sent)),
         `${e.subject} (${e.kind})${e.unsubscribed ? ' · unsubscribed from it' : ''}${e.bounced ? ' · bounced' : ''}`,
         e.delivered ? 'Yes' : '',
         e.opened ? `${n(e.opens)} times` : '',
         e.clicked ? `${n(e.clicks || 1)} times` : '',
-        e.carted ? 'Yes' : '',
-        e.orders ? money(e.spentCents) : '',
       ]),
       [],
     );
@@ -1384,6 +1439,40 @@
       fact('First and last seen', [m.firstSeen ? `first ${dayYearFmt.format(new Date(m.firstSeen))}` : '', m.lastSeen ? `last ${ago(m.lastSeen)}` : ''].filter(Boolean).join(' · ') || 'Not seen yet'),
       fact('Runs on', [(m.platform || '').replace(/^ios/, 'iPhone').replace(/^android/, 'Android'), m.version && `version ${m.version}`].filter(Boolean).join(', ') + (d.installs > 1 ? ` · ${n(d.installs)} phones` : '') || 'Not seen yet'),
     );
+    // What Cigar Locker worked out from their collection and activity (096):
+    // inside Cigar Locker only, never exported or given to a shop or partner.
+    const mk = d.marketing || {};
+    const prof = (mk.profile && mk.profile.profile) || {};
+    const consent = prof.consent || {};
+    const hundred = (x) => (x == null ? '' : `${Math.round(Number(x) * 100)}`);
+    const brands = table(
+      ['Brand', 'Fondness', 'Have', 'Bought', 'Their rating', 'Likely', 'Lasts', 'Pays a cigar'],
+      (mk.brands || []).slice(0, 20).map((b) => [
+        b.brand,
+        hundred(b.affinity),
+        n(b.on_hand),
+        n(b.bought_total),
+        b.rating_avg != null ? String(b.rating_avg) : '',
+        b.likely != null ? String(b.likely) : '',
+        b.days_left != null ? `${n(Math.round(b.days_left))} days` : '',
+        b.median_unit_cents != null ? money(b.median_unit_cents) : '',
+      ]),
+      [1, 2, 3, 4, 5, 6, 7],
+    );
+    const shares = (o) => Object.entries(o || {}).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k, v]) => `${k} ${hundred(v)}`).join(' · ');
+    const events = mk.events || {};
+    const knows = h(
+      'dl',
+      { class: 'facts' },
+      fact('Offers', `${consent.personalized ? 'Allows personalized offers' : 'No personalized offers'} · offers email ${consent.offers ? 'on' : 'off'} · 21+ ${consent.adult21At ? `confirmed ${dayYearFmt.format(new Date(consent.adult21At))}` : 'not confirmed'}${consent.consentVersion ? ` · words: ${consent.consentVersion}` : ''}`),
+      fact('Buys boxes', mk.profile && mk.profile.box_buyer != null ? `${hundred(mk.profile.box_buyer)}% likely` : '—'),
+      fact('Pays a cigar', mk.profile && mk.profile.median_unit_cents != null ? `${money(mk.profile.median_unit_cents)} usually (median)` : 'No prices typed'),
+      fact('Wrappers they favour', shares(prof.shades) || '—'),
+      fact('Sizes they keep', shares(prof.vitolas) || '—'),
+      fact('Runs out soonest', (prof.runsOutSoonest || []).slice(0, 3).map((c) => `${c.cigar} (${n(c.onHand)} left, about ${n(Math.round(c.daysLeft))} days)`).join(' · ') || 'Not enough history yet'),
+      fact('Last 30 days', Object.keys(events).length ? Object.entries(events).map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(' · ') : 'No activity recorded yet'),
+      fact('Recent searches', (mk.searches || []).slice(0, 6).map((x) => `“${x.q}”`).join(', ') || '—'),
+    );
     // Only what there is: an empty slot would show as words.
     return [
       figures,
@@ -1393,6 +1482,14 @@
         h('div', {}, h('h4', { text: `Humidors (${n((d.humidors || []).length)})` }), humidors),
         h('div', {}, h('h4', { text: 'Where they buy' }), shops),
       ),
+      d.marketing
+        ? h(
+            'div',
+            { class: 'detail-grid' },
+            h('div', {}, h('h4', { text: 'What Cigar Locker knows' }), knows, h('p', { class: 'muted small', text: 'Worked out inside Cigar Locker. Never exported, sold or given to a shop or partner.' })),
+            h('div', {}, h('h4', { text: 'Their brands' }), brands),
+          )
+        : null,
       h(
         'div',
         { class: 'detail-grid' },
@@ -1544,8 +1641,8 @@
       tile('Opened', pctWords(r.open), `${n(all.opened)} people`),
       tile('Clicked a link', pctWords(r.click), `${n(all.clicked)} people · ${pctWords(r.clickToOpen)} of those who opened`),
       tile('Put something in a cart', n(all.carted), `${pctWords(r.cart)} of those who clicked`),
-      tile('Bought', n(r.buyers), `${plural(all.orders || 0, 'order')} · ${money(all.revenueCents)}`),
-      tile('Conversion rate', pctWords(r.conversion, 2), `buyers for every email delivered · ${pctWords(r.clickConversion, 1)} of clicks`),
+      tile('Orders', n(r.buyers), money(all.revenueCents)),
+      tile('Conversion rate', pctWords(r.conversion, 2), `orders for every email delivered · ${pctWords(r.clickConversion, 1)} of clicks`),
       tile('Revenue per email', r.revenuePerEmailCents == null ? '—' : money(r.revenuePerEmailCents), r.averageOrderCents == null ? 'no sales reported yet' : `an order averages ${money(r.averageOrderCents)}`),
     );
     $('campaigns').replaceChildren(
@@ -1648,7 +1745,7 @@
       ['Opened (looked at it)', f.opened, r.open],
       ['Clicked a link', f.clicked, r.click],
       ['Put something in a cart', f.carted, r.cart === null ? null : (100 * (f.carted || 0)) / (r.base || 1)],
-      ['Bought', r.buyers, r.conversion],
+      ['Ordered', r.buyers, r.conversion],
     ];
     const top = Math.max(1, Number(f.sent) || 0, Number(f.delivered) || 0);
     const funnel = h(
@@ -1678,9 +1775,15 @@
       ? h('p', { class: 'verdict' }, h('strong', { text: `${v.word}. ` }), `Its ${v.measure === 'conversion' ? 'conversion rate' : 'click rate'} is ${pctWords(v.mine, 2)} against ${pctWords(v.usual, 2)} for your emails on average.`)
       : h('p', { class: 'muted small', text: c.test ? 'A test email: not counted in the averages.' : 'Your first email to members: the comparison with your average starts with the next one.' });
     const sites = table(
-      ['Shop', 'Carts', 'Bought', 'Orders', 'Revenue'],
-      (d.sites || []).map((x) => [x.site || 'From an affiliate report', n(x.carted), n(x.bought), n(x.orders), money(x.revenueCents)]),
-      [1, 2, 3, 4],
+      ['Shop', 'Carts', 'Orders', 'Revenue'],
+      (d.sites || []).map((x) => [x.site || 'From an affiliate report', n(x.carted), n(x.orders), money(x.revenueCents)]),
+      [1, 2, 3],
+    );
+    // Each link: taps counted by Cigar Locker's redirect, carts and orders the shops reported for it.
+    const byLink = table(
+      ['Link', 'Taps', 'People', 'Carts', 'Orders', 'Revenue'],
+      (d.byLink || []).map((x) => [linkWords(x.url), n(x.taps), n(x.people), n(x.carts), n(x.orders), money(x.revenueCents)]),
+      [1, 2, 3, 4, 5],
     );
     const reported = h(
       'div',
@@ -1745,14 +1848,14 @@
       ask({ action: 'email-report-paste', campaign: c.id, text })
         .then((nd) => {
           refreshCampaign(c, nd);
-          $('paste-msg') && ($('paste-msg').textContent = `${plural(nd.pasted.lines, 'row')} with a reference, ${plural(nd.pasted.counted, 'new sale')} counted.`);
+          $('paste-msg') && ($('paste-msg').textContent = `${plural(nd.pasted.lines, 'row')} with a click code, ${plural(nd.pasted.counted, 'new sale')} counted.`);
         })
         .catch((e) => ($('paste-msg').textContent = e.message));
     });
     const people = d.people || [];
     const yes = (t) => (t ? 'Yes' : '');
     const peopleTable = table(
-      ['Person', 'Email', 'Delivered', 'Opened', 'Clicked', 'Links', 'Cart', 'Bought'],
+      ['Person', 'Email', 'Delivered', 'Opened', 'Clicked', 'Links'],
       people.map((p) => [
         p.name || '',
         p.email,
@@ -1760,8 +1863,6 @@
         p.opened ? `${n(p.opens)} ${p.opens === 1 ? 'time' : 'times'}` : '',
         p.clicked ? `${n(p.clicks)} ${p.clicks === 1 ? 'time' : 'times'}` : '',
         (p.links || []).map(linkWords).join(', '),
-        yes(p.carted),
-        p.orders ? `${money(p.spentCents)}${p.orders > 1 ? ` (${n(p.orders)} orders)` : ''}` : '',
       ]),
       [],
     );
@@ -1777,9 +1878,6 @@
           { label: 'Opens', get: (p) => p.opens },
           { label: 'Clicks', get: (p) => p.clicks },
           { label: 'Links', get: (p) => (p.links || []).map(linkWords) },
-          { label: 'Cart', get: (p) => (p.carted ? 'yes' : '') },
-          { label: 'Orders', get: (p) => p.orders },
-          { label: 'Spent', get: (p) => (p.spentCents ? (p.spentCents / 100).toFixed(2) : '') },
           { label: 'Unsubscribed', get: (p) => (p.unsubscribed ? 'yes' : '') },
         ];
         const blob = new Blob([G.csv(people, cols, {})], { type: 'text/csv;charset=utf-8' });
@@ -1793,10 +1891,12 @@
       h(
         'p',
         { class: 'muted small' },
-        'Opens are counted when a mail app loads the email’s pictures; Apple Mail loads them for everyone, so opens run high and clicks are the surer sign. Carts and sales come from shops that report them (send them cigarlocker.app/partners.html), affiliate reports pasted below, and totals shops send you.',
+        'Opens are counted when a mail app loads the email’s pictures; Apple Mail loads them for everyone, so opens run high and clicks are the surer sign. Carts and sales come from shops that report them (send them cigarlocker.app/partners.html), affiliate reports pasted below, and totals shops send you. They are counted for the email and its links, never for a person: a shop only ever sees a code for one click.',
       ),
       h('div', { class: 'detail-grid' }, h('div', {}, h('h4', { text: 'By shop' }), sites, reported), h('div', {}, addForm, pasteForm)),
-      h('div', { class: 'card-head' }, h('h4', { text: `Person by person (${n(people.length)}${people.length >= 500 ? ', the 500 most engaged' : ''})` }), download),
+      h('h4', { text: 'By link' }),
+      byLink,
+      h('div', { class: 'card-head' }, h('h4', { text: `Who opened and clicked (${n(people.length)}${people.length >= 500 ? ', the 500 most engaged' : ''})` }), download),
       peopleTable,
     ];
   }

@@ -8,7 +8,9 @@
  *   <script src="https://cigarlocker.app/partner.js" async></script>
  *
  * When a visitor arrives from one of our emails, the link carries cl_ref, a
- * random code that says nothing about the person. This keeps it on your
+ * random code made for that one click: it names the email and the link, and
+ * nothing about the person. Cigar Locker counts what you report for the
+ * email, never for a person. This keeps the code on your
  * site for 30 days, and nothing else. Then, when something goes in the cart
  * and when an order is placed:
  *

@@ -55,6 +55,9 @@
     { key: 'news', group: 'Emails', label: 'Says yes to news', type: 'yesno', get: (m) => yes(m.news) },
     { key: 'offers', group: 'Emails', label: 'Says yes to offers', type: 'yesno', get: (m) => yes(m.offers) },
     { key: 'insights', group: 'Emails', label: 'Says yes to market insights', type: 'yesno', get: (m) => yes(m.insights) },
+    // Read from the profile on the server (096): the page has no copy.
+    { key: 'personalized', group: 'Emails', label: 'Allows personalized offers', type: 'yesno', server: true, get: () => undefined },
+    { key: 'adult21', group: 'Emails', label: '21 or older, confirmed', type: 'yesno', server: true, get: () => undefined },
     { key: 'relay', group: 'Emails', label: 'Apple relay address', type: 'yesno', get: (m) => yes(m.relay) },
     { key: 'emailsReceived', group: 'Emails', label: 'Emails received', type: 'range', unit: 'emails', get: (m) => m.emailsReceived },
     { key: 'emailsOpened', group: 'Emails', label: 'Emails opened', type: 'range', unit: 'emails', get: (m) => m.emailsOpened },
@@ -107,6 +110,11 @@
     { key: 'shipped', group: 'Buying', label: 'Purchases shipped', type: 'range', unit: 'purchases', get: (m) => m.shipped },
     { key: 'inPerson', group: 'Buying', label: 'Purchases in person', type: 'range', unit: 'purchases', get: (m) => m.inPerson },
     { key: 'lastBoughtDays', group: 'Buying', label: 'Last bought, days ago', type: 'range', unit: 'days', get: (m, c) => daysSince(m.lastBought, c.now) },
+    // The marketing profile (096), matched on the server only, and only among
+    // members who allow personalized offers: a brand (how fond, how many left,
+    // bought it or never, likely rating, runs out within) and a retailer.
+    { key: 'brandFit', group: 'Buying', label: 'A brand: fondness, how many left, bought before, likely rating', type: 'brand', server: true, get: () => undefined },
+    { key: 'retailer', group: 'Buying', label: 'Bought at a retailer, or never there', type: 'retailer', server: true, get: () => undefined },
     // Enjoying
     { key: 'perWeek', group: 'Enjoying', label: 'Cigars a week (last 90 days)', type: 'range', unit: 'a week', get: (m) => m.perWeek },
     { key: 'enjoyed30', group: 'Enjoying', label: 'Cigars enjoyed, last 30 days', type: 'range', unit: 'cigars', get: (m) => m.enjoyed30 },
@@ -131,6 +139,8 @@
   function matches(m, filter, ctx) {
     const f = byKey.get(filter.field);
     if (!f) return true;
+    // A field the server alone answers (the marketing profile, 096): matched there.
+    if (f.server) return true;
     if (f.type === 'place') {
       if (!filter.place || num(filter.miles) === null) return true;
       if (m.lat == null || m.lon == null) return false;
@@ -244,8 +254,9 @@
 
   /**
    * An email's funnel (email_funnel) as rates. Rates are of the emails
-   * delivered (else sent); buyers are the people traced to a purchase plus
-   * the orders shops reported in totals (one buyer each, the best guess).
+   * delivered (else sent); "buyers" are orders: those traced to the email's
+   * clicks plus those shops reported in totals. Since 097 nothing a shop
+   * reports is tied to a person, so orders, not people, are what is counted.
    */
   function emailRates(f) {
     const sent = Number(f.sent) || 0;
