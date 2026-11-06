@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#0E4A47">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="CL Retail">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src https://nypahhdmoxrfvwnfufdf.supabase.co wss://nypahhdmoxrfvwnfufdf.supabase.co; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src blob:; connect-src 'self' https://nypahhdmoxrfvwnfufdf.supabase.co wss://nypahhdmoxrfvwnfufdf.supabase.co; base-uri 'none'; form-action 'none'">
   <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="../assets/apple-touch-icon.png">
   <link rel="stylesheet" href="retail.css">
@@ -28,6 +28,9 @@
   <script src="lib/reconcile.js"></script>
   <script src="lib/sheet.js"></script>
   <script src="lib/photos.js"></script>
+  <script src="lib/codes.js"></script>
+  <script src="lib/scanner.js"></script>
+  <script src="vendor/toqr.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

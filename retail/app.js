@@ -12,6 +12,7 @@
   var R = self.RetailReconcile;
   var S = self.RetailSheet;
   var P = self.RetailPhotos;
+  var Codes = self.RetailCodes;
   var sb = self.supabase.createClient(C.url, C.key, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'cl-retail-auth' },
   });
@@ -199,6 +200,12 @@
       rows('store_inventory', 'product_id,location_id,quantity', function (q) {
         return q.eq('store_id', id);
       }),
+      rows('store_stock', 'product_id,location_id,kings,queens,king_units,queen_units,loose_units,units', function (q) {
+        return q.eq('store_id', id);
+      }),
+      rows('box_instances', 'id,cl_code,state,store_product_id,location_id,original_quantity,remaining_quantity,opened_at,received_at', function (q) {
+        return q.eq('store_id', id).in('state', ['sealed', 'open', 'missing', 'damaged']);
+      }),
     ]);
     var locations = res[0].filter(function (l) {
       return l.active;
@@ -211,7 +218,9 @@
     res[1].forEach(function (p) {
       products[p.id] = p;
     });
-    state.cache = { store: id, at: Date.now(), locations: locations, loc: byId, products: products, inventory: res[2] };
+    // inventory: the unboxed layer (loose cigars and those not labeled yet);
+    // stock: everything on hand, boxes and loose; boxes: the store's boxes.
+    state.cache = { store: id, at: Date.now(), locations: locations, loc: byId, products: products, inventory: res[2], stock: res[3], boxes: res[4] };
     return state.cache;
   }
   function forget() {
@@ -256,8 +265,8 @@
     return out;
   }
   function unitsAt(d, locId) {
-    return d.inventory.reduce(function (s, i) {
-      return s + (i.location_id === locId ? i.quantity : 0);
+    return d.stock.reduce(function (s, i) {
+      return s + (i.location_id === locId ? i.units : 0);
     }, 0);
   }
 
@@ -266,8 +275,10 @@
   var TABS = [
     { key: 'home', label: 'Dashboard', least: 'employee', path: '' },
     { key: 'count', label: 'Count', least: 'employee', path: '/count' },
+    { key: 'scan', label: 'Scan', least: 'employee', path: '/scan' },
     { key: 'inventory', label: 'Inventory', least: 'employee', path: '/inventory' },
     { key: 'receive', label: 'Receive', least: 'employee', path: '/receive' },
+    { key: 'label', label: 'Label boxes', least: 'employee', path: '/label' },
     { key: 'locations', label: 'Locations', least: 'manager', path: '/locations' },
     { key: 'products', label: 'Products', least: 'manager', path: '/products' },
     { key: 'import', label: 'Import', least: 'manager', path: '/import' },
@@ -359,6 +370,10 @@
       if (page === 'count') return parts[3] ? (parts[4] ? await countPlace(parts[3], parts[4]) : await board(parts[3])) : await countStart();
       if (page === 'inventory') return await inventoryView();
       if (page === 'receive') return await receiveView();
+      if (page === 'label') return await labelView();
+      if (page === 'labels') return await labelsView();
+      if (page === 'scan') return await scanView();
+      if (page === 'box' && parts[3]) return await boxPage(parts[3]);
       if (page === 'locations' && can('manager')) return await locationsView();
       if (page === 'products' && can('manager')) return await productsView();
       if (page === 'import' && can('manager')) return await importView();
@@ -481,7 +496,9 @@
     var last = d.last;
     var tiles = h('div', { class: 'tiles' },
       h('div', { class: 'tile hero' }, h('div', { class: 'label' }, 'Current inventory'), h('div', { class: 'figure' }, n(d.units) + ' cigars'),
-        h('div', { class: 'sub' }, n(d.productsStocked) + ' products · ' + n(d.locations) + ' places')),
+        h('div', { class: 'sub' }, d.boxesLabeled
+          ? n(d.kings) + ' sealed boxes · ' + n(d.queens) + ' open · ' + n(d.looseUnits) + ' loose'
+          : n(d.productsStocked) + ' products · ' + n(d.locations) + ' places')),
       h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Inventory value at cost'), h('div', { class: 'figure' }, money(d.costCents)),
         h('div', { class: 'sub' }, d.costMissingUnits ? n(d.costMissingUnits) + ' cigars have no cost' : 'every cigar costed')),
       h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Inventory value at retail'), h('div', { class: 'figure' }, money(d.retailCents)),
@@ -492,8 +509,8 @@
         h('div', { class: 'sub' }, 'goal: under 90 min')),
       h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Variances'), h('div', { class: 'figure' }, last ? n(last.summary.adjustments || 0) : '—'),
         h('div', { class: 'sub' }, 'adjusted at the last count')),
-      h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Needs attention'), h('div', { class: 'figure' }, n((d.unmatched || 0) + (open ? (open.summary.locations - open.summary.done) : 0))),
-        h('div', { class: 'sub' }, [d.unmatched ? n(d.unmatched) + ' products to match' : '', open ? n(open.summary.locations - open.summary.done) + ' places to count' : ''].filter(Boolean).join(' · ') || 'all clear')),
+      h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Needs attention'), h('div', { class: 'figure' }, n((d.unmatched || 0) + (d.missingBoxes || 0) + (open ? (open.summary.locations - open.summary.done) : 0))),
+        h('div', { class: 'sub' }, [d.unmatched ? n(d.unmatched) + ' products to match' : '', d.missingBoxes ? n(d.missingBoxes) + ' boxes missing' : '', open ? n(open.summary.locations - open.summary.done) + ' places to count' : ''].filter(Boolean).join(' · ') || 'all clear')),
     );
     var primary = open
       ? h('a', { class: 'btn primary big wide', href: base + '/count/' + open.id }, (open.status === 'paused' ? 'Resume ' : 'Continue ') + open.name)
@@ -503,7 +520,11 @@
       h('h1', { text: state.store.name }),
       tiles,
       primary,
+      d.units && !d.boxesLabeled ? h('div', { class: 'card' }, h('h2', { style: { marginTop: 0 } }, 'Next: label the boxes'),
+        h('p', {}, 'Give each box on the shelves its own Cigar Locker label, once: scan its barcode, say sealed or open, print. From then on an inventory is a walk with the scanner: sealed boxes are verified with one scan each, only open ones are counted.'),
+        h('a', { class: 'btn brand', href: base + '/label' }, 'Label boxes')) : null,
       h('div', { class: 'btns grid' },
+        h('a', { class: 'btn', href: base + '/scan' }, 'Scan a box'),
         h('a', { class: 'btn', href: base + '/receive' }, 'Receive inventory'),
         h('a', { class: 'btn', href: base + '/inventory' }, 'Inventory'),
         can('manager') ? h('a', { class: 'btn', href: base + '/locations' }, 'Locations') : null,
@@ -569,6 +590,7 @@
       rows('store_session_locations', '*', function (q) { return q.eq('session_id', sid); }),
       sb.from('store_users').select('user_id,name').eq('store_id', state.store.id),
       storeData(true),
+      rpc('retail_session_boxes', { p_session: sid }),
     ]);
     var s = res[0].data;
     if (!s) return show(h('p', { class: 'error', text: 'No such inventory.' }));
@@ -576,6 +598,8 @@
     var people = {};
     (res[2].data || []).forEach(function (u) { people[u.user_id] = u.name || 'Someone'; });
     var d = res[3];
+    var bx = res[4];
+    var hasBoxes = bx.boxes.length > 0;
     var done = places.filter(function (p) { return p.status === 'done'; });
     var expected = places.reduce(function (t, p) { return t + (p.expected_units || 0); }, 0);
     var counted = done.reduce(function (t, p) { return t + (p.counted_units || 0); }, 0);
@@ -584,7 +608,7 @@
     if (s.status === 'complete') return complete(s, places, d);
     if (s.status === 'cancelled') return show(h('h1', { text: s.name }), h('p', { class: 'lead' }, 'This inventory was cancelled.'), h('a', { class: 'btn', href: '#' + base }, 'Dashboard'));
     // Others' progress comes in every 15 seconds.
-    every(15000, function () { if (!document.querySelector('.veil')) route(); });
+    every(15000, function () { if (!document.querySelector('.veil') && !document.documentElement.classList.contains('scanning')) route(); });
 
     var filter = state.boardFilter || 'todo';
     var listEl = h('div', { class: 'list' });
@@ -625,21 +649,210 @@
           s.status === 'open'
             ? h('button', { class: 'btn', type: 'button', onclick: async function () { await rpc('retail_session_set', { p_session: sid, p_action: 'pause' }); route(); } }, 'Pause')
             : h('button', { class: 'btn brand', type: 'button', onclick: async function () { await rpc('retail_session_set', { p_session: sid, p_action: 'resume' }); route(); } }, 'Resume'),
-          can('manager') ? h('button', { class: 'btn primary', type: 'button', onclick: function () { completeSheet(sid, places.length - done.length); } }, 'Complete inventory') : null,
+          can('manager') ? h('button', { class: 'btn primary', type: 'button', onclick: function () { completeSheet(sid, places.length - done.length, hasBoxes ? bx : null); } }, 'Complete inventory') : null,
           can('manager') ? h('button', { class: 'btn quiet danger', type: 'button', onclick: async function () {
             if (!confirm('Cancel this inventory? Counts already confirmed stay in the inventory.')) return;
             await rpc('retail_session_set', { p_session: sid, p_action: 'cancel' });
             go(base);
           } }, 'Cancel') : null),
         s.status === 'paused' ? h('p', { class: 'muted small' }, 'The clock is stopped. Resume to count.') : null),
+      hasBoxes ? boxesCard(sid, s, bx, d) : null,
+      hasBoxes ? h('h2', { text: 'Pass 3 · Loose cigars and unlabeled boxes, by place' }) : null,
+      hasBoxes ? h('p', { class: 'muted small' }, 'Labeled boxes are counted by their labels in passes 1 and 2; here, count only what has no label.') : null,
       seg,
       h('div', { style: { height: '10px' } }),
       listEl,
     );
   }
 
-  function completeSheet(sid, left) {
+  // ---- counting boxes: pass 1 Kings, pass 2 Queens ------------------------------------------
+
+  function signed(x) {
+    return (x > 0 ? '+' : x < 0 ? '−' : '') + n(Math.abs(x));
+  }
+
+  /** Counting one Queen: a number by hand, or read from a photo (Locker Vision), then saved on the count. */
+  function queenCounter(sid, box, start, onSaved, onLater) {
+    var counted = start;
+    var input = stepper(start, function (v) { counted = v; });
+    var note = h('p', { class: 'muted small' });
     var msg = h('p', { class: 'error' });
+    var source = 'hand';
+    var cam = h('input', { type: 'file', accept: 'image/*', capture: 'environment', hidden: true });
+    cam.addEventListener('change', async function () {
+      var f = cam.files && cam.files[0];
+      cam.value = '';
+      if (!f) return;
+      note.replaceChildren(busy('Counting the cigars in the photo'));
+      try {
+        var pic = await P.shrinkPhoto(f);
+        var res = await retailFn({ action: 'scan', store: state.store.id, session: sid, box: box.id, pictures: [pic] });
+        var hit = (res.found || [])[0];
+        if (hit && hit.count > 0) {
+          counted = hit.count;
+          input.querySelector('input').value = String(hit.count);
+          source = 'photo';
+          note.textContent = 'The photo counted ' + hit.count + (hit.seen ? ' (' + hit.seen + ')' : '') + '. Check it, then save.';
+        } else {
+          note.textContent = (res.note || 'The photo did not show a count.') + ' Count by hand.';
+        }
+      } catch (e) { note.textContent = errorText(e); }
+    });
+    return h('div', { class: 'scan-choice' },
+      h('p', { class: 'over warn-text' }, 'Queen · count it'),
+      h('div', { class: 'scan-product' }, box.product ? box.product.name : box.name), h('div', { class: 'muted small' }, box.code + ' · ' + (box.path || '')),
+      h('p', {}, 'The records say ', h('b', {}, n(box.remaining !== undefined ? box.remaining : box.expected)), ' in it.'),
+      field('In the box now', input), note, msg, cam,
+      h('div', { class: 'btns' },
+        h('button', { class: 'btn primary big', type: 'button', onclick: async function (ev) {
+          if (counted === null || counted === undefined) { msg.textContent = 'How many are in it?'; return; }
+          ev.currentTarget.disabled = true;
+          try {
+            var r = await rpc('retail_session_box_count', { p_session: sid, p_box: box.id, p_counted: counted, p_source: source, p_location: state.scanAt || null });
+            onSaved(r);
+          } catch (e) { msg.textContent = errorText(e); ev.currentTarget.disabled = false; }
+        } }, 'Save count'),
+        h('button', { class: 'btn', type: 'button', onclick: function () { cam.click(); } }, 'Count by photo'),
+        h('button', { class: 'btn quiet', type: 'button', onclick: onLater }, 'Later')));
+  }
+
+  function scanBoxes(sid, pass) {
+    var seen = { kings: 0, queens: 0, warn: 0 };
+    self.RetailScanner.open({
+      title: pass === 1 ? 'Pass 1 · Kings (sealed boxes)' : 'Pass 2 · Queens (open boxes)',
+      hint: pass === 1 ? 'Scan the label on every sealed box. Open boxes are noted for pass 2.' : 'Scan an open box\'s label, then count what is in it.',
+      onClose: function () { route(); },
+      onCode: async function (code, format, ctl) {
+        var r = await rpc('retail_session_box_scan', { p_session: sid, p_code: code, p_location: state.scanAt || null });
+        var b = r.box;
+        var name = b ? b.code + ' · ' + b.product.name : code;
+        var moved = r.elsewhere ? ' · recorded at ' + b.path + ', so noted as moved here' : '';
+        if (pass === 2 && b && b.state === 'open' && (r.result === 'queen' || r.result === 'already' || r.result === 'unexpected' || r.result === 'found')) {
+          return await new Promise(function (resolve) {
+            ctl.panel(queenCounter(sid, b, r.counted !== undefined && r.counted !== null ? r.counted : b.remaining, function (res) {
+              seen.queens += 1;
+              ctl.tally(seen.queens + ' Queens counted');
+              ctl.resume();
+              resolve({ tone: res.variance ? 'warn' : 'good', words: 'Counted ' + name + ': ' + n(res.counted) + (res.variance ? ' (' + signed(res.variance) + ' against the records)' : ', as the records say') });
+            }, function () {
+              ctl.resume();
+              resolve({ tone: 'warn', words: 'Not counted yet: ' + name });
+            }));
+          });
+        }
+        if (r.result === 'verified') {
+          seen.kings += 1;
+          ctl.tally(seen.kings + ' Kings verified' + (seen.queens ? ' · ' + seen.queens + ' Queens' : ''));
+          return { tone: moved ? 'warn' : 'good', words: 'King ✓ ' + name + moved };
+        }
+        if (r.result === 'already') return { tone: 'warn', words: 'Already scanned in this count: ' + name };
+        if (r.result === 'queen') {
+          seen.queens += 1;
+          ctl.tally(seen.kings + ' Kings verified · ' + seen.queens + ' Queens for pass 2');
+          return { tone: 'warn', words: 'Queen: ' + name + ' · counted in pass 2' + moved };
+        }
+        if (r.result === 'found') return { tone: 'warn', words: 'Found: ' + name + ' was recorded ' + b.state + '. Confirmed in the review.' };
+        if (r.result === 'unexpected') return { tone: 'warn', words: 'Not in this count\'s list: ' + name + ' (' + (KIND_WORDS[b.state] || b.state) + '). Shown in the review.' };
+        if (r.result === 'product') return { tone: 'bad', words: 'That is a factory barcode. Scan the box\'s Cigar Locker label; a box without one is counted with its place (pass 3), or labeled under Label boxes.' };
+        return { tone: 'bad', words: r.resolved && r.resolved.otherStore ? 'That label is another store\'s.' : 'No box has the code ' + code + '.' };
+      },
+    });
+  }
+
+  /** The boxes card on a count's board: pass 1, pass 2, and the review. */
+  function boxesCard(sid, s, bx, d) {
+    var K = bx.summary.kings;
+    var Q = bx.summary.queens;
+    var O = bx.summary.other;
+    var confirmed = bx.summary.confirmed;
+    var open = s.status === 'open';
+    var notSeen = bx.boxes.filter(function (b) { return b.expectedState === 'sealed' && !b.seen; });
+    var queens = bx.boxes.filter(function (b) { return b.expectedState === 'open' || b.seenState === 'open'; });
+    var at = placeSelect(d, state.scanAt || '', { none: 'Not set' });
+    at.addEventListener('change', function () { state.scanAt = at.value || ''; });
+    var kingsPct = K.expected ? Math.round((100 * K.verified) / K.expected) : 100;
+    var queenTotal = Q.expected + Math.max(0, Q.toCount + Q.counted - Q.expected);
+    var queensPct = queenTotal ? Math.round((100 * Q.counted) / queenTotal) : 100;
+    function countSheet(row) {
+      var close = sheet('Count ' + row.code, queenCounter(sid, { id: row.id, code: row.code, name: row.name, path: row.path, remaining: row.expected }, row.counted !== null ? row.counted : row.expected,
+        function (r) { close(); toast(row.code + ': ' + n(r.counted) + (r.variance ? ' (' + signed(r.variance) + ')' : '')); route(); }, function () { close(); }));
+    }
+    var notSeenList = h('div', { class: 'list', hidden: true }, notSeen.slice(0, 300).map(function (b) {
+      return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: b.code + ' · ' + b.name }), h('div', { class: 'sub', text: b.path || '' })), h('div', { class: 'qty', text: n(b.expected) }));
+    }));
+    var queenList = h('div', { class: 'list', hidden: true }, queens.map(function (b) {
+      var v = b.counted !== null && b.counted !== undefined ? b.counted - (b.expected || 0) : null;
+      return h('div', { class: 'item' + (open && !confirmed ? ' tap' : ''), onclick: open && !confirmed ? function () { countSheet(b); } : null },
+        h('div', { class: 'grow' }, h('div', { class: 'name', text: b.code + ' · ' + b.name }), h('div', { class: 'sub', text: (b.path || '') + ' · records ' + n(b.expected) })),
+        b.counted === null || b.counted === undefined ? chip(b.seen ? 'To count' : 'Not scanned', 'warn') : chip(v ? signed(v) : '✓', v ? 'warn' : 'good'),
+        h('div', { class: 'qty', text: b.counted === null || b.counted === undefined ? '—' : n(b.counted) }));
+    }));
+    return h('div', { class: 'card' },
+      h('div', { class: 'pass-grid' },
+        h('div', { class: 'pass' }, h('p', { class: 'over' }, 'Pass 1 · Kings, sealed'),
+          h('div', { class: 'pass-fig' }, n(K.verified) + ' of ' + n(K.expected)), h('div', { class: 'progress' }, h('i', { style: { width: kingsPct + '%' } })),
+          h('div', { class: 'sub' }, n(K.expected - K.verified) + ' not scanned · ' + n(K.expectedUnits) + ' cigars'),
+          open && !confirmed ? h('button', { class: 'btn brand big wide', type: 'button', onclick: function () { scanBoxes(sid, 1); } }, 'Scan Kings') : null,
+          notSeen.length ? h('button', { class: 'btn quiet small', type: 'button', onclick: function () { notSeenList.hidden = !notSeenList.hidden; } }, 'Not scanned yet (' + notSeen.length + ')') : null),
+        h('div', { class: 'pass' }, h('p', { class: 'over' }, 'Pass 2 · Queens, open'),
+          h('div', { class: 'pass-fig' }, n(Q.counted) + ' of ' + n(queenTotal)), h('div', { class: 'progress' }, h('i', { style: { width: queensPct + '%' } })),
+          h('div', { class: 'sub' }, n(Q.countedUnits) + ' cigars counted · variance ' + signed(Q.variance)),
+          open && !confirmed ? h('button', { class: 'btn brand big wide', type: 'button', onclick: function () { scanBoxes(sid, 2); } }, 'Count Queens') : null,
+          queens.length ? h('button', { class: 'btn quiet small', type: 'button', onclick: function () { queenList.hidden = !queenList.hidden; } }, 'Every Queen (' + queens.length + ')') : null)),
+      notSeenList, queenList,
+      open && !confirmed ? h('div', { class: 'row-fields' }, field('Scanning in (optional: catches boxes moved from their place)', at)) : null,
+      O.unexpected || O.found ? h('p', { class: 'muted small' }, [O.unexpected ? n(O.unexpected) + ' scanned that the count did not expect' : '', O.found ? n(O.found) + ' found that were recorded missing' : ''].filter(Boolean).join(' · ')) : null,
+      confirmed ? h('p', { class: 'ok' }, 'Boxes reviewed and confirmed.')
+        : can('manager') ? h('button', { class: 'btn', type: 'button', onclick: function () { reviewBoxes(sid, bx); } }, 'Review and confirm the boxes') : null);
+  }
+
+  /** The manager's review: what was not seen goes missing unless kept; counts and finds take effect. Nothing changes before this. */
+  function reviewBoxes(sid, bx) {
+    var keep = {};
+    var notSeen = bx.boxes.filter(function (b) { return (b.expectedState === 'sealed' || b.expectedState === 'open') && !b.seen; });
+    var variances = bx.boxes.filter(function (b) { return b.counted !== null && b.counted !== undefined && b.counted !== b.expected; });
+    var others = bx.boxes.filter(function (b) { return !b.expectedState && b.seen; });
+    var toCount = bx.boxes.filter(function (b) { return b.seen && b.seenState === 'open' && (b.counted === null || b.counted === undefined); });
+    var msg = h('p', { class: 'error' });
+    var close = sheet('Review the boxes', h('div', {},
+      h('p', { class: 'muted' }, 'Nothing changes until you confirm. Then: boxes not scanned are marked missing (unless you keep them), counted Queens take their counts, boxes found and moved are put where they were seen.'),
+      notSeen.length ? h('h3', { text: 'Not scanned (' + notSeen.length + ')' }) : null,
+      notSeen.length ? h('div', { class: 'list' }, notSeen.map(function (b) {
+        var box = h('input', { type: 'checkbox', onchange: function () { keep[b.id] = box.checked; } });
+        return h('label', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: b.code + ' · ' + b.name }), h('div', { class: 'sub', text: (b.path || '') + ' · ' + n(b.expected) + ' cigars' })),
+          h('span', { class: 'small' }, box, ' It is there'));
+      })) : null,
+      variances.length ? h('h3', { text: 'Queens counted differently (' + variances.length + ')' }) : null,
+      variances.length ? h('div', { class: 'list' }, variances.map(function (b) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: b.code + ' · ' + b.name }), h('div', { class: 'sub', text: 'records ' + n(b.expected) + ', counted ' + n(b.counted) })), chip(signed(b.counted - b.expected), 'warn'));
+      })) : null,
+      toCount.length ? h('p', { class: 'muted' }, n(toCount.length) + (toCount.length === 1 ? ' Queen was' : ' Queens were') + ' scanned but not counted: they keep the records\' count.') : null,
+      others.length ? h('h3', { text: 'Scanned, not expected (' + others.length + ')' }) : null,
+      others.length ? h('div', { class: 'list' }, others.map(function (b) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: b.code + ' · ' + b.name }), h('div', { class: 'sub', text: (b.seenPath || b.path || '') })), boxChip(b.seenState));
+      })) : null,
+      msg,
+      h('button', { class: 'btn primary big wide', type: 'button', onclick: async function (ev) {
+        ev.currentTarget.disabled = true;
+        try {
+          var ids = Object.keys(keep).filter(function (k) { return keep[k]; });
+          var r = await rpc('retail_session_boxes_confirm', { p_session: sid, p_keep: ids });
+          close();
+          toast('Boxes confirmed: ' + [r.counted ? r.counted + ' counted' : '', r.missing ? r.missing + ' marked missing' : '', r.moved ? r.moved + ' moved' : '', r.found ? r.found + ' found' : ''].filter(Boolean).join(', ') + '.');
+          forget();
+          route();
+        } catch (e) { msg.textContent = errorText(e); ev.currentTarget.disabled = false; }
+      } }, 'Confirm the boxes')));
+    return close;
+  }
+
+  function completeSheet(sid, left, bx) {
+    var msg = h('p', { class: 'error' });
+    if (bx && !bx.summary.confirmed) {
+      return sheet('Complete inventory', h('div', {},
+        h('p', { class: 'lead' }, 'First review and confirm the boxes: what was not scanned, the Queens counted, the boxes found.'),
+        h('button', { class: 'btn primary wide', type: 'button', onclick: function () { document.querySelectorAll('.veil').forEach(function (v) { v.remove(); }); reviewBoxes(sid, bx); } }, 'Review the boxes')));
+    }
     sheet('Complete inventory', h('div', {},
       h('p', { class: 'lead' }, left ? n(left) + ' place' + (left === 1 ? ' is' : 's are') + ' not counted. They keep their recorded counts.' : 'Every place is counted.'),
       h('p', {}, 'The clock stops and the summary is kept.'), msg,
@@ -652,6 +865,23 @@
       } }, 'Complete now')));
   }
 
+  /** The count's answer, as the reviewer set it out: Kings, Queens, the total, what needs review. */
+  function boxResults(sum) {
+    var K = sum.boxes.kings;
+    var Q = sum.boxes.queens;
+    function group(title, tiles) {
+      return [h('h2', { text: title }), h('div', { class: 'tiles' }, tiles.map(function (t) {
+        return h('div', { class: 'tile' }, h('div', { class: 'label' }, t[0]), h('div', { class: 'figure', style: t[2] ? { color: 'var(--' + t[2] + ')' } : null }, t[1]), t[3] ? h('div', { class: 'sub' }, t[3]) : null);
+      }))];
+    }
+    var secs = sum.seconds || 0;
+    return h('div', {},
+      group('Kings · sealed boxes', [['Expected', n(K.expected)], ['Verified', n(K.verified), 'good'], ['Missing', n(K.missing), K.missing ? 'bad' : ''], ['Moved', n(K.moved), '', 'seen in another place']]),
+      group('Queens · open boxes', [['Expected cigars', n(Q.expectedUnits)], ['Counted cigars', n(Q.countedUnits)], ['Variance', signed(Q.variance), Q.variance ? 'warn' : 'good', 'on ' + n(Q.counted) + (Q.counted === 1 ? ' Queen' : ' Queens') + ' counted']]),
+      group('Total', [['Expected cigars', n(sum.total.expected)], ['Counted cigars', n(sum.total.counted)], ['Needs review', n(sum.needsReview), sum.needsReview ? 'warn' : 'good'],
+        ['Time', R.duration(secs), secs <= 5400 ? 'good' : 'warn', secs <= 3600 ? 'under an hour' : secs <= 5400 ? 'under 90 minutes' : 'over 90 minutes']]));
+  }
+
   function complete(s, places) {
     var sum = s.summary || {};
     show(
@@ -661,6 +891,8 @@
         h('p', { class: 'over' }, 'Inventory complete'),
         h('div', { class: 'timer', style: { margin: '10px 0' } }, R.duration(sum.seconds || elapsedOf(s))),
         h('p', { class: 'muted' }, 'Total time · ' + day(s.started_at) + (s.completed_at ? ', ' + new Date(s.started_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) + ' to ' + new Date(s.completed_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''))),
+      sum.hasBoxes ? boxResults(sum) : null,
+      sum.hasBoxes ? h('h2', { text: 'Loose cigars, by place' }) : null,
       h('div', { class: 'tiles' },
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Expected units'), h('div', { class: 'figure' }, n(sum.expectedDone || sum.expected))),
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Counted units'), h('div', { class: 'figure' }, n(sum.counted))),
@@ -708,7 +940,8 @@
       return [
         h('p', { class: 'over' }, path.indexOf(' › ') > 0 ? path.slice(0, path.lastIndexOf(' › ')) : 'Count'),
         h('h1', { text: place.name }),
-        h('p', { class: 'lead' }, n(expectedUnits) + ' cigars expected here · ' + expected.length + ' product' + (expected.length === 1 ? '' : 's') + (claim && claim.done ? ' · counted already: confirming again replaces it' : '')),
+        h('p', { class: 'lead' }, n(expectedUnits) + (d.boxes.length ? ' loose or unlabeled cigars' : ' cigars') + ' expected here · ' + expected.length + ' product' + (expected.length === 1 ? '' : 's') + (claim && claim.done ? ' · counted already: confirming again replaces it' : '')),
+        d.boxes.length ? h('p', { class: 'muted small' }, 'Boxes with a Cigar Locker label are counted by their labels (passes 1 and 2). Count only what has no label here.') : null,
       ];
     }
 
@@ -944,19 +1177,46 @@
 
   async function inventoryView() {
     var d = await storeData(true);
-    var total = d.inventory.reduce(function (t, i) { return t + i.quantity; }, 0);
+    var base = '#/s/' + state.store.id;
+    var total = d.stock.reduce(function (t, i) { return t + i.units; }, 0);
+    var kings = d.stock.reduce(function (t, i) { return t + i.kings; }, 0);
+    var queens = d.stock.reduce(function (t, i) { return t + i.queens; }, 0);
+    var loose = d.stock.reduce(function (t, i) { return t + i.loose_units; }, 0);
     var listEl = h('div', { class: 'list' });
     walk(d).forEach(function (x) {
-      var here = d.inventory.filter(function (i) { return i.location_id === x.loc.id && i.quantity > 0; });
-      var units = here.reduce(function (t, i) { return t + i.quantity; }, 0);
+      var here = d.stock.filter(function (i) { return i.location_id === x.loc.id && i.units > 0; });
+      var units = here.reduce(function (t, i) { return t + i.units; }, 0);
       listEl.appendChild(h('div', { class: 'item indent-' + Math.min(x.depth, 4) }, h('div', { class: 'grow' }, h('div', { class: 'name', text: x.loc.name }), h('div', { class: 'sub', text: TYPE_WORDS[x.loc.type] })), units ? h('div', { class: 'qty', text: n(units) }) : null));
       here.sort(function (a, b) { return productName(d.products[a.product_id]).localeCompare(productName(d.products[b.product_id])); }).forEach(function (i) {
         var p = d.products[i.product_id];
-        listEl.appendChild(h('div', { class: 'item tap indent-' + Math.min(x.depth + 1, 4), onclick: function () { stockSheet(d, p, x.loc, i.quantity); } },
-          h('div', { class: 'grow' }, h('div', { text: productName(p) }), h('div', { class: 'sub', text: productDetail(p || {}) })), h('div', { class: 'qty', style: { fontSize: '18px' }, text: n(i.quantity) })));
+        listEl.appendChild(h('div', { class: 'item tap indent-' + Math.min(x.depth + 1, 4), onclick: function () { hereSheet(d, p, x.loc, i); } },
+          h('div', { class: 'grow' }, h('div', { text: productName(p) }), h('div', { class: 'sub', text: [stockWords(i), productDetail(p || {})].filter(Boolean).join(' · ') })), h('div', { class: 'qty', style: { fontSize: '18px' }, text: n(i.units) })));
       });
     });
-    show(h('h1', { text: 'Inventory' }), h('p', { class: 'lead' }, n(total) + ' cigars in ' + n(d.locations.length) + ' places. Tap a product to move it' + (can('manager') ? ' or adjust it.' : '.')), listEl);
+    var missing = d.boxes.filter(function (b) { return b.state === 'missing'; });
+    show(h('h1', { text: 'Inventory' }),
+      h('p', { class: 'lead' }, n(total) + ' cigars in ' + n(d.locations.length) + ' places' + (kings || queens ? ': ' + n(kings) + ' sealed boxes (Kings), ' + n(queens) + ' open boxes (Queens), ' + n(loose) + ' loose or not labeled yet.' : '.') + ' Tap a product to see its boxes, or to move or adjust loose cigars.'),
+      missing.length ? h('div', { class: 'card' }, h('p', { class: 'error' }, n(missing.length) + (missing.length === 1 ? ' box is' : ' boxes are') + ' marked missing.'),
+        h('div', { class: 'list' }, missing.slice(0, 20).map(function (b) {
+          return h('a', { class: 'item tap', href: base + '/box/' + b.id, style: { textDecoration: 'none', color: 'inherit' } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: b.cl_code + ' · ' + productName(d.products[b.store_product_id]) }), h('div', { class: 'sub', text: 'Last at ' + pathOf(d, b.location_id) })), boxChip(b.state));
+        }))) : null,
+      listEl);
+  }
+
+  /** A product at one place: its boxes (each opens its page) and its loose cigars. */
+  function hereSheet(d, p, loc, s) {
+    var base = '#/s/' + state.store.id;
+    var boxes = d.boxes.filter(function (b) { return b.store_product_id === p.id && b.location_id === loc.id && (b.state === 'sealed' || b.state === 'open'); })
+      .sort(function (a, b) { return a.state === b.state ? a.cl_code.localeCompare(b.cl_code) : a.state === 'open' ? -1 : 1; });
+    var close = sheet(productName(p), h('div', {},
+      h('p', { class: 'muted' }, pathOf(d, loc.id) + ' · ' + n(s.units) + ' cigars'),
+      boxes.length ? h('div', { class: 'list' }, boxes.map(function (b) {
+        return h('a', { class: 'item tap', href: base + '/box/' + b.id, onclick: function () { close(); }, style: { textDecoration: 'none', color: 'inherit' } },
+          h('div', { class: 'grow' }, h('div', { class: 'name', text: b.cl_code }), h('div', { class: 'sub', text: b.state === 'open' ? 'opened ' + day(b.opened_at) : 'box of ' + b.original_quantity })), boxChip(b.state), h('div', { class: 'qty', text: n(boxUnits(b)) }));
+      })) : null,
+      s.loose_units ? h('div', { class: 'card flat' }, h('p', {}, h('b', {}, n(s.loose_units) + ' loose or not labeled yet')),
+        h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: function () { close(); stockSheet(d, p, loc, s.loose_units); } }, can('manager') ? 'Move or adjust them' : 'Move them'),
+          h('a', { class: 'btn', href: base + '/label', onclick: function () { state.labelAt = loc.id; close(); } }, 'Label their boxes'))) : null));
   }
 
   function stockSheet(d, p, loc, qty) {
@@ -1069,7 +1329,7 @@
     var q = h('input', { class: 'input', type: 'search', placeholder: 'Search brand, line, size or SKU' });
     var listEl = h('div', { class: 'list' });
     var qty = {};
-    d.inventory.forEach(function (i) { qty[i.product_id] = (qty[i.product_id] || 0) + i.quantity; });
+    d.stock.forEach(function (i) { qty[i.product_id] = (qty[i.product_id] || 0) + i.units; });
     var seg = h('div', { class: 'seg' });
     function drawSeg() {
       seg.replaceChildren.apply(seg, [['all', 'All'], ['match', 'Needs a match'], ['cost', 'No cost'], ['price', 'No price']].map(function (o) {
@@ -1336,8 +1596,7 @@
 
   // ---- receiving ------------------------------------------------------------------------
 
-  async function receiveView() {
-    var d = await storeData(true);
+  async function receiveLoose(d, seg) {
     var product = null;
     var qty = 0;
     var where = h('select', { class: 'input' }, walk(d).map(function (x) { return h('option', { value: x.loc.id, selected: state.receiveAt === x.loc.id }, ' '.repeat(x.depth * 3) + x.loc.name); }));
@@ -1364,7 +1623,8 @@
       }).slice(0, 12);
       results.replaceChildren.apply(results, all.map(function (p) { return h('div', { class: 'item tap', onclick: function () { pick(p); results.replaceChildren(); q.value = ''; } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(p) }), h('div', { class: 'sub', text: productDetail(p) }))); }));
     });
-    show(h('h1', { text: 'Receive inventory' }), h('p', { class: 'lead' }, 'Stock coming in: the product, how many cigars, what they cost and where they go.'),
+    show(h('h1', { text: 'Receive inventory' }), h('p', { class: 'lead' }, 'Loose cigars coming in, not in a box: the product, how many, what they cost and where they go.'),
+      seg, h('div', { style: { height: '12px' } }),
       h('div', { class: 'card' }, field('Product', q), results, chosen,
         h('div', { class: 'row-fields' }, field('How many cigars', qtyBox), field('Cost per cigar, $', cost)), field('Put them in', where), field('Note', note), msg,
         h('button', { class: 'btn primary big wide', type: 'button', onclick: async function (ev) {
@@ -1382,6 +1642,547 @@
       recent.length ? h('div', { class: 'list' }, recent.map(function (r) {
         return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(d.products[r.product_id]) }), h('div', { class: 'sub', text: day(r.at) + ' · ' + pathOf(d, r.location_id) })), h('div', { class: 'qty', text: '+' + n(r.change) }));
       })) : null);
+  }
+
+  // ---- boxes: Kings, Queens and their labels -----------------------------------------------
+  //
+  // A box is one physical box for life, named by its Cigar Locker code (its
+  // QR label holds that code and nothing else). Sealed it is a King (verified
+  // by a scan, not counted), open a Queen (its cigars counted). Factory codes
+  // say what product a box is, never which box: a code this store has not
+  // confirmed is only ever a possible match, chosen by a person.
+
+  var KIND_WORDS = { sealed: 'King · sealed', open: 'Queen · open', empty: 'Empty', damaged: 'Damaged', missing: 'Missing', archived: 'Archived' };
+  var KIND_TONE = { sealed: 'info', open: 'warn', empty: '', damaged: 'bad', missing: 'bad', archived: '' };
+  function boxChip(state) {
+    return chip(KIND_WORDS[state] || state, KIND_TONE[state] || '');
+  }
+  function boxUnits(b) {
+    return b.state === 'sealed' ? b.original_quantity : b.state === 'open' ? b.remaining_quantity : 0;
+  }
+  /** "2 Kings · Queen of 19 · 3 loose" for a product at a place. */
+  function stockWords(s) {
+    var parts = [];
+    if (s.kings) parts.push(s.kings + (s.kings === 1 ? ' King' : ' Kings') + ' (' + n(s.king_units) + ')');
+    if (s.queens) parts.push(s.queens + (s.queens === 1 ? ' Queen' : ' Queens') + ' (' + n(s.queen_units) + ')');
+    if (s.loose_units) parts.push(n(s.loose_units) + ' loose');
+    return parts.join(' · ');
+  }
+  function placeSelect(d, chosen, opts) {
+    var o = opts || {};
+    var sel = h('select', { class: 'input' }, o.none ? h('option', { value: '' }, o.none) : null,
+      walk(d).map(function (x) { return h('option', { value: x.loc.id, selected: chosen === x.loc.id }, ' '.repeat(x.depth * 3) + x.loc.name); }));
+    return sel;
+  }
+
+  // The labels waiting to be printed, kept in this browser per store, so a
+  // reload loses none.
+  function queueKey() {
+    return 'cl-retail-labels:' + state.store.id;
+  }
+  function labelQueue() {
+    try {
+      var v = JSON.parse(localStorage.getItem(queueKey()) || '[]');
+      return Array.isArray(v) ? v : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function setLabelQueue(list) {
+    try {
+      localStorage.setItem(queueKey(), JSON.stringify(list.slice(0, 2000)));
+    } catch (e) {
+      /* private browsing: the list lives as long as the page */
+    }
+    state.labelsMemo = list;
+  }
+  function queueLabels(boxes, name) {
+    var have = {};
+    var q = labelQueue();
+    q.forEach(function (x) { have[x.code] = true; });
+    boxes.forEach(function (b) { if (!have[b.code]) q.push({ id: b.id, code: b.code, name: name }); });
+    setLabelQueue(q);
+    return q.length;
+  }
+
+  /** A QR of a box code, drawn as SVG elements (no markup strings). */
+  function qrNode(code) {
+    var NS = 'http://www.w3.org/2000/svg';
+    var m = self.toQR(code, 3);
+    var side = Codes.sideOf(m);
+    var all = side + 8;
+    var svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + all + ' ' + all);
+    svg.setAttribute('shape-rendering', 'crispEdges');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'QR code ' + code);
+    var bg = document.createElementNS(NS, 'rect');
+    bg.setAttribute('width', all);
+    bg.setAttribute('height', all);
+    bg.setAttribute('fill', '#fff');
+    var path = document.createElementNS(NS, 'path');
+    path.setAttribute('transform', 'translate(4 4)');
+    path.setAttribute('fill', '#000');
+    path.setAttribute('d', Codes.qrPath(m));
+    svg.append(bg, path);
+    return svg;
+  }
+  function labelNode(l) {
+    return h('div', { class: 'lbl' }, h('div', { class: 'lbl-qr' }, qrNode(l.code)),
+      h('div', { class: 'lbl-words' }, h('div', { class: 'lbl-brand' }, 'CIGAR LOCKER'), h('div', { class: 'lbl-code' }, l.code), h('div', { class: 'lbl-name' }, Codes.labelName(l.name))));
+  }
+
+  /**
+   * What a scanned factory code is, for this store, asked in the scanner's
+   * panel when it is not plain: several of the store's products, a possible
+   * match from other stores, or unknown. Never silently accepted. Answers the
+   * store product (its row) or null.
+   */
+  async function identify(ctx, code, format, ctl) {
+    var r = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code });
+    if (r.kind === 'box') return { box: r };
+    var type = Codes.typeOf(format, code);
+    if (r.status === 'matched' && r.candidates.length === 1) return { product: ctx.d.products[r.candidates[0].id] || null, status: 'matched' };
+    tone('warn');
+    return await new Promise(function (resolve) {
+      var body = h('div', { class: 'scan-choice' });
+      function done(v) { resolve(v); }
+      async function learn(productId, boxCount) {
+        await rpc('retail_code_confirm', { p_store: state.store.id, p_code: code, p_product: productId, p_type: type, p_box_quantity: boxCount || null, p_source: 'scan' });
+        ctx.d = await storeData(true);
+        return ctx.d.products[productId];
+      }
+      async function makeProduct(fields) {
+        var pid = await rpc('retail_product_save', { p_store: state.store.id, p: fields });
+        return pid;
+      }
+      function drawUnknown(words) {
+        var q = h('input', { class: 'input', type: 'search', placeholder: 'Brand, line or size' });
+        var list = h('div', { class: 'list' });
+        var cat = h('div', { class: 'list' });
+        var msg = h('p', { class: 'error' });
+        function local() {
+          var w = S.plain(q.value).split(' ').filter(Boolean);
+          var all = Object.keys(ctx.d.products).map(function (id) { return ctx.d.products[id]; }).filter(function (p) {
+            if (!p.active) return false;
+            var hay = S.plain([p.brand, p.line, p.vitola, p.size_text, p.sku].join(' '));
+            return w.length && w.every(function (x) { return hay.indexOf(x) >= 0; });
+          }).slice(0, 8);
+          list.replaceChildren.apply(list, all.map(function (p) {
+            return h('div', { class: 'item tap', onclick: async function () {
+              try { done({ product: await learn(p.id, null), status: 'confirmed' }); } catch (e) { msg.textContent = errorText(e); }
+            } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(p) }), h('div', { class: 'sub', text: productDetail(p) })), chip('This one', 'good'));
+          }));
+        }
+        async function catalogue() {
+          if (q.value.trim().length < 2) return;
+          cat.replaceChildren(busy('Searching the catalogue'));
+          try {
+            var res = await retailFn({ action: 'catalog-search', store: state.store.id, q: q.value.trim() });
+            cat.replaceChildren.apply(cat, res.results.slice(0, 12).map(function (c) {
+              return h('div', { class: 'item tap', onclick: async function () {
+                try {
+                  var pid = await makeProduct({ brand: c.brand, line: c.line, vitola: c.vitola || '', cigar_id: c.cigarId, line_key: c.lineKey, length_in: c.lengthIn ? String(c.lengthIn) : '', ring: c.ring ? String(c.ring) : '', match_status: 'confirmed' });
+                  done({ product: await learn(pid, null), status: 'new' });
+                } catch (e) { msg.textContent = errorText(e); }
+              } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: [c.brand, c.line, c.vitola].filter(Boolean).join(' ') }), h('div', { class: 'sub', text: c.lengthIn ? c.lengthIn + ' x ' + c.ring + ' · add as a new product' : 'add as a new product' })));
+            }).concat(res.results.length ? [] : [h('div', { class: 'item muted' }, 'Not in the catalogue.')]));
+          } catch (e) { cat.replaceChildren(h('p', { class: 'error', text: errorText(e) })); }
+        }
+        q.addEventListener('input', local);
+        q.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); catalogue(); } });
+        body.replaceChildren(
+          h('p', { class: 'over' }, words || 'Unknown code'), h('p', { class: 'scan-code' }, code),
+          h('p', {}, 'Which product is this box? Find it among the store\'s products; once chosen, this code is known here.'),
+          q, list, h('div', { class: 'btns' }, h('button', { class: 'btn small', type: 'button', onclick: catalogue }, 'Search the catalogue'),
+            h('button', { class: 'btn small quiet', type: 'button', onclick: function () { done(null); } }, 'Skip this box')),
+          cat, msg);
+      }
+      if (r.status === 'matched') {
+        body.append(h('p', { class: 'over' }, 'Matched · which one?'), h('p', { class: 'scan-code' }, code),
+          h('div', { class: 'list' }, r.candidates.map(function (c) {
+            return h('div', { class: 'item tap', onclick: async function () {
+              try { done({ product: await learn(c.id, null), status: 'confirmed' }); } catch (e) { toast(errorText(e)); }
+            } },
+              h('div', { class: 'grow' }, h('div', { class: 'name', text: c.name }), h('div', { class: 'sub', text: c.boxCount ? 'box of ' + c.boxCount : '' })));
+          })), h('button', { class: 'btn small quiet', type: 'button', onclick: function () { done(null); } }, 'Skip this box'));
+      } else if (r.status === 'possible') {
+        var msg = h('p', { class: 'error' });
+        body.append(h('p', { class: 'over warn-text' }, 'Possible match · check it'), h('p', { class: 'scan-code' }, code),
+          h('p', {}, 'Other stores using Cigar Locker have confirmed this code as:'),
+          h('div', { class: 'list' }, r.candidates.map(function (c) {
+            return h('div', { class: 'item tap', onclick: async function () {
+              try {
+                var pid = c.product ? c.product.id : await makeProduct({ brand: c.brand, line: c.line, vitola: c.vitola || '', cigar_id: c.cigarId, box_count: c.boxCount ? String(c.boxCount) : '', match_status: 'confirmed' });
+                done({ product: await learn(pid, c.product ? null : c.boxCount), status: 'confirmed' });
+              } catch (e) { msg.textContent = errorText(e); }
+            } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: c.name || c.cigarId }), h('div', { class: 'sub', text: [c.boxCount ? 'box of ' + c.boxCount : '', c.stores + (c.stores === 1 ? ' store says so' : ' stores say so'), c.product ? 'in your products' : 'new to your products'].filter(Boolean).join(' · ') })),
+              chip('Yes, this', 'good'));
+          })), msg,
+          h('div', { class: 'btns' }, h('button', { class: 'btn small', type: 'button', onclick: function () { drawUnknown('Not that · which product?'); } }, 'None of these'),
+            h('button', { class: 'btn small quiet', type: 'button', onclick: function () { done(null); } }, 'Skip this box')));
+      } else {
+        drawUnknown();
+      }
+      ctl.panel(body);
+    });
+  }
+  function tone(kind) {
+    if (self.RetailScanner) self.RetailScanner.tone(kind);
+  }
+
+  /** The decision for one product's boxes: how many, sealed or open, and the box size. */
+  function boxesPanel(p, opts, onGo, onSkip) {
+    var o = opts || {};
+    var per = p.box_count || null;
+    var count = 1;
+    var open = false;
+    var left = null;
+    var cost = h('input', { class: 'input', inputmode: 'decimal', placeholder: p.cost_cents !== null && p.cost_cents !== undefined ? (p.cost_cents / 100).toFixed(2) : 'optional' });
+    var msg = h('p', { class: 'error' });
+    var openArea = h('div');
+    var go = h('button', { class: 'btn primary big wide', type: 'button' });
+    function words() {
+      go.textContent = o.mode === 'received'
+        ? 'Receive ' + count + (count === 1 ? ' box' : ' boxes') + ' · ' + count + (count === 1 ? ' label' : ' labels')
+        : open ? 'Label this open box' : 'Label ' + count + (count === 1 ? ' sealed box' : ' sealed boxes');
+    }
+    function drawOpen() {
+      openArea.replaceChildren(o.mode === 'labeled'
+        ? h('div', { class: 'seg' },
+            h('button', { type: 'button', class: open ? '' : 'on', onclick: function () { open = false; drawOpen(); words(); } }, 'Sealed (King)'),
+            h('button', { type: 'button', class: open ? 'on' : '', onclick: function () { open = true; count = 1; drawOpen(); words(); } }, 'Open (Queen)'))
+        : null,
+        open ? field('Cigars left in it', stepper(left, function (v) { left = v; })) : field('How many boxes ' + (o.mode === 'received' ? 'came in' : 'like this here'), stepper(1, function (v) { count = Math.max(1, Math.min(200, v || 1)); words(); })));
+    }
+    drawOpen();
+    words();
+    go.addEventListener('click', async function () {
+      msg.textContent = '';
+      if (!per) { msg.textContent = 'How many cigars in a full box?'; return; }
+      if (open && !(left >= 1 && left <= per)) { msg.textContent = 'How many are left in it? From 1 to ' + per + '.'; return; }
+      go.disabled = true;
+      try {
+        await onGo({ count: open ? 1 : count, per: per, open: open ? left : null, cost: S.cents(cost.value) });
+      } catch (e) {
+        msg.textContent = errorText(e);
+        go.disabled = false;
+      }
+    });
+    return h('div', { class: 'scan-choice' },
+      h('p', { class: 'over good-text' }, o.status === 'matched' ? 'Matched' : o.status === 'new' ? 'Added to your products' : 'Confirmed'),
+      h('div', { class: 'scan-product' }, productName(p)), h('div', { class: 'muted small' }, productDetail(p)),
+      h('div', { class: 'row-fields' }, field('Cigars in a full box', stepper(per, function (v) { per = v || null; })),
+        o.mode === 'received' ? field('Cost per cigar, $', cost) : null),
+      openArea, msg, go,
+      h('button', { class: 'btn small quiet', type: 'button', onclick: onSkip }, 'Not now'));
+  }
+
+  /** Receiving or labeling by scanning: one scanner, box after box. */
+  async function boxesByScan(mode, whereId, onEach) {
+    var ctx = { d: await storeData(true) };
+    var made = 0;
+    var labels = 0;
+    var Scanner = self.RetailScanner;
+    Scanner.open({
+      title: (mode === 'received' ? 'Receive boxes · ' : 'Label boxes · ') + pathOf(ctx.d, whereId),
+      hint: 'Point the camera at the box\'s barcode or QR code.',
+      onClose: function () { forget(); route(); },
+      onCode: async function (code, format, ctl) {
+        if (Codes.boxCode(code)) {
+          var known = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code });
+          return { tone: 'warn', words: known.box ? 'Already labeled: ' + code + ', ' + known.box.product.name + ', ' + known.box.path : 'That is a Cigar Locker label, not a factory code.' };
+        }
+        ctl.say('Looking up ' + code + '…');
+        var it = await identify(ctx, code, format, ctl);
+        if (!it || !it.product) {
+          ctl.resume();
+          return { tone: 'warn', words: 'Skipped ' + code + '.' };
+        }
+        var p = it.product;
+        tone('good');
+        return await new Promise(function (resolve) {
+          ctl.panel(boxesPanel(p, { mode: mode, status: it.status }, async function (c) {
+            var r = await rpc('retail_boxes_create', {
+              p_store: state.store.id, p_product: p.id, p_location: whereId, p_count: c.count, p_box_quantity: c.per,
+              p_mode: mode, p_open_remaining: c.open, p_cost_cents: mode === 'received' ? c.cost : null, p_note: '',
+            });
+            made += r.boxes.length;
+            labels = queueLabels(r.boxes, productName(p));
+            ctl.tally((mode === 'received' ? made + ' boxes received' : made + ' boxes labeled') + ' · ' + labels + ' labels to print');
+            ctl.resume();
+            if (onEach) onEach(r);
+            resolve({ tone: r.beyondList ? 'warn' : 'good',
+              words: (c.open !== null ? 'Queen labeled: ' : r.boxes.length + (r.boxes.length === 1 ? ' box: ' : ' boxes: ')) + productName(p) + ' · ' + r.boxes.map(function (b) { return b.code; }).join(', ')
+                + (r.beyondList ? ' · ' + n(r.beyondList) + ' cigars more than the records had here' : '') });
+          }, function () {
+            ctl.resume();
+            resolve({ tone: 'warn', words: 'Not labeled.' });
+          }));
+        });
+      },
+    });
+  }
+
+  // ---- receiving: boxes by scanning, and loose cigars --------------------------------------
+
+  async function receiveView() {
+    var d = await storeData(true);
+    var mode = state.receiveMode || 'boxes';
+    var base = '#/s/' + state.store.id;
+    var seg = h('div', { class: 'seg' },
+      h('button', { type: 'button', class: mode === 'boxes' ? 'on' : '', onclick: function () { state.receiveMode = 'boxes'; route(); } }, 'Boxes, by barcode'),
+      h('button', { type: 'button', class: mode === 'loose' ? 'on' : '', onclick: function () { state.receiveMode = 'loose'; route(); } }, 'Loose cigars'));
+    if (mode === 'loose') return receiveLoose(d, seg);
+    if (!d.locations.length) return show(h('h1', { text: 'Receive inventory' }), seg, h('div', { class: 'card' }, h('p', {}, 'Add the store\'s places first (Locations).')));
+    var where = placeSelect(d, state.receiveAt || d.locations[0].id);
+    where.addEventListener('change', function () { state.receiveAt = where.value; });
+    var recent = (await sb.from('store_box_events').select('box_instance_id,store_product_id,to_location_id,at').eq('store_id', state.store.id).eq('kind', 'received').order('at', { ascending: false }).limit(40)).data || [];
+    var waiting = labelQueue().length;
+    show(h('h1', { text: 'Receive inventory' }),
+      h('p', { class: 'lead' }, 'Scan each new box\'s barcode: the product is found, you say how many boxes, and each gets its own Cigar Locker label.'),
+      seg, h('div', { style: { height: '12px' } }),
+      h('div', { class: 'card' }, field('Put them in', where),
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { state.receiveAt = where.value; boxesByScan('received', where.value); } }, 'Scan boxes'),
+        h('p', { class: 'muted small' }, 'A code this store has not confirmed is never taken on its own: you choose the product once, and it is known from then on.')),
+      waiting ? h('a', { class: 'btn brand wide', href: base + '/labels' }, 'Print ' + n(waiting) + (waiting === 1 ? ' label' : ' labels')) : null,
+      recent.length ? h('h2', { text: 'Boxes received lately' }) : null,
+      recent.length ? h('div', { class: 'list' }, groupRecent(recent).map(function (g) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(d.products[g.product]) }), h('div', { class: 'sub', text: day(g.at) + ' · ' + pathOf(d, g.where) })), h('div', { class: 'qty', text: '+' + n(g.boxes) }));
+      })) : null);
+  }
+  function groupRecent(list) {
+    var out = [];
+    list.forEach(function (e) {
+      var last = out[out.length - 1];
+      if (last && last.product === e.store_product_id && last.where === e.to_location_id && Math.abs(Date.parse(last.at) - Date.parse(e.at)) < 120000) last.boxes += 1;
+      else out.push({ product: e.store_product_id, where: e.to_location_id, at: e.at, boxes: 1 });
+    });
+    return out.slice(0, 15);
+  }
+
+  // ---- labeling the boxes already in the store ----------------------------------------------
+
+  async function labelView() {
+    var d = await storeData(true);
+    var base = '#/s/' + state.store.id;
+    if (!d.locations.length) return show(h('h1', { text: 'Label boxes' }), h('div', { class: 'card' }, h('p', {}, 'Add the store\'s places first (Locations).')));
+    var where = placeSelect(d, state.labelAt || d.locations[0].id);
+    where.addEventListener('change', function () { state.labelAt = where.value; });
+    var labeled = d.boxes.length;
+    var waiting = labelQueue().length;
+    function byHand() {
+      state.labelAt = where.value;
+      var q = h('input', { class: 'input', type: 'search', placeholder: 'Brand, line, size or SKU' });
+      var list = h('div', { class: 'list' });
+      var holder = h('div');
+      function fillList() {
+        var w = S.plain(q.value).split(' ').filter(Boolean);
+        var all = Object.keys(d.products).map(function (id) { return d.products[id]; }).filter(function (p) {
+          var hay = S.plain([p.brand, p.line, p.vitola, p.size_text, p.sku].join(' '));
+          return p.active && w.every(function (x) { return hay.indexOf(x) >= 0; });
+        }).slice(0, 40);
+        list.replaceChildren.apply(list, all.map(function (p) {
+          return h('div', { class: 'item tap', onclick: function () {
+            holder.replaceChildren(boxesPanel(p, { mode: 'labeled', status: 'confirmed' }, async function (c) {
+              var r = await rpc('retail_boxes_create', { p_store: state.store.id, p_product: p.id, p_location: where.value, p_count: c.count, p_box_quantity: c.per, p_mode: 'labeled', p_open_remaining: c.open, p_cost_cents: null, p_note: '' });
+              queueLabels(r.boxes, productName(p));
+              close();
+              toast(r.boxes.length + (r.boxes.length === 1 ? ' box labeled: ' : ' boxes labeled: ') + r.boxes.map(function (b) { return b.code; }).join(', '));
+              forget();
+              route();
+            }, function () { holder.replaceChildren(); }));
+          } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(p) }), h('div', { class: 'sub', text: productDetail(p) })));
+        }));
+      }
+      q.addEventListener('input', fillList);
+      fillList();
+      var close = sheet('A box with no barcode', h('div', {}, q, h('div', { style: { height: '10px' } }), list, holder));
+    }
+    show(h('h1', { text: 'Label boxes' }),
+      h('p', { class: 'lead' }, 'Give every box on the shelves its own Cigar Locker label, once. Scan the box\'s barcode, say if it is sealed or open, and its label joins the list to print. After this, an inventory is a walk with the scanner.'),
+      h('div', { class: 'tiles' },
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Boxes labeled'), h('div', { class: 'figure' }, n(labeled))),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Labels to print'), h('div', { class: 'figure' }, n(waiting)))),
+      h('div', { class: 'card' }, field('Labeling in', where),
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { state.labelAt = where.value; boxesByScan('labeled', where.value); } }, 'Scan boxes here'),
+        h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: byHand }, 'A box with no barcode')),
+        h('p', { class: 'muted small' }, 'Labeling moves a box\'s cigars from the spreadsheet\'s count into the box, so nothing is counted twice. Put the label where it does not cover the maker\'s codes or stamps.')),
+      waiting ? h('a', { class: 'btn brand big wide', href: base + '/labels' }, 'Print ' + n(waiting) + (waiting === 1 ? ' label' : ' labels')) : null);
+  }
+
+  // ---- printing labels ----------------------------------------------------------------------
+
+  var pageRule = null;
+  function setPageSize(layout) {
+    var sheetEl = document.styleSheets[0];
+    try {
+      if (pageRule !== null) sheetEl.deleteRule(pageRule);
+      var L = Codes.LAYOUTS[layout];
+      pageRule = sheetEl.insertRule('@page { size: ' + L.page[0] + 'in ' + L.page[1] + 'in; margin: 0; }', sheetEl.cssRules.length);
+    } catch (e) {
+      pageRule = null;
+    }
+  }
+
+  async function labelsView() {
+    var list = labelQueue();
+    var layout = state.labelLayout || 'sheet';
+    var skip = 0;
+    var pagesEl = h('div', { class: 'label-pages' });
+    function draw() {
+      setPageSize(layout);
+      var L = Codes.LAYOUTS[layout];
+      var spots = Codes.place(list.length, layout, layout === 'sheet' ? skip : 0);
+      var pages = [];
+      spots.forEach(function (s, i) {
+        if (!pages[s.page]) pages[s.page] = h('div', { class: 'label-page lp-' + layout, style: { width: L.page[0] + 'in', height: L.page[1] + 'in' } });
+        var node = labelNode(list[i]);
+        Object.assign(node.style, { left: s.x + 'in', top: s.y + 'in', width: L.label[0] + 'in', height: L.label[1] + 'in' });
+        pages[s.page].appendChild(node);
+      });
+      pagesEl.replaceChildren.apply(pagesEl, pages.filter(Boolean));
+    }
+    var seg = h('div', { class: 'seg' }, Object.keys(Codes.LAYOUTS).map(function (k) {
+      return h('button', { type: 'button', class: layout === k ? 'on' : '', onclick: function (ev) {
+        layout = k;
+        state.labelLayout = k;
+        seg.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
+        ev.currentTarget.classList.add('on');
+        skipField.hidden = k !== 'sheet';
+        draw();
+      } }, Codes.LAYOUTS[k].name);
+    }));
+    var skipField = field('Sheet partly used? Start at label number', stepper(1, function (v) { skip = Math.max(0, Math.min(29, (v || 1) - 1)); draw(); }));
+    skipField.hidden = layout !== 'sheet';
+    show(h('div', { class: 'no-print' }, h('h1', { text: 'Labels to print' }),
+      list.length
+        ? h('p', { class: 'lead' }, n(list.length) + (list.length === 1 ? ' label' : ' labels') + ', in the order the boxes were scanned. Each holds only its box\'s Cigar Locker code.')
+        : h('p', { class: 'lead' }, 'No labels waiting. Labels are added as boxes are received or labeled, or from a box\'s page.'),
+      list.length ? h('div', { class: 'card' }, h('div', { class: 'field' }, seg), skipField,
+        h('div', { class: 'btns' }, h('button', { class: 'btn primary big', type: 'button', onclick: function () { window.print(); } }, 'Print'),
+          h('button', { class: 'btn', type: 'button', onclick: function () {
+            if (!confirm('Clear the list? Do this once the labels are printed. A box\'s label can be printed again from its page.')) return;
+            setLabelQueue([]);
+            route();
+          } }, 'Printed: clear the list')),
+        h('p', { class: 'muted small' }, 'Print at 100% (actual size), no margins. On an iPad: Share, then Print.')) : null),
+      list.length ? h('div', { class: 'scroll-x label-preview' }, pagesEl) : null);
+    if (list.length) draw();
+  }
+
+  // ---- a box's page, and scanning to find one -------------------------------------------------
+
+  async function boxPage(boxId) {
+    var base = '#/s/' + state.store.id;
+    var d = await storeData(true);
+    var b = await rpc('retail_box', { p_store: state.store.id, p_box: boxId });
+    var p = b.product || {};
+    var msg = h('p', { class: 'error' });
+    async function act(name, args, words) {
+      msg.textContent = '';
+      try {
+        await rpc(name, Object.assign({ p_store: state.store.id, p_box: boxId }, args || {}));
+        forget();
+        if (words) toast(words);
+        route();
+      } catch (e) { msg.textContent = errorText(e); }
+    }
+    function openBox() {
+      sheet('Open this King?', h('div', {},
+        h('p', { class: 'lead' }, p.name + ' · ' + b.code),
+        h('p', {}, 'It becomes a Queen: from now on its cigars are counted, not the box. The store\'s total does not change.'),
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { act('retail_box_open', null, b.code + ' is open: a Queen of ' + b.remaining + '.'); } }, 'Open box'),
+      ));
+    }
+    function takeOut() {
+      var howMany = 1;
+      var why = h('select', { class: 'input' }, [['sold', 'Sold'], ['lounge', 'Lounge'], ['sample', 'Sample or gift'], ['damaged', 'Damaged cigar']].map(function (o) { return h('option', { value: o[0] }, o[1]); }));
+      sheet('Cigars out of ' + b.code, h('div', {},
+        b.state === 'sealed' ? h('p', { class: 'muted' }, 'The box is opened first: it becomes a Queen.') : null,
+        field('How many', stepper(1, function (v) { howMany = v || 0; })), field('Why', why),
+        h('button', { class: 'btn primary wide', type: 'button', onclick: function () { act('retail_box_take', { p_quantity: howMany, p_reason: why.value }, howMany + ' out of ' + b.code + '.'); } }, 'Take them out')));
+    }
+    function countIt() {
+      var counted = b.remaining;
+      sheet('Count ' + b.code, h('div', {}, h('p', { class: 'muted' }, 'The records say ' + b.remaining + '. Count what is in the box now.'),
+        field('In the box', stepper(b.remaining, function (v) { counted = v; })),
+        h('button', { class: 'btn primary wide', type: 'button', onclick: function () { act('retail_box_count', { p_counted: counted, p_note: '' }, b.code + ': ' + counted + ' in the box.'); } }, 'Save the count')));
+    }
+    function moveIt() {
+      var to = placeSelect(d, b.location);
+      sheet('Move ' + b.code, h('div', {}, field('To', to),
+        h('button', { class: 'btn primary wide', type: 'button', onclick: function () { act('retail_box_move', { p_location: to.value }, b.code + ' moved.'); } }, 'Move')));
+    }
+    function markIt(st, words) {
+      if (!confirm(words)) return;
+      act('retail_box_mark', { p_state: st, p_reason: '' }, b.code + ': ' + (KIND_WORDS[st] || 'found') + '.');
+    }
+    var live = b.state === 'sealed' || b.state === 'open';
+    show(
+      h('p', { class: 'over' }, b.path || 'No place'),
+      h('h1', { text: p.name || 'Box' }),
+      h('div', { class: 'box-head' }, h('div', { class: 'box-qr' }, qrNode(b.code)), h('div', {}, h('div', { class: 'box-code' }, b.code), boxChip(b.state),
+        h('p', { class: 'muted small' }, productDetail({ size_text: '', box_count: b.original, sku: p.sku })))),
+      h('div', { class: 'tiles' },
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, b.state === 'sealed' ? 'Sealed' : 'In the box'), h('div', { class: 'figure' }, n(b.state === 'sealed' ? b.original : b.remaining)), h('div', { class: 'sub' }, 'of ' + n(b.original) + ' when full')),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Where'), h('div', { class: 'figure', style: { fontSize: '22px' } }, b.path || '—')),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, b.openedAt ? 'Opened' : b.receivedAt ? 'Received' : 'Labeled'), h('div', { class: 'figure', style: { fontSize: '22px' } }, day(b.openedAt || b.receivedAt || b.labeledAt)))),
+      b.state === 'sealed' ? h('button', { class: 'btn primary big wide', type: 'button', onclick: openBox }, 'Open box') : null,
+      msg,
+      h('div', { class: 'btns grid' },
+        live ? h('button', { class: 'btn', type: 'button', onclick: takeOut }, 'Cigars out') : null,
+        b.state === 'open' ? h('button', { class: 'btn', type: 'button', onclick: countIt }, 'Count it') : null,
+        live ? h('button', { class: 'btn', type: 'button', onclick: moveIt }, 'Move') : null,
+        h('button', { class: 'btn', type: 'button', onclick: function () { queueLabels([{ id: b.id, code: b.code }], p.name); go('/s/' + state.store.id + '/labels'); } }, 'Print its label'),
+        live ? h('button', { class: 'btn danger', type: 'button', onclick: function () { markIt('damaged', 'Mark ' + b.code + ' damaged? Its cigars leave the count.'); } }, 'Damaged') : null,
+        live ? h('button', { class: 'btn danger', type: 'button', onclick: function () { markIt('missing', 'Mark ' + b.code + ' missing? Its cigars leave the count until it is found.'); } }, 'Missing') : null,
+        !live && b.state !== 'empty' && can('manager') ? h('button', { class: 'btn brand', type: 'button', onclick: function () { markIt('found', 'Found ' + b.code + '? It comes back into the count.'); } }, 'Found it') : null),
+      h('h2', { text: 'History' }),
+      h('div', { class: 'list' }, b.history.map(function (e) {
+        var what = { received: 'Received', labeled: 'Labeled', opened: 'Opened', counted: 'Counted', sold: 'Sold', taken: 'Taken out', moved: 'Moved', damaged: 'Damaged',
+          missing: 'Marked missing', found: 'Found', emptied: 'Emptied', archived: 'Archived', corrected: 'Corrected' }[e.kind] || e.kind;
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: what + (e.reason ? ' · ' + e.reason : '') }),
+          h('div', { class: 'sub', text: [day(e.at), e.by, e.kind === 'moved' ? 'to ' + e.place : ''].filter(Boolean).join(' · ') })),
+          h('div', { class: 'qty', text: e.change ? (e.change > 0 ? '+' : '') + n(e.change) : n(e.remaining) }));
+      })),
+      h('div', { class: 'btns' }, h('a', { class: 'btn quiet', href: base + '/scan' }, 'Scan another box')));
+  }
+
+  async function scanView() {
+    var base = '/s/' + state.store.id;
+    var d = await storeData(true);
+    function openScanner() {
+      self.RetailScanner.open({
+        title: 'Scan a box',
+        hint: 'A Cigar Locker label opens its box. A factory barcode shows where that product is.',
+        onCode: async function (code, format, ctl) {
+          var r = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code });
+          if (r.kind === 'box' && r.box) {
+            ctl.close();
+            go(base + '/box/' + r.box.id);
+            return { tone: 'good', words: code };
+          }
+          if (r.kind === 'box') return { tone: 'bad', words: r.otherStore ? 'That label is another store\'s.' : 'No box has the code ' + code + '.' };
+          if (r.status !== 'matched') return { tone: 'warn', words: (r.status === 'possible' ? 'Not confirmed here yet: ' : 'Unknown code: ') + code + '. Use Receive or Label boxes to tie it to a product.' };
+          var ids = r.candidates.map(function (c) { return c.id; });
+          var here = d.boxes.filter(function (b) { return ids.indexOf(b.store_product_id) >= 0 && (b.state === 'sealed' || b.state === 'open'); });
+          var loose = d.inventory.filter(function (i) { return ids.indexOf(i.product_id) >= 0 && i.quantity > 0; });
+          ctl.panel(h('div', { class: 'scan-choice' }, h('p', { class: 'over good-text' }, 'Matched'), h('div', { class: 'scan-product' }, r.candidates.map(function (c) { return c.name; }).join(' / ')),
+            h('div', { class: 'list' }, here.map(function (b) {
+              return h('a', { class: 'item tap', href: '#' + base + '/box/' + b.id, onclick: function () { ctl.close(); } },
+                h('div', { class: 'grow' }, h('div', { class: 'name', text: b.cl_code }), h('div', { class: 'sub', text: pathOf(d, b.location_id) })), boxChip(b.state), h('div', { class: 'qty', text: n(boxUnits(b)) }));
+            }).concat(loose.map(function (i) {
+              return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: 'Loose or unlabeled' }), h('div', { class: 'sub', text: pathOf(d, i.location_id) })), h('div', { class: 'qty', text: n(i.quantity) }));
+            })).concat(here.length || loose.length ? [] : [h('div', { class: 'item muted' }, 'None in the store now.')])),
+            h('button', { class: 'btn wide', type: 'button', onclick: function () { ctl.resume(); } }, 'Scan another')));
+          return { tone: 'good', words: code };
+        },
+      });
+    }
+    show(h('h1', { text: 'Scan' }), h('p', { class: 'lead' }, 'Scan a box\'s Cigar Locker label to open its page: open it, take cigars out, count it or move it.'),
+      h('button', { class: 'btn primary big wide', type: 'button', onclick: openScanner }, 'Open the scanner'),
+      d.boxes.length ? null : h('div', { class: 'card' }, h('p', {}, 'No box is labeled yet. Start with Label boxes.'), h('a', { class: 'btn', href: '#' + base + '/label' }, 'Label boxes')));
   }
 
   // ---- team -----------------------------------------------------------------------------
