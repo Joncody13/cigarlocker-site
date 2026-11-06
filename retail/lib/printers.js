@@ -10,7 +10,7 @@
  * own language (ZPL, a maker's SDK) comes in as another printer here, taking
  * the same job; nothing in the app is tied to one maker.
  *
- * Every machine-readable code holds an opaque code only (CL-... a box,
+ * Every machine-readable code holds an opaque code only (CLB-... a box,
  * CLS-... a cigar). Names and prices are printed for people, never encoded.
  * Pure: runs in the browser and under the tests.
  */

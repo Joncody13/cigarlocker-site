@@ -1,7 +1,7 @@
 /*
  * Cigar Locker Retail: codes and labels (docs/retail.md, "Boxes", "Cigar labels").
  *
- * A box's own code is "CL-" and six of 30 letters and digits never mistaken
+ * A box's own code is "CLB-" and six of 30 letters and digits never mistaken
  * for one another, the only thing its QR label holds. Factory codes (UPC,
  * EAN, makers' QR codes) name a product, never a box. The guard keeps one
  * code from being taken twice while it stays in front of the camera. The QR
@@ -14,10 +14,10 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var BOX = /^CL-[2-9A-HJKMNP-TV-Z]{6}$/;
+  var BOX = /^CLB-[2-9A-HJKMNP-TV-Z]{6}$/;
   var UNIT = /^CLS-[2-9A-HJKMNP-TV-Z]{7}$/;
 
-  /** A Cigar Locker box code, read in any case, or null. */
+  /** A Cigar Locker box code (CLB- and six), read in any case, or null. */
   function boxCode(s) {
     var v = String(s || '').trim().toUpperCase();
     return BOX.test(v) ? v : null;

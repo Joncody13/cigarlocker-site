@@ -707,11 +707,11 @@
       h('div', { class: 'btns' },
         h('button', { class: 'btn primary big', type: 'button', onclick: async function (ev) {
           if (counted === null || counted === undefined) { msg.textContent = 'How many are in it?'; return; }
-          ev.currentTarget.disabled = true;
+          var btn = ev.currentTarget; btn.disabled = true;
           try {
             var r = await rpc('retail_session_box_count', { p_session: sid, p_box: box.id, p_counted: counted, p_source: source, p_location: state.scanAt || null });
             onSaved(r);
-          } catch (e) { msg.textContent = errorText(e); ev.currentTarget.disabled = false; }
+          } catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
         } }, 'Save count'),
         h('button', { class: 'btn', type: 'button', onclick: function () { cam.click(); } }, 'Count by photo'),
         h('button', { class: 'btn quiet', type: 'button', onclick: onLater }, 'Later')));
@@ -835,7 +835,7 @@
       })) : null,
       msg,
       h('button', { class: 'btn primary big wide', type: 'button', onclick: async function (ev) {
-        ev.currentTarget.disabled = true;
+        var btn = ev.currentTarget; btn.disabled = true;
         try {
           var ids = Object.keys(keep).filter(function (k) { return keep[k]; });
           var r = await rpc('retail_session_boxes_confirm', { p_session: sid, p_keep: ids });
@@ -843,7 +843,7 @@
           toast('Boxes confirmed: ' + [r.counted ? r.counted + ' counted' : '', r.missing ? r.missing + ' marked missing' : '', r.moved ? r.moved + ' moved' : '', r.found ? r.found + ' found' : ''].filter(Boolean).join(', ') + '.');
           forget();
           route();
-        } catch (e) { msg.textContent = errorText(e); ev.currentTarget.disabled = false; }
+        } catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
       } }, 'Confirm the boxes')));
     return close;
   }
@@ -1840,39 +1840,24 @@
     if (self.RetailScanner) self.RetailScanner.tone(kind);
   }
 
-  /** The decision for one product's boxes: how many, sealed or open, and the box size. */
+  /** One product's boxes: the box size and how many. Every box is made and labeled as a King first. */
   function boxesPanel(p, opts, onGo, onSkip) {
     var o = opts || {};
     var per = p.box_count || null;
     var count = 1;
-    var open = false;
-    var left = null;
     var cost = h('input', { class: 'input', inputmode: 'decimal', placeholder: p.cost_cents !== null && p.cost_cents !== undefined ? (p.cost_cents / 100).toFixed(2) : 'optional' });
     var msg = h('p', { class: 'error' });
-    var openArea = h('div');
     var go = h('button', { class: 'btn primary big wide', type: 'button' });
     function words() {
-      go.textContent = o.mode === 'received'
-        ? 'Receive ' + count + (count === 1 ? ' box' : ' boxes') + ' · ' + count + (count === 1 ? ' label' : ' labels')
-        : open ? 'Label this open box' : 'Label ' + count + (count === 1 ? ' sealed box' : ' sealed boxes');
+      go.textContent = (o.mode === 'received' ? 'Receive ' : 'Label ') + count + (count === 1 ? ' box' : ' boxes') + ' · ' + count + (count === 1 ? ' King label' : ' King labels');
     }
-    function drawOpen() {
-      openArea.replaceChildren(o.mode === 'labeled'
-        ? h('div', { class: 'seg' },
-            h('button', { type: 'button', class: open ? '' : 'on', onclick: function () { open = false; drawOpen(); words(); } }, 'Sealed (King)'),
-            h('button', { type: 'button', class: open ? 'on' : '', onclick: function () { open = true; count = 1; drawOpen(); words(); } }, 'Open (Queen)'))
-        : null,
-        open ? field('Cigars left in it', stepper(left, function (v) { left = v; })) : field('How many boxes ' + (o.mode === 'received' ? 'came in' : 'like this here'), stepper(1, function (v) { count = Math.max(1, Math.min(200, v || 1)); words(); })));
-    }
-    drawOpen();
     words();
     go.addEventListener('click', async function () {
       msg.textContent = '';
       if (!per) { msg.textContent = 'How many cigars in a full box?'; return; }
-      if (open && !(left >= 1 && left <= per)) { msg.textContent = 'How many are left in it? From 1 to ' + per + '.'; return; }
       go.disabled = true;
       try {
-        await onGo({ count: open ? 1 : count, per: per, open: open ? left : null, cost: S.cents(cost.value) });
+        await onGo({ count: count, per: per, cost: S.cents(cost.value) });
       } catch (e) {
         msg.textContent = errorText(e);
         go.disabled = false;
@@ -1882,9 +1867,69 @@
       h('p', { class: 'over good-text' }, o.status === 'matched' ? 'Matched' : o.status === 'new' ? 'Added to your products' : 'Confirmed'),
       h('div', { class: 'scan-product' }, productName(p)), h('div', { class: 'muted small' }, productDetail(p)),
       h('div', { class: 'row-fields' }, field('Cigars in a full box', stepper(per, function (v) { per = v || null; })),
+        field('How many boxes ' + (o.mode === 'received' ? 'came in' : 'like this here'), stepper(1, function (v) { count = Math.max(1, Math.min(200, v || 1)); words(); })),
         o.mode === 'received' ? field('Cost per cigar, $', cost) : null),
-      openArea, msg, go,
+      h('p', { class: 'muted small' }, 'Each box gets its own permanent label as a King (sealed). Next you say if any is already open.'),
+      msg, go,
       h('button', { class: 'btn small quiet', type: 'button', onclick: onSkip }, 'Not now'));
+  }
+
+  /**
+   * After the King labels are made: "Is this box currently sealed or open?"
+   * Sealed stays a King. Open: MOVE TO QUEEN, the same box and label, with
+   * how many cigars are in it now (its baseline), the day it was opened only
+   * if the store knows it, then cigar labels for those cigars if wanted.
+   */
+  function sealedOrOpen(boxes, p, per, onDone) {
+    var list = h('div', { class: 'list' });
+    var wrap = h('div', { class: 'scan-choice' });
+    var queens = 0;
+    function row(b) {
+      var holder = h('div', { class: 'item', style: { flexWrap: 'wrap' } });
+      function draw(stateWords, extra) {
+        fill(holder, [h('div', { class: 'grow' }, h('div', { class: 'name', text: b.code }), h('div', { class: 'sub', text: stateWords })), extra]);
+      }
+      function asKing() {
+        draw('King · sealed · ' + per + ' cigars', h('button', { class: 'btn small', type: 'button', onclick: moveToQueen }, 'Move to Queen'));
+      }
+      function moveToQueen() {
+        var count = null;
+        var when = h('input', { class: 'input', type: 'date', max: new Date().toISOString().slice(0, 10) });
+        var msg = h('p', { class: 'error' });
+        draw('Already open', h('div', { style: { flexBasis: '100%' } },
+          field('How many cigars are in this box now?', stepper(null, function (v) { count = v; })),
+          field('Opened on (only if you know it)', when), msg,
+          h('div', { class: 'btns' }, h('button', { class: 'btn brand', type: 'button', onclick: async function (ev) {
+            if (!(count >= 1 && count <= per)) { msg.textContent = 'From 1 to ' + per + '.'; return; }
+            var btn = ev.currentTarget; btn.disabled = true;
+            try {
+              var r = await rpc('retail_box_baseline_open', { p_store: state.store.id, p_box: b.id, p_count: count, p_opened_on: when.value || null });
+              queens += 1;
+              forget();
+              draw('Queen · open · ' + r.box.remaining + ' of ' + per + ' · opened ' + (r.box.openedAt ? day(r.box.openedAt) : 'before tracking'),
+                h('button', { class: 'btn small', type: 'button', onclick: async function (e2) {
+                  var btn2 = e2.currentTarget; btn2.disabled = true;
+                  try {
+                    var u = await rpc('retail_box_units_make', { p_store: state.store.id, p_box: b.id, p_count: null });
+                    queueUnits(u.units, u.product);
+                    btn2.textContent = u.units.length + ' cigar labels to print';
+                  } catch (e) { btn2.textContent = errorText(e); }
+                } }, 'Print ' + r.box.remaining + ' cigar labels'));
+            } catch (e) { msg.textContent = errorText(e); btn.disabled = false; }
+          } }, 'Move to Queen'), h('button', { class: 'btn quiet', type: 'button', onclick: asKing }, 'It is sealed'))));
+      }
+      asKing();
+      return holder;
+    }
+    boxes.forEach(function (b) { list.appendChild(row(b)); });
+    fill(wrap, [
+      h('p', { class: 'over good-text' }, boxes.length === 1 ? 'King label made' : boxes.length + ' King labels made'),
+      h('div', { class: 'scan-product' }, productName(p)),
+      h('p', {}, 'Put each label on its box (they wait on the list to print). Is any of these boxes already open?'),
+      list,
+      h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { onDone(queens); } }, 'Done · next box'),
+    ]);
+    return wrap;
   }
 
   /** Receiving or labeling by scanning: one scanner, box after box. */
@@ -1915,16 +1960,19 @@
           ctl.panel(boxesPanel(p, { mode: mode, status: it.status }, async function (c) {
             var r = await rpc('retail_boxes_create', {
               p_store: state.store.id, p_product: p.id, p_location: whereId, p_count: c.count, p_box_quantity: c.per,
-              p_mode: mode, p_open_remaining: c.open, p_cost_cents: mode === 'received' ? c.cost : null, p_note: '',
+              p_mode: mode, p_open_remaining: null, p_cost_cents: mode === 'received' ? c.cost : null, p_note: '',
             });
             made += r.boxes.length;
             labels = queueLabels(r.boxes, productName(p));
-            ctl.tally((mode === 'received' ? made + ' boxes received' : made + ' boxes labeled') + ' · ' + labels + ' labels to print');
-            ctl.resume();
+            ctl.tally(made + (made === 1 ? ' box ' : ' boxes ') + (mode === 'received' ? 'received' : 'labeled') + ' · ' + labels + (labels === 1 ? ' label' : ' labels') + ' to print');
             if (onEach) onEach(r);
-            resolve({ tone: r.beyondList ? 'warn' : 'good',
-              words: (c.open !== null ? 'Queen labeled: ' : r.boxes.length + (r.boxes.length === 1 ? ' box: ' : ' boxes: ')) + productName(p) + ' · ' + r.boxes.map(function (b) { return b.code; }).join(', ')
-                + (r.beyondList ? ' · ' + n(r.beyondList) + ' cigars more than the records had here' : '') });
+            ctl.panel(sealedOrOpen(r.boxes, p, c.per, function (queens) {
+              ctl.resume();
+              resolve({ tone: r.beyondList ? 'warn' : 'good',
+                words: r.boxes.length + (r.boxes.length === 1 ? ' box: ' : ' boxes: ') + productName(p) + ' · ' + r.boxes.map(function (b) { return b.code; }).join(', ')
+                  + (queens ? ' · ' + queens + (queens === 1 ? ' moved to Queen' : ' moved to Queens') : '')
+                  + (r.beyondList ? ' · ' + n(r.beyondList) + ' cigars more than the records had here' : '') });
+            }));
           }, function () {
             ctl.resume();
             resolve({ tone: 'warn', words: 'Not labeled.' });
@@ -1995,12 +2043,15 @@
         list.replaceChildren.apply(list, all.map(function (p) {
           return h('div', { class: 'item tap', onclick: function () {
             holder.replaceChildren(boxesPanel(p, { mode: 'labeled', status: 'confirmed' }, async function (c) {
-              var r = await rpc('retail_boxes_create', { p_store: state.store.id, p_product: p.id, p_location: where.value, p_count: c.count, p_box_quantity: c.per, p_mode: 'labeled', p_open_remaining: c.open, p_cost_cents: null, p_note: '' });
+              var r = await rpc('retail_boxes_create', { p_store: state.store.id, p_product: p.id, p_location: where.value, p_count: c.count, p_box_quantity: c.per, p_mode: 'labeled', p_open_remaining: null, p_cost_cents: null, p_note: '' });
               queueLabels(r.boxes, productName(p));
-              close();
-              toast(r.boxes.length + (r.boxes.length === 1 ? ' box labeled: ' : ' boxes labeled: ') + r.boxes.map(function (b) { return b.code; }).join(', '));
-              forget();
-              route();
+              list.replaceChildren();
+              holder.replaceChildren(sealedOrOpen(r.boxes, p, c.per, function () {
+                close();
+                toast(r.boxes.length + (r.boxes.length === 1 ? ' box labeled: ' : ' boxes labeled: ') + r.boxes.map(function (b) { return b.code; }).join(', '));
+                forget();
+                route();
+              }));
             }, function () { holder.replaceChildren(); }));
           } }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(p) }), h('div', { class: 'sub', text: productDetail(p) })));
         }));
@@ -2010,7 +2061,7 @@
       var close = sheet('A box with no barcode', h('div', {}, q, h('div', { style: { height: '10px' } }), list, holder));
     }
     show(h('h1', { text: 'Label boxes' }),
-      h('p', { class: 'lead' }, 'Give every box on the shelves its own Cigar Locker label, once. Scan the box\'s barcode, say if it is sealed or open, and its label joins the list to print. After this, an inventory is a walk with the scanner.'),
+      h('p', { class: 'lead' }, 'Give every box on the shelves its own permanent Cigar Locker label, once. Scan the box\'s barcode: it is made as a King with its label; if it is already open, Move to Queen and count what is in it. After this, an inventory is a walk with the scanner.'),
       h('div', { class: 'tiles' },
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Boxes labeled'), h('div', { class: 'figure' }, n(labeled))),
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Labels to print'), h('div', { class: 'figure' }, n(waiting)))),
@@ -2171,7 +2222,7 @@
           h('p', { class: 'lead' }, q.code + ' is a Queen of ' + n(q.remaining) + '.'),
           h('p', {}, 'Print a label for each cigar? Each gets its own code, so a cigar scanned out at the counter leaves this box and the count, once.'),
           h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: async function (ev) {
-            ev.currentTarget.disabled = true;
+            var btn = ev.currentTarget; btn.disabled = true;
             try { close(); await makeUnitLabels(boxId); } catch (e) { toast(errorText(e)); route(); }
           } }, 'Make ' + n(q.remaining) + ' cigar labels'),
             h('button', { class: 'btn', type: 'button', onclick: function () { close(); route(); } }, 'Not now')),
@@ -2181,6 +2232,36 @@
         h('p', { class: 'lead' }, p.name + ' · ' + b.code),
         h('p', {}, 'It becomes a Queen: from now on its cigars are counted, not the box. The store\'s total does not change.'),
         h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { open(false); } }, 'Open box'),
+      ]);
+    }
+    function moveToQueen() {
+      var count = null;
+      var when = h('input', { class: 'input', type: 'date', max: new Date().toISOString().slice(0, 10) });
+      var m3 = h('p', { class: 'error' });
+      var body = h('div');
+      var close = sheet('Move to Queen', body);
+      fill(body, [
+        h('p', { class: 'lead' }, b.code + ' was already open when it was labeled.'),
+        h('p', {}, 'The same box and label become a Queen. Its opening day stays unknown unless you know it.'),
+        field('How many cigars are in this box now?', stepper(null, function (v) { count = v; })),
+        field('Opened on (only if you know it)', when), m3,
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: async function (ev) {
+          if (!(count >= 1 && count <= b.original)) { m3.textContent = 'From 1 to ' + b.original + '.'; return; }
+          var btn = ev.currentTarget; btn.disabled = true;
+          try {
+            var r = await rpc('retail_box_baseline_open', { p_store: state.store.id, p_box: boxId, p_count: count, p_opened_on: when.value || null });
+            forget();
+            fill(body, [
+              h('p', { class: 'over good-text' }, 'Moved to Queen'),
+              h('p', { class: 'lead' }, b.code + ' is a Queen of ' + n(r.box.remaining) + '.'),
+              h('p', {}, 'Print a label for each of its ' + n(r.box.remaining) + ' cigars?'),
+              h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: async function () {
+                try { close(); await makeUnitLabels(boxId); } catch (e) { toast(errorText(e)); route(); }
+              } }, 'Print ' + n(r.box.remaining) + ' cigar labels'),
+                h('button', { class: 'btn', type: 'button', onclick: function () { close(); route(); } }, 'Not now')),
+            ]);
+          } catch (e) { m3.textContent = errorText(e); btn.disabled = false; }
+        } }, 'Move to Queen'),
       ]);
     }
     function takeOut() {
@@ -2269,6 +2350,7 @@
     var live = b.state === 'sealed' || b.state === 'open';
     var HISTORY = { received: 'Received', labeled: 'Labeled', opened: 'Opened', counted: 'Counted', sold: 'Sold', taken: 'Taken out', moved: 'Moved', damaged: 'Damaged',
       missing: 'Marked missing', found: 'Found', emptied: 'Emptied', archived: 'Archived', corrected: 'Corrected', unit_labels: 'Cigar labels made',
+      baseline_opened: 'Moved to Queen', 
       unit_sold: 'A cigar sold by its label', unit_damaged: 'A cigar damaged', unit_missing: 'A cigar missing', unit_void: 'A cigar label voided', unit_returned: 'A cigar back in the box' };
     show(
       h('p', { class: 'over' }, b.path || 'No place'),
@@ -2278,8 +2360,11 @@
       h('div', { class: 'tiles' },
         h('div', { class: 'tile' }, h('div', { class: 'label' }, b.state === 'sealed' ? 'Sealed' : 'In the box'), h('div', { class: 'figure' }, n(b.state === 'sealed' ? b.original : b.remaining)), h('div', { class: 'sub' }, 'of ' + n(b.original) + ' when full')),
         h('div', { class: 'tile' }, h('div', { class: 'label' }, 'Where'), h('div', { class: 'figure', style: { fontSize: '22px' } }, b.path || '—')),
-        h('div', { class: 'tile' }, h('div', { class: 'label' }, b.openedAt ? 'Opened' : b.receivedAt ? 'Received' : 'Labeled'), h('div', { class: 'figure', style: { fontSize: '22px' } }, day(b.openedAt || b.receivedAt || b.labeledAt)))),
+        h('div', { class: 'tile' }, h('div', { class: 'label' }, b.openedAt || b.openedBeforeTracking ? 'Opened' : b.receivedAt ? 'Received' : 'Labeled'),
+          h('div', { class: 'figure', style: { fontSize: '22px' } }, b.openedAt ? day(b.openedAt) : b.openedBeforeTracking ? 'Before tracking' : day(b.receivedAt || b.labeledAt)),
+          h('div', { class: 'sub' }, 'first seen ' + day(b.firstSeenAt) + (b.baseline !== null && b.baseline !== undefined ? ' with ' + n(b.baseline) + ' in it' : '')))),
       b.state === 'sealed' ? h('button', { class: 'btn primary big wide', type: 'button', onclick: openBox }, 'Open box') : null,
+      b.canBaseline ? h('button', { class: 'btn wide', type: 'button', onclick: moveToQueen }, 'Already open when labeled? Move to Queen') : null,
       msg,
       unitsCard(),
       h('div', { class: 'btns grid' },
