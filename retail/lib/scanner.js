@@ -203,7 +203,7 @@
         if (typedWaiting) {
           var v = typedWaiting;
           typedWaiting = null;
-          handle(Codes.ownCode(v) || v, '');
+          handle(Codes.ownCode(v) || v, '', typedInput);
         }
       },
       forget: function (code) {
@@ -212,7 +212,9 @@
       close: close,
     };
 
-    async function handle(code, format) {
+    // How each read came: the camera, typed in, or a scanner fed in (feed).
+    var typedInput = 'typed';
+    async function handle(code, format, input) {
       paused = true;
       frame.classList.add('held');
       var res;
@@ -222,6 +224,9 @@
         res = { tone: 'bad', words: (e && e.message) || 'That did not go through.' };
       }
       if (closed) return;
+      if (root.RetailScanner.onRead) {
+        try { root.RetailScanner.onRead(code, format, res, input || 'camera'); } catch (e) { /* never stops a scan */ }
+      }
       if (res && res.words !== undefined) ctl.flash(res.tone || 'good', res.words);
       if (panel.hidden) {
         setTimeout(function () {
@@ -248,7 +253,7 @@
             if (paused || taken || seen === 'held') continue;
             taken = true;
             guard.take(raw, now);
-            handle(Codes.ownCode(raw) || raw, found[i].format);
+            handle(Codes.ownCode(raw) || raw, found[i].format, 'camera');
           }
         } catch (e) {
           /* a frame that could not be read */
@@ -328,10 +333,11 @@
       typed.value = '';
       if (paused) {
         typedWaiting = v;
+        typedInput = 'typed';
         ctl.say('Next: ' + v);
         return;
       }
-      handle(Codes.ownCode(v) || v, '');
+      handle(Codes.ownCode(v) || v, '', 'typed');
     });
     photoBtn.addEventListener('click', function () {
       photo.click();
@@ -344,7 +350,7 @@
       try {
         var found = await detector.detect(f);
         if (!found.length) return ctl.flash('bad', 'No code found in that photo. Hold it closer and steady.');
-        handle(Codes.ownCode(found[0].rawValue) || found[0].rawValue, found[0].format);
+        handle(Codes.ownCode(found[0].rawValue) || found[0].rawValue, found[0].format, 'camera');
       } catch (e) {
         ctl.flash('bad', 'That photo could not be read.');
       }
@@ -365,10 +371,11 @@
       if (!v || closed) return;
       if (paused) {
         typedWaiting = v;
+        typedInput = 'scanner';
         ctl.say('Next: ' + v);
         return;
       }
-      handle(v, '');
+      handle(v, '', 'scanner');
     };
     current = ctl;
     return ctl;

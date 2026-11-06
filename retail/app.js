@@ -40,8 +40,9 @@
   var main = document.getElementById('main');
   var state = { user: null, stores: null, store: null, role: null, timers: [], cache: {} };
   var RANK = { employee: 1, manager: 2, owner: 3 };
-  var TYPES = ['room', 'humidor', 'wall', 'cabinet', 'shelf', 'drawer', 'display', 'other'];
-  var TYPE_WORDS = { room: 'Room', humidor: 'Humidor', wall: 'Wall', cabinet: 'Cabinet', shelf: 'Shelf', drawer: 'Drawer', display: 'Display', other: 'Other' };
+  var TYPES = ['room', 'walk_in', 'humidor', 'wall', 'cabinet', 'shelf', 'drawer', 'display', 'back_stock', 'lounge', 'other'];
+  var TYPE_WORDS = { room: 'Room', walk_in: 'Walk-in humidor', humidor: 'Humidor', wall: 'Wall', cabinet: 'Cabinet', shelf: 'Shelf', drawer: 'Drawer', display: 'Display',
+                     back_stock: 'Back stock', lounge: 'Lounge', other: 'Other' };
 
   // ---- building blocks ------------------------------------------------------
 
@@ -372,6 +373,7 @@
     { key: 'first', label: 'First inventory', least: 'employee', path: '/first' },
     { key: 'out', label: 'Cigars out', least: 'employee', path: '/out' },
     { key: 'register', label: 'Register', least: 'employee', path: '/register' },
+    { key: 'insights', label: 'Insights', least: 'manager', path: '/insights' },
     { key: 'count', label: 'Count', least: 'employee', path: '/count' },
     { key: 'scan', label: 'Scan', least: 'employee', path: '/scan' },
     { key: 'inventory', label: 'Inventory', least: 'employee', path: '/inventory' },
@@ -419,6 +421,7 @@
         h('p', {}, h('b', { text: (state.store && state.store.me) || '' }), h('br'), h('span', { class: 'muted', text: state.user ? state.user.email : '' })),
         state.store ? h('p', { class: 'muted' }, 'Your role at ' + state.store.name + ': ' + state.store.role) : null,
         state.stores && state.stores.length > 1 ? h('a', { class: 'btn wide', href: '#/stores' }, 'Switch store') : null,
+        state.platform ? h('a', { class: 'btn wide brand', href: '#/admin' }, 'Cigar Locker network (platform admin)') : null,
         h('div', { class: 'btns' }, h('button', {
           class: 'btn wide',
           type: 'button',
@@ -426,6 +429,7 @@
             await sb.auth.signOut();
             state.stores = null;
             state.store = null;
+            state.platform = undefined;
             forget();
             document.querySelectorAll('.veil').forEach(function (v) { v.remove(); });
             go('/');
@@ -451,6 +455,13 @@
       if (!session) return signIn();
       state.user = session.user;
       if (!state.stores) state.stores = await rpc('retail_my_stores');
+      if (state.platform === undefined) state.platform = await rpc('retail_platform_me').then(function (r) { return !!r.admin; }).catch(function () { return false; });
+      if (parts[0] === 'admin' && state.platform) {
+        state.store = null;
+        state.page = 'admin';
+        show(busy());
+        return await networkView(parts[1]);
+      }
       if (parts[0] !== 's') {
         if (state.stores.length === 1 && parts[0] !== 'stores') return go('/s/' + state.stores[0].id);
         state.store = null;
@@ -464,6 +475,7 @@
       state.store = store;
       state.role = store.role;
       var page = parts[2] || 'home';
+      state.page = page;
       chrome(page);
       drawNet();
       flushOutbox();
@@ -478,6 +490,7 @@
       if (page === 'first') return await firstView(parts[3]);
       if (page === 'out') return await outView();
       if (page === 'register') return await registerView();
+      if (page === 'insights' && can('manager')) return await insightsView();
       if (page === 'box' && parts[3]) return await boxPage(parts[3]);
       if (page === 'locations' && can('manager')) return await locationsView();
       if (page === 'products' && can('manager')) return await productsView();
@@ -586,7 +599,7 @@
     if (!state.stores || !state.stores.length) {
       return show(h('div', { class: 'card' }, h('h1', { text: 'No store yet' }), h('p', { class: 'lead' }, 'This sign-in is not on a store\'s team. Open the invite link the store sent you.')));
     }
-    show(h('h1', { text: 'Your stores' }), h('div', { class: 'list' }, state.stores.map(function (s) {
+    show(h('h1', { text: 'Your stores' }), state.platform ? h('a', { class: 'btn brand', href: '#/admin' }, 'Cigar Locker network') : null, h('div', { class: 'list' }, state.stores.map(function (s) {
       return h('a', { class: 'item tap', href: '#/s/' + s.id, style: { textDecoration: 'none', color: 'inherit' } },
         h('div', { class: 'grow' }, h('div', { class: 'name', text: s.name }), h('div', { class: 'sub', text: [s.city, s.state].filter(Boolean).join(', ') })), chip(s.role));
     })));
@@ -1499,6 +1512,9 @@
     var cost = h('input', { class: 'input', value: v.cost_cents !== null ? (v.cost_cents / 100).toFixed(2) : '', inputmode: 'decimal', placeholder: 'per cigar' });
     var price = h('input', { class: 'input', value: v.price_cents !== null ? (v.price_cents / 100).toFixed(2) : '', inputmode: 'decimal', placeholder: 'per cigar' });
     var box = h('input', { class: 'input', value: v.box_count || '', inputmode: 'numeric' });
+    var leaf = {};
+    ['wrapper', 'binder', 'filler', 'country', 'strength', 'box_config', 'supplier_name'].forEach(function (k) { leaf[k] = h('input', { class: 'input', value: v[k] || '' }); });
+    leaf.box_config.placeholder = 'e.g. 25-count box, 5-pack';
     var active = h('input', { type: 'checkbox', checked: v.active !== false });
     var matchLine = h('p', { class: 'small' }, v.match_status === 'matched' || v.match_status === 'confirmed' ? 'Matched to the catalogue.' : 'Not matched to the catalogue yet.');
     var results = h('div', { class: 'list' });
@@ -1525,6 +1541,8 @@
       h('div', { class: 'row-fields' }, field('Brand', brand), field('Line', line), field('Size name', vitola), field('Size', size)),
       h('div', { class: 'row-fields' }, field('Cost per cigar, $', cost), field('Retail price per cigar, $', price), field('Cigars per box', box)),
       h('div', { class: 'row-fields' }, field('SKU', sku), field('UPC / barcode', upc)),
+      h('div', { class: 'row-fields' }, field('Wrapper', leaf.wrapper), field('Binder', leaf.binder), field('Filler', leaf.filler)),
+      h('div', { class: 'row-fields' }, field('Country', leaf.country), field('Strength', leaf.strength), field('How it comes', leaf.box_config), field('Supplier', leaf.supplier_name)),
       h('label', { class: 'field', style: { display: 'flex', gap: '10px', alignItems: 'center' } }, active, h('span', { style: { margin: 0 } }, 'Active (counted and listed)')),
       h('h3', { text: 'Catalogue match' }), matchLine, h('div', { class: 'btns' }, search, h('button', { class: 'btn', type: 'button', onclick: find }, 'Search')), results,
       msg, h('button', { class: 'btn primary wide', type: 'button', onclick: async function () {
@@ -1535,6 +1553,7 @@
           cost_cents: S.cents(cost.value) === null ? '' : String(S.cents(cost.value)), price_cents: S.cents(price.value) === null ? '' : String(S.cents(price.value)),
           box_count: box.value.trim(), active: active.checked,
         };
+        Object.keys(leaf).forEach(function (k) { body[k] = leaf[k].value.trim(); });
         if (picked) { body.cigar_id = picked.cigarId; body.line_key = picked.lineKey; body.match_status = 'confirmed'; }
         try { await rpc('retail_product_save', { p_store: state.store.id, p: body }); close(); forget(); route(); } catch (e) { msg.textContent = errorText(e); }
       } }, 'Save')));
@@ -1729,7 +1748,8 @@
     var where = h('select', { class: 'input' }, walk(d).map(function (x) { return h('option', { value: x.loc.id, selected: state.receiveAt === x.loc.id }, ' '.repeat(x.depth * 3) + x.loc.name); }));
     where.addEventListener('change', function () { state.receiveAt = where.value; });
     var cost = h('input', { class: 'input', inputmode: 'decimal', placeholder: 'per cigar (optional)' });
-    var note = h('input', { class: 'input', placeholder: 'Invoice or note (optional)' });
+    var note = h('input', { class: 'input', placeholder: 'optional' });
+    var del = deliveryFields();
     var chosen = h('div', { class: 'card flat' }, h('p', { class: 'muted' }, 'No product chosen.'));
     var msg = h('p', { class: 'error' });
     var qtyBox = stepper(0, function (v) { qty = v || 0; });
@@ -1753,13 +1773,15 @@
     show(h('h1', { text: 'Receive inventory' }), h('p', { class: 'lead' }, 'Loose cigars coming in, not in a box: the product, how many, what they cost and where they go.'),
       seg, h('div', { style: { height: '12px' } }),
       h('div', { class: 'card' }, field('Product', q), results, chosen,
-        h('div', { class: 'row-fields' }, field('How many cigars', qtyBox), field('Cost per cigar, $', cost)), field('Put them in', where), field('Note', note), msg,
+        h('div', { class: 'row-fields' }, field('How many cigars', qtyBox), field('Cost per cigar, $', cost)), field('Put them in', where), del.node, field('Note', note), msg,
         h('button', { class: 'btn primary big wide', type: 'button', onclick: async function (ev) {
           if (!product) { msg.textContent = 'Choose the product.'; return; }
           if (!qty) { msg.textContent = 'How many came in?'; return; }
           ev.target.disabled = true;
           try {
-            await rpc('retail_receive', { p_store: state.store.id, p_product: product.id, p_location: where.value, p_quantity: qty, p_cost_cents: S.cents(cost.value), p_note: note.value });
+            var rc = await del.receipt();
+            if (rc) await rpc('retail_receive_on', { p_store: state.store.id, p_receipt: rc, p_product: product.id, p_location: where.value, p_quantity: qty, p_cost_cents: S.cents(cost.value), p_note: note.value });
+            else await rpc('retail_receive', { p_store: state.store.id, p_product: product.id, p_location: where.value, p_quantity: qty, p_cost_cents: S.cents(cost.value), p_note: note.value });
             toast('Received ' + n(qty) + ' ' + productName(product) + '.');
             forget();
             route();
@@ -2058,6 +2080,30 @@
     return wrap;
   }
 
+  /**
+   * The delivery's supplier and invoice or PO, both optional: filled in, the
+   * boxes and cigars received are kept against that delivery (one opened the
+   * first time and kept while the two stay the same).
+   */
+  function deliveryFields() {
+    var o0 = state.delivery || {};
+    var supplier = h('input', { class: 'input', placeholder: 'Distributor or maker (optional)', value: o0.supplier || '' });
+    var reference = h('input', { class: 'input', placeholder: 'Invoice or PO (optional)', value: o0.reference || '' });
+    return {
+      node: h('div', { class: 'row-fields' }, field('Supplier', supplier), field('Invoice / PO', reference)),
+      receipt: async function () {
+        var sup = supplier.value.trim();
+        var ref = reference.value.trim();
+        if (!sup && !ref) return null;
+        var cur = state.delivery;
+        if (cur && cur.store === state.store.id && cur.supplier === sup && cur.reference === ref && cur.id) return cur.id;
+        var r = await rpc('retail_receipt_open', { p_store: state.store.id, p_supplier: sup, p_reference: ref, p_note: '' });
+        state.delivery = { store: state.store.id, supplier: sup, reference: ref, id: r.id };
+        return r.id;
+      },
+    };
+  }
+
   /** Pre-printed labels, or labels made as boxes are scanned: the choice, remembered, and the words for it. */
   function labelModeSeg(blank) {
     if (state.preprinted === undefined) state.preprinted = blank > 0;
@@ -2100,10 +2146,13 @@
             if (!pending) return { tone: 'warn', words: 'A blank label (No. ' + known.no + '). Scan the box\'s barcode first, then this label.' };
             var pp = pending;
             pending = null;
-            var r0 = await rpcOnce('retail_boxes_create', {
-              p_store: state.store.id, p_product: pp.p.id, p_location: whereId, p_count: 1, p_box_quantity: pp.per,
-              p_mode: mode, p_open_remaining: null, p_cost_cents: null, p_note: '', p_label: code,
-            });
+            var r0 = o.receipt && mode === 'received'
+              ? await rpcOnce('retail_boxes_receive', { p_store: state.store.id, p_receipt: o.receipt, p_product: pp.p.id, p_location: whereId, p_count: 1,
+                                                        p_box_quantity: pp.per, p_cost_cents: null, p_label: code })
+              : await rpcOnce('retail_boxes_create', {
+                p_store: state.store.id, p_product: pp.p.id, p_location: whereId, p_count: 1, p_box_quantity: pp.per,
+                p_mode: mode, p_open_remaining: null, p_cost_cents: null, p_note: '', p_label: code,
+              });
             made += 1;
             count();
             if (onEach) onEach(r0);
@@ -2151,10 +2200,13 @@
         }
         return await new Promise(function (resolve) {
           ctl.panel(boxesPanel(p, { mode: mode, status: it.status }, async function (c) {
-            var r = await rpc('retail_boxes_create', {
-              p_store: state.store.id, p_product: p.id, p_location: whereId, p_count: c.count, p_box_quantity: c.per,
-              p_mode: mode, p_open_remaining: null, p_cost_cents: mode === 'received' ? c.cost : null, p_note: '',
-            });
+            var r = o.receipt && mode === 'received'
+              ? await rpcOnce('retail_boxes_receive', { p_store: state.store.id, p_receipt: o.receipt, p_product: p.id, p_location: whereId, p_count: c.count,
+                                                        p_box_quantity: c.per, p_cost_cents: c.cost, p_label: null })
+              : await rpc('retail_boxes_create', {
+                p_store: state.store.id, p_product: p.id, p_location: whereId, p_count: c.count, p_box_quantity: c.per,
+                p_mode: mode, p_open_remaining: null, p_cost_cents: mode === 'received' ? c.cost : null, p_note: '',
+              });
             made += r.boxes.length;
             labels = queueLabels(r.boxes, productName(p));
             count();
@@ -2191,13 +2243,27 @@
     var recent = (await sb.from('store_box_events').select('box_instance_id,store_product_id,to_location_id,at').eq('store_id', state.store.id).eq('kind', 'received').order('at', { ascending: false }).limit(40)).data || [];
     var waiting = labelQueue().length;
     var more = await rpc('retail_dashboard_more', { p_store: state.store.id });
+    var del = deliveryFields();
+    var deliveries = await rpc('retail_receipts', { p_store: state.store.id, p_limit: 8 }).catch(function () { return []; });
     show(h('h1', { text: 'Receive inventory' }),
       h('p', { class: 'lead' }, 'Scan each new box\'s barcode: the product is found, you say how many boxes, and each gets its own Cigar Locker label.'),
       seg, h('div', { style: { height: '12px' } }),
-      h('div', { class: 'card' }, field('Put them in', where), labelModeSeg(more.blankLabels),
-        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { state.receiveAt = where.value; boxesByScan('received', where.value, null, { preprinted: state.preprinted }); } }, 'Scan boxes'),
+      h('div', { class: 'card' }, field('Put them in', where), del.node, labelModeSeg(more.blankLabels),
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: async function () {
+          state.receiveAt = where.value;
+          try {
+            var rc = await del.receipt();
+            boxesByScan('received', where.value, null, { preprinted: state.preprinted, receipt: rc });
+          } catch (e) { toast(errorText(e)); }
+        } }, 'Scan boxes'),
         h('p', { class: 'muted small' }, 'A code this store has not confirmed is never taken on its own: you choose the product once, and it is known from then on.')),
       waiting ? h('a', { class: 'btn brand wide', href: base + '/labels' }, 'Print ' + n(waiting) + (waiting === 1 ? ' label' : ' labels')) : null,
+      deliveries.length ? h('h2', { text: 'Deliveries' }) : null,
+      deliveries.length ? h('div', { class: 'list' }, deliveries.map(function (r) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: (r.supplier || 'Supplier not given') + (r.reference ? ' · ' + r.reference : '') }),
+          h('div', { class: 'sub', text: day(r.at) + (r.by ? ' · ' + r.by : '') + ' · ' + n(r.boxes) + (r.boxes === 1 ? ' box' : ' boxes') + ' · ' + n(r.cigars) + ' cigars' })),
+          h('div', { class: 'qty', text: r.costCents ? money(r.costCents) : '' }));
+      })) : null,
       recent.length ? h('h2', { text: 'Boxes received lately' }) : null,
       recent.length ? h('div', { class: 'list' }, groupRecent(recent).map(function (g) {
         return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: productName(d.products[g.product]) }), h('div', { class: 'sub', text: day(g.at) + ' · ' + pathOf(d, g.where) })), h('div', { class: 'qty', text: '+' + n(g.boxes) }));
@@ -3181,6 +3247,8 @@
   async function lookupScan(code) {
     try {
       var r = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code });
+      var known = ((r.kind === 'unit' || r.kind === 'box') && r.box) || (r.kind === 'product' && r.candidates.length);
+      logScan(code, known ? 'good' : r.kind === 'label' ? 'warn' : 'bad', known ? 'found' : r.otherStore ? 'WRONG STORE' : r.kind === 'label' ? 'blank label' : 'UNKNOWN CODE', 'scanner');
       if ((r.kind === 'unit' || r.kind === 'box') && r.box) {
         tone('good');
         if (r.unit) toast(r.unit.token + ': ' + (UNIT_WORDS[r.unit.status] || r.unit.status) + ' · ' + r.unit.product.name);
@@ -3243,10 +3311,16 @@
 
     function keep() { saveJson(regKey('sale'), sale); }
     var quiet = false;
+    var reading = null;
     function say(toneName, words) {
       banner.className = 'reg-banner ' + toneName;
       banner.textContent = words;
       if (toneName !== 'idle' && !quiet) tone(toneName);
+      // Each scan's outcome kept once (the server's later word on it too, as its own).
+      if (toneName !== 'idle' && reading) {
+        logScan(reading.code, toneName, words, reading.input);
+        reading = null;
+      }
     }
     function draw() {
       var t = Reg.totals(sale);
@@ -3282,7 +3356,8 @@
     }
 
     /** A scanned code into the sale: at once from this register's list; checked with the server behind it. */
-    async function onScan(code) {
+    async function onScan(code, meta) {
+      reading = { code: code, input: quiet ? 'camera' : meta ? 'scanner' : 'typed' };
       var hit = Reg.resolve(ix, code, Codes);
       if (hit.kind === 'ask') {
         say('idle', 'Checking ' + hit.code + '…');
@@ -3394,10 +3469,11 @@
     }
     function camera(ev) {
       if (ev) ev.currentTarget.blur();
+      state.registerCamera = true;
       self.RetailScanner.open({
         title: 'Register · ' + registerName(),
         hint: 'A cigar\'s label, a box\'s, or a barcode. Each adds to the sale.',
-        onClose: function () { draw(); },
+        onClose: function () { state.registerCamera = false; draw(); },
         onCode: async function (code) {
           // The camera's own flash beeps once for it.
           quiet = true;
@@ -3425,6 +3501,7 @@
         h('div', { class: 'btns' },
           h('button', { class: 'btn small', type: 'button', onclick: typeCode }, 'Type a code'),
           h('button', { class: 'btn small', type: 'button', onclick: camera }, 'Camera'),
+          h('button', { class: 'btn small', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); demandSheet('register'); } }, 'Asked for, not stocked'),
           h('button', { class: 'btn small', type: 'button', onclick: function (ev) { ev.currentTarget.blur(); scannerSetup(); } }, 'Scanner setup'))),
       offlineNote ? h('p', { class: 'warn-text small' }, offlineNote) : null,
       banner,
@@ -3499,6 +3576,262 @@
     setTimeout(function () { test.focus(); }, 50);
   }
 
+  // ---- every scan, kept (retail_scan_log) ------------------------------------------------------
+  //
+  // Each code read on any screen, by camera, scanner or typing, with how it
+  // went, kept on this device and sent in batches (each with its own id, so a
+  // batch sent twice is kept once). The server keeps no code that could carry
+  // personal details (an ID card's barcode read by mistake).
+
+  function scanLogKey() {
+    return 'cl-retail-scanlog';
+  }
+  function logScan(code, tone, words, input) {
+    if (!state.store) return;
+    var list = loadJson(scanLogKey(), []);
+    list.push({ store: state.store.id, id: O.uuid(), code: String(code || '').slice(0, 200), outcome: tone === 'good' ? 'ok' : tone === 'warn' ? 'warn' : 'error',
+                result: String(words || '').slice(0, 160), context: state.page || '', input: input || '', at: new Date().toISOString() });
+    saveJson(scanLogKey(), list.slice(-2000));
+    if (list.length >= 50) flushScanLog();
+  }
+  var scanLogBusy = false;
+  async function flushScanLog() {
+    if (scanLogBusy || !navigator.onLine) return;
+    var list = loadJson(scanLogKey(), []);
+    if (!list.length) return;
+    scanLogBusy = true;
+    try {
+      var byStore = {};
+      list.slice(0, 500).forEach(function (e) { (byStore[e.store] = byStore[e.store] || []).push(e); });
+      var sent = {};
+      for (var st in byStore) {
+        try {
+          await rpc('retail_scan_log', { p_store: st, p_events: byStore[st] });
+          byStore[st].forEach(function (e) { sent[e.id] = true; });
+        } catch (e) {
+          if (O.isNetworkError(e, navigator.onLine)) break;
+          // Refused (no longer on that store's team): not kept here forever.
+          byStore[st].forEach(function (x) { sent[x.id] = true; });
+        }
+      }
+      saveJson(scanLogKey(), loadJson(scanLogKey(), []).filter(function (e) { return !sent[e.id]; }));
+    } finally {
+      scanLogBusy = false;
+    }
+  }
+  setInterval(flushScanLog, 15000);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flushScanLog(); });
+  if (self.RetailScanner) {
+    self.RetailScanner.onRead = function (code, format, res, input) {
+      if (state.registerCamera) return; // the register keeps its own
+      logScan(code, res ? res.tone : 'good', res ? res.words : '', input);
+    };
+  }
+
+  // ---- demand the sales cannot show ------------------------------------------------------------
+
+  /** "A customer asked for a cigar we do not have": the cigar, how many, and what kind of ask. */
+  function demandSheet(context, after) {
+    var what = h('input', { class: 'input', placeholder: 'Brand, line and size' });
+    var howMany = null;
+    var kind = 'requested_not_stocked';
+    var seg = h('div', { class: 'seg' });
+    function drawSeg() {
+      seg.replaceChildren.apply(seg, [['requested_not_stocked', 'Asked for'], ['special_order', 'Special order'], ['waitlist', 'Waitlist']].map(function (o) {
+        return h('button', { type: 'button', class: kind === o[0] ? 'on' : '', onclick: function () { kind = o[0]; drawSeg(); } }, o[1]);
+      }));
+    }
+    drawSeg();
+    var msg = h('p', { class: 'error' });
+    var close = sheet('Asked for, not stocked', h('div', {},
+      h('p', { class: 'muted small' }, 'What a customer wanted that the shelves did not have. The cigar, not who asked.'),
+      field('What', what), h('div', { class: 'row-fields' }, field('How many', stepper(null, function (v) { howMany = v; })), h('div', { class: 'field' }, h('span', {}, 'Kind'), seg)),
+      msg,
+      h('button', { class: 'btn primary wide', type: 'button', onclick: async function () {
+        if (!what.value.trim()) { msg.textContent = 'What was asked for?'; return; }
+        var args = { p_store: state.store.id, p_kind: kind, p_text: what.value.trim(), p_product: null, p_quantity: howMany || null,
+                     p_customer: null, p_context: context || '', p_client: O.uuid() };
+        try {
+          try {
+            await rpc('retail_demand_note', args);
+          } catch (e) {
+            if (!O.isNetworkError(e, navigator.onLine)) throw e;
+            // No connection: kept here and sent once (its own id) when it is back.
+            outbox.add({ op: args.p_client, fn: 'retail_demand_note', args: args, label: 'Asked for: ' + args.p_text, store: state.store.id, at: Date.now() });
+            drawNet();
+          }
+          close();
+          toast('Noted: ' + what.value.trim() + '.');
+          if (after) after();
+        } catch (e) { msg.textContent = errorText(e); }
+      } }, 'Note it')));
+  }
+
+  // ---- the store's own intelligence (managers) ----------------------------------------------------
+
+  var STATUS_WORDS = { fast: 'Fast mover', slow: 'Slow', dead: 'Not moving', low: 'Running low', new: 'New', steady: 'Steady' };
+  var STATUS_TONE = { fast: 'good', slow: 'warn', dead: 'bad', low: 'warn', new: 'info', steady: '' };
+  function intelTile(label, figure, sub, color) {
+    return h('div', { class: 'tile' }, h('div', { class: 'label' }, label), h('div', { class: 'figure', style: color ? { color: 'var(--' + color + ')' } : null }, figure), sub ? h('div', { class: 'sub' }, sub) : null);
+  }
+  function productTable(prods, sortKey) {
+    var cols = [['name', 'Product'], ['units', 'On hand'], ['sold', 'Sold, 90 days'], ['perDay', 'A day'], ['daysOfSupply', 'Days of supply'],
+                ['oldestKingDays', 'Oldest King, days'], ['daysOpenToEmpty', 'Queen open to empty, days'], ['marginPct', 'Margin'], ['status', '']];
+    var list = prods.slice();
+    var key = sortKey || 'sold';
+    list.sort(function (a, b) {
+      var x = a[key], y = b[key];
+      if (key === 'name' || key === 'status') return String(x || '').localeCompare(String(y || ''));
+      return (y === null || y === undefined ? -1e12 : y) - (x === null || x === undefined ? -1e12 : x);
+    });
+    return h('div', { class: 'scroll-x' }, h('table', { class: 'table' },
+      h('tr', {}, cols.map(function (c) { return h('th', { class: c[0] === 'name' || c[0] === 'status' ? '' : 'n' }, c[1]); })),
+      list.slice(0, 300).map(function (p) {
+        return h('tr', {}, h('td', { text: p.name }), h('td', { class: 'n', text: n(p.units) + (p.kings || p.queens ? ' · ' + [p.kings ? plural(p.kings, 'King') : '', p.queens ? plural(p.queens, 'Queen') : ''].filter(Boolean).join(', ') : '') }),
+          h('td', { class: 'n', text: n(p.sold) }), h('td', { class: 'n', text: p.perDay ? String(p.perDay) : '—' }),
+          h('td', { class: 'n', text: p.daysOfSupply === null || p.daysOfSupply === undefined ? '—' : n(p.daysOfSupply) }),
+          h('td', { class: 'n', text: p.oldestKingDays === null || p.oldestKingDays === undefined ? '—' : n(p.oldestKingDays) }),
+          h('td', { class: 'n', text: p.daysOpenToEmpty === null || p.daysOpenToEmpty === undefined ? '—' : String(p.daysOpenToEmpty) }),
+          h('td', { class: 'n', text: p.marginPct === null || p.marginPct === undefined ? '—' : p.marginPct + '%' }),
+          h('td', {}, chip(STATUS_WORDS[p.status] || p.status, STATUS_TONE[p.status] || '')));
+      })));
+  }
+  function miniList(items, sub) {
+    return items.length ? h('div', { class: 'list' }, items.map(function (p) {
+      return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: p.name || p.what }), h('div', { class: 'sub', text: sub(p) })));
+    })) : h('p', { class: 'muted' }, 'None.');
+  }
+  function intelBody(I, prods, readOnly) {
+    var S30 = I.sales || {};
+    var acc = I.accuracy || {};
+    var sortSel = h('select', { class: 'input' }, [['sold', 'Most sold'], ['units', 'Most on hand'], ['daysOfSupply', 'Most days of supply'], ['oldestKingDays', 'Oldest King'], ['marginPct', 'Highest margin'], ['name', 'A to Z']].map(function (o) {
+      return h('option', { value: o[0] }, o[1]);
+    }));
+    var table = h('div', {}, productTable(prods, 'sold'));
+    sortSel.addEventListener('change', function () { table.replaceChildren(productTable(prods, sortSel.value)); });
+    return [
+      h('h2', { text: 'The last 30 days' }),
+      h('div', { class: 'tiles' },
+        intelTile('Revenue', money(S30.revenueCents || 0), n(S30.transactions || 0) + ' sales'),
+        intelTile('Average ticket', S30.avgTicketCents ? money(S30.avgTicketCents, true) : '—'),
+        intelTile('Gross margin', I.margin && I.margin.pct !== null && I.margin.pct !== undefined ? I.margin.pct + '%' : '—', I.margin && I.margin.linesWithoutCost ? n(I.margin.linesWithoutCost) + ' lines without a cost' : 'at each box\'s own cost'),
+        intelTile('Scans', n((I.scans30 || {}).total || 0), plural((I.scans30 || {}).errors || 0, 'error') + ' · ' + plural((I.scans30 || {}).unknownCodes || 0, 'unknown code'))),
+      h('h2', { text: 'Stock' }),
+      h('div', { class: 'tiles' },
+        intelTile('On hand', n(I.stock.units) + ' cigars', n(I.stock.products) + ' products'),
+        intelTile('Value at cost', money(I.stock.valueCents), money(I.stock.retailCents) + ' at retail'),
+        intelTile('Kings · Queens', n(I.stock.kings) + ' · ' + n(I.stock.queens), I.productsWithTwoQueens ? n(I.productsWithTwoQueens) + ' products with two open boxes' : 'one open box a product'),
+        intelTile('Aged Kings', n(I.agedKings), I.oldestKing ? 'oldest ' + I.oldestKing.code + ', ' + n(I.oldestKing.days) + ' days' : 'sealed over 180 days', I.agedKings ? 'warn' : ''),
+        intelTile('Last count', acc.accuracy !== null && acc.accuracy !== undefined ? acc.accuracy + '%' : '—', acc.expected ? n(acc.absVariance) + ' off of ' + n(acc.expected) : 'accuracy'),
+        intelTile('Shrinkage, 90 days', n((I.shrink90 || {}).cigars || 0) + ' cigars', money((I.shrink90 || {}).costCents || 0) + ' at cost', (I.shrink90 || {}).cigars ? 'warn' : ''),
+        intelTile('Customers', n((I.customers || {}).total || 0), n((I.customers || {}).new30 || 0) + ' new in 30 days')),
+      h('div', { class: 'grid2' },
+        h('div', {}, h('h3', { text: 'Fast movers' }), miniList(I.fast, function (p) { return n(p.sold) + ' sold in 90 days · ' + n(p.units) + ' on hand'; })),
+        h('div', {}, h('h3', { text: 'Not moving' }), miniList(I.dead, function (p) { return n(p.units) + ' on hand · ' + (p.valueCents ? money(p.valueCents) + ' at cost · ' : '') + 'none sold in 90 days'; })),
+        h('div', {}, h('h3', { text: 'Running low' }), miniList(I.low, function (p) { return n(p.units) + ' left · about ' + (p.daysOfSupply === null ? '—' : n(p.daysOfSupply)) + ' days'; })),
+        h('div', {}, h('h3', { text: 'Asked for, not stocked' }), miniList(I.asked, function (a) { return a.times + (a.times === 1 ? ' time' : ' times') + (a.quantity ? ' · ' + a.quantity + ' cigars' : '') + ' · last ' + day(a.last); }))),
+      h('h2', { text: 'Every product' }),
+      h('div', { class: 'btns' }, sortSel),
+      table,
+      h('p', { class: 'muted small' }, 'From what is recorded, nothing guessed: a day is sold in the last 90 days over 90; days of supply is what is on hand over that; margin is the price over the cost now. Not moving: on hand, none sold in 90 days, here over 60.'),
+      h('h2', { text: 'Activity by person, 90 days' }),
+      h('p', { class: 'muted small' }, 'Counts for training and auditing, not a verdict on anyone.'),
+      I.people.length ? h('div', { class: 'scroll-x' }, h('table', { class: 'table' },
+        h('tr', {}, ['Person', 'Events', 'Sales', 'Scans', 'Scan errors', 'Deliveries', 'Places counted', 'Kings opened', 'Adjustments', 'Exceptions', 'Overrides'].map(function (c, i) { return h('th', { class: i ? 'n' : '' }, c); })),
+        I.people.map(function (x) {
+          return h('tr', {}, h('td', { text: x.name + ' · ' + x.role }), [x.events, x.sales, x.scans, x.scanErrors, x.deliveries, x.placesCounted, x.kingsOpened, x.adjustments, x.exceptions, x.overrides].map(function (v) { return h('td', { class: 'n', text: n(v) }); }));
+        }))) : null,
+      readOnly ? null : h('div', { class: 'btns' }, h('button', { class: 'btn', type: 'button', onclick: function () { demandSheet('insights', route); } }, 'Note something asked for')),
+    ];
+  }
+
+  async function insightsView() {
+    var res = await Promise.all([rpc('retail_store_intel', { p_store: state.store.id }), rpc('retail_product_intel', { p_store: state.store.id, p_days: 90 })]);
+    show(h('h1', { text: 'Insights' }), h('p', { class: 'lead' }, 'What this store\'s own records say: what moves, what does not, what is running low, what customers asked for, and how the inventory holds up.'),
+      intelBody(res[0], res[1], false));
+  }
+
+  // ---- the store's profile (owners) --------------------------------------------------------------
+
+  async function profileCard() {
+    var pr = await rpc('retail_store_profile', { p_store: state.store.id });
+    var input = function (v, ph) { return h('input', { class: 'input', value: v === null || v === undefined ? '' : String(v), placeholder: ph || '' }); };
+    var market = input(pr.market, 'e.g. Tampa Bay');
+    var region = input(pr.region, 'e.g. Southeast');
+    var registers = input(pr.registers, '0');
+    var area = input(pr.squareFeet, 'optional');
+    var hours = input(pr.hours && pr.hours.text, 'e.g. Mon–Sat 10–9, Sun 12–6');
+    var type = h('select', { class: 'input' }, [['retail', 'A shop'], ['retail_lounge', 'A shop with a lounge'], ['lounge', 'A lounge'], ['online', 'Online'], ['other', 'Other']].map(function (o) {
+      return h('option', { value: o[0], selected: pr.storeType === o[0] }, o[1]);
+    }));
+    var msg = h('p', { class: 'error' });
+    return h('div', { class: 'card' },
+      h('h2', { style: { marginTop: 0 } }, 'Store profile'),
+      h('p', { class: 'muted small' }, n(pr.employees) + ' people · ' + n(pr.places) + ' places · ' + n(pr.humidors) + ' humidors and walk-ins · ' + n(pr.cabinets) + ' cabinets · with Cigar Locker since ' + day(pr.joinedAt)),
+      h('div', { class: 'row-fields' }, field('Kind of store', type), field('Market', market), field('Region', region)),
+      h('div', { class: 'row-fields' }, field('Registers', registers), field('Square feet', area), field('Hours', hours)),
+      msg,
+      can('owner') ? h('button', { class: 'btn primary', type: 'button', onclick: async function () {
+        try {
+          await rpc('retail_store_profile_save', { p_store: state.store.id, p: { store_type: type.value, market: market.value, region: region.value, registers: registers.value.trim(),
+            square_feet: area.value.trim().replace(/[^0-9]/g, ''), has_lounge: type.value === 'retail_lounge' || type.value === 'lounge', hours: { text: hours.value.trim() } } });
+          toast('Store profile saved.');
+        } catch (e) { msg.textContent = errorText(e); }
+      } }, 'Save the profile') : h('p', { class: 'muted small' }, 'The owner keeps it up to date.'));
+  }
+
+  // ---- Cigar Locker's network (Platform Admin only) ----------------------------------------------
+
+  async function networkView(storeId) {
+    bare();
+    document.getElementById('bar').hidden = false;
+    document.getElementById('bar-store').textContent = 'Cigar Locker network';
+    if (storeId) return networkStore(storeId);
+    var N = await rpc('retail_network');
+    var T = N.totals;
+    show(h('p', { class: 'over' }, 'Platform admin · read only · every view is kept'), h('h1', { text: 'Cigar Locker Retail network' }),
+      h('div', { class: 'tiles' },
+        intelTile('Stores', n(T.stores), n(T.active) + ' active'),
+        intelTile('Cigars on hand', n(T.units), n(T.kings) + ' Kings · ' + n(T.queens) + ' Queens'),
+        intelTile('Inventory at cost', money(T.costCents)),
+        intelTile('Boxes labeled', n(T.boxes)),
+        intelTile('Average accuracy', T.avgAccuracy === null || T.avgAccuracy === undefined ? '—' : T.avgAccuracy + '%', T.avgCountSeconds ? 'last counts, ' + R.duration(T.avgCountSeconds) + ' on average' : 'at each store\'s last count'),
+        intelTile('Scans, 30 days', n(T.scans30), plural(T.scanErrors30, 'error') + ' · ' + plural(T.unknownCodes30, 'unknown code')),
+        intelTile('Sales, 30 days', n(T.sales30), money(T.sales30Cents)),
+        intelTile('Unmatched products', n(T.unmatched), '', T.unmatched ? 'warn' : ''),
+        intelTile('Customers', n(T.customers))),
+      h('h2', { text: 'Stores' }),
+      h('div', { class: 'scroll-x' }, h('table', { class: 'table' },
+        h('tr', {}, ['Store', 'On hand', 'Kings · Queens', 'At cost', 'Last count', 'Scans 30d', 'Errors', 'Sales 30d', 'Unmatched', 'Last activity'].map(function (c, i) { return h('th', { class: i ? 'n' : '' }, c); })),
+        N.stores.map(function (s) {
+          var lc = s.lastCount;
+          return h('tr', {}, h('td', {}, h('a', { href: '#/admin/' + s.id }, s.name), h('div', { class: 'sub muted small' }, [s.city, s.state].filter(Boolean).join(', ') + (s.active ? '' : ' · inactive'))),
+            h('td', { class: 'n', text: n(s.units) }), h('td', { class: 'n', text: n(s.kings) + ' · ' + n(s.queens) }), h('td', { class: 'n', text: money(s.costCents) }),
+            h('td', { class: 'n', text: lc ? (lc.accuracy !== null && lc.accuracy !== undefined ? lc.accuracy + '% · ' : '') + R.duration(lc.seconds || 0) : '—' }),
+            h('td', { class: 'n', text: n(s.scans30) }), h('td', { class: 'n', text: n(s.scanErrors30) }), h('td', { class: 'n', text: n(s.sales30) }),
+            h('td', { class: 'n', text: n(s.unmatched) }), h('td', { class: 'n', text: s.lastActivity ? day(s.lastActivity) : '—' }));
+        }))),
+      h('p', { class: 'muted small' }, 'Cigar Locker\'s own view. A store\'s people see only their store; no store ever sees another\'s.'));
+  }
+  async function networkStore(storeId) {
+    var S0 = await rpc('retail_network_store', { p_store: storeId });
+    var pr = S0.profile;
+    var d = S0.dashboard;
+    show(h('p', { class: 'over' }, h('a', { href: '#/admin' }, 'Network'), ' › ' + pr.name + ' · read only'),
+      h('h1', { text: pr.name }),
+      h('p', { class: 'lead' }, [pr.city, pr.state].filter(Boolean).join(', ') + ' · ' + [pr.market, pr.region].filter(Boolean).join(', ') + ' · ' + n(pr.employees) + ' people · ' + n(pr.places) + ' places · joined ' + day(pr.joinedAt)),
+      h('div', { class: 'tiles' },
+        intelTile('On hand', n(d.units) + ' cigars', n(d.kings) + ' Kings · ' + n(d.queens) + ' Queens · ' + n(d.looseUnits) + ' loose'),
+        intelTile('Boxes labeled', n(d.boxesLabeled)),
+        intelTile('Unmatched products', n(d.unmatched)),
+        intelTile('Missing boxes', n(d.missingBoxes))),
+      intelBody(S0.intel, S0.products, true),
+      S0.receipts.length ? h('h2', { text: 'Deliveries' }) : null,
+      S0.receipts.length ? h('div', { class: 'list' }, S0.receipts.map(function (r) {
+        return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: (r.supplier || 'Supplier not given') + (r.reference ? ' · ' + r.reference : '') }), h('div', { class: 'sub', text: day(r.at) + ' · ' + n(r.boxes) + ' boxes · ' + n(r.cigars) + ' cigars' })), h('div', { class: 'qty', text: money(r.costCents) }));
+      })) : null);
+  }
+
   // ---- team -----------------------------------------------------------------------------
 
   async function teamView() {
@@ -3519,7 +3852,8 @@
         } catch (e) { out.replaceChildren(h('p', { class: 'error', text: errorText(e) })); }
       } }, 'Make the invite link')));
     }
-    show(h('h1', { text: 'Team' }), h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: inviteSheet }, 'Invite someone')),
+    var profile = await profileCard();
+    show(h('h1', { text: 'Team' }), profile, h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: inviteSheet }, 'Invite someone')),
       h('div', { class: 'list' }, t.people.map(function (p) {
         return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: p.name || p.email }), h('div', { class: 'sub', text: p.email + (p.active ? '' : ' · turned off') })), chip(p.role, p.role === 'owner' ? 'info' : ''),
           can('owner') && p.user !== state.user.id ? h('button', { class: 'btn small', type: 'button', onclick: async function () {

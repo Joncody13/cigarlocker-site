@@ -26,6 +26,12 @@
     { key: 'upc', label: 'UPC / barcode', names: ['upc', 'barcode', 'ean', 'gtin', 'bar code'] },
     { key: 'location', label: 'Location', names: ['location', 'shelf', 'bin', 'humidor', 'where', 'section', 'aisle'] },
     { key: 'box_count', label: 'Cigars per box', names: ['box count', 'per box', 'box qty', 'count per box', 'box size', 'pack'] },
+    { key: 'wrapper', label: 'Wrapper', names: ['wrapper', 'wrapper leaf'] },
+    { key: 'binder', label: 'Binder', names: ['binder'] },
+    { key: 'filler', label: 'Filler', names: ['filler', 'fillers'] },
+    { key: 'country', label: 'Country', names: ['country', 'origin', 'country of origin'] },
+    { key: 'strength', label: 'Strength', names: ['strength', 'body', 'profile'] },
+    { key: 'supplier', label: 'Supplier / distributor', names: ['supplier', 'distributor', 'wholesaler', 'vendor name', 'source'] },
   ];
 
   function plain(s) {
@@ -363,6 +369,12 @@
         upc: get('upc').replace(/\s/g, ''),
         location: get('location'),
         box_count: boxCount && boxCount >= 1 && boxCount <= 500 ? boxCount : null,
+        wrapper: get('wrapper'),
+        binder: get('binder'),
+        filler: get('filler'),
+        country: get('country'),
+        strength: get('strength'),
+        supplier: get('supplier'),
       });
     }
     return out;
