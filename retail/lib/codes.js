@@ -1,5 +1,5 @@
 /*
- * Cigar Locker Retail: codes and labels (docs/retail.md, "Boxes").
+ * Cigar Locker Retail: codes and labels (docs/retail.md, "Boxes", "Cigar labels").
  *
  * A box's own code is "CL-" and six of 30 letters and digits never mistaken
  * for one another, the only thing its QR label holds. Factory codes (UPC,
@@ -15,11 +15,23 @@
   'use strict';
 
   var BOX = /^CL-[2-9A-HJKMNP-TV-Z]{6}$/;
+  var UNIT = /^CLS-[2-9A-HJKMNP-TV-Z]{7}$/;
 
   /** A Cigar Locker box code, read in any case, or null. */
   function boxCode(s) {
     var v = String(s || '').trim().toUpperCase();
     return BOX.test(v) ? v : null;
+  }
+
+  /** One cigar's Cigar Locker label (CLS- and seven), read in any case, or null. */
+  function unitCode(s) {
+    var v = String(s || '').trim().toUpperCase();
+    return UNIT.test(v) ? v : null;
+  }
+
+  /** Either of Cigar Locker's own codes, as written on the label; else null. */
+  function ownCode(s) {
+    return boxCode(s) || unitCode(s);
   }
 
   /** As the server matches a code: spaces gone, a UPC-A as its EAN-13. */
@@ -32,7 +44,7 @@
 
   /** The kind of code, from what the camera's reader said it was. */
   function typeOf(format, value) {
-    if (boxCode(value)) return 'CIGAR_LOCKER_QR';
+    if (ownCode(value)) return 'CIGAR_LOCKER_QR';
     var f = String(format || '').toLowerCase();
     var v = String(value || '').trim();
     if (f === 'upc_a' || f === 'upc_e') return 'UPC';
@@ -127,33 +139,6 @@
     });
   }
 
-  /**
-   * Label stock, in inches. 'sheet' is a letter sheet of 30 address labels
-   * (Avery 5160 and its likes: 2 5/8 x 1, three across, ten down); 'roll' one
-   * 2 x 1 label a page, for a label printer.
-   */
-  var LAYOUTS = {
-    sheet: { page: [8.5, 11], label: [2.625, 1], across: 3, down: 10, top: 0.5, left: 0.1875, gapX: 0.125, gapY: 0, name: 'Sheet of 30 (Avery 5160)' },
-    roll: { page: [2, 1], label: [2, 1], across: 1, down: 1, top: 0, left: 0, gapX: 0, gapY: 0, name: 'Label printer, 2 x 1 in' },
-  };
-
-  /** Labels placed on pages: [{page, x, y}] in inches, in order, skipping the first `skip` spots (a sheet partly used). */
-  function place(count, layoutKey, skip) {
-    var L = LAYOUTS[layoutKey] || LAYOUTS.sheet;
-    var per = L.across * L.down;
-    var out = [];
-    var start = Math.max(0, Math.min(per - 1, skip || 0));
-    for (var i = 0; i < count; i++) {
-      var k = start + i;
-      var page = Math.floor(k / per);
-      var spot = k % per;
-      var col = spot % L.across;
-      var row = Math.floor(spot / L.across);
-      out.push({ page: page, x: L.left + col * (L.label[0] + L.gapX), y: L.top + row * (L.label[1] + L.gapY) });
-    }
-    return out;
-  }
-
   /** A product's name cut to fit a label's two short lines. */
   function labelName(name, max) {
     var m = max || 44;
@@ -164,5 +149,23 @@
     return (sp > m * 0.6 ? cut.slice(0, sp) : cut) + '…';
   }
 
-  return { boxCode: boxCode, norm: norm, typeOf: typeOf, FORMATS: FORMATS, guard: guard, sideOf: sideOf, qrPath: qrPath, qrSvg: qrSvg, LAYOUTS: LAYOUTS, place: place, labelName: labelName };
+  /**
+   * A short name for a cigar's small label (two short lines): brand, line
+   * and size; the brand left off first when it must be shorter, then
+   * "Anniversary" shortened, then cut at a word; never more than max letters.
+   */
+  function shortName(p, max) {
+    var m = max || 34;
+    var brand = String((p && p.brand) || '').trim();
+    var line = String((p && p.line) || '').replace(/\s+/g, ' ').trim();
+    var size = String((p && p.vitola) || '').trim();
+    var whole = [brand, line, size].filter(Boolean).join(' ');
+    if (whole.length <= m) return whole;
+    var noBrand = [line, size].filter(Boolean).join(' ');
+    if (noBrand.length <= m) return noBrand;
+    var abbreviated = noBrand.replace(/\bAnniversary\b/i, 'Anniv.');
+    return abbreviated.length <= m ? abbreviated : labelName(abbreviated, m);
+  }
+
+  return { boxCode: boxCode, unitCode: unitCode, ownCode: ownCode, norm: norm, typeOf: typeOf, FORMATS: FORMATS, guard: guard, sideOf: sideOf, qrPath: qrPath, qrSvg: qrSvg, labelName: labelName, shortName: shortName };
 });

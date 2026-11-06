@@ -13,6 +13,7 @@
   var S = self.RetailSheet;
   var P = self.RetailPhotos;
   var Codes = self.RetailCodes;
+  var Pr = self.RetailPrinters;
   var sb = self.supabase.createClient(C.url, C.key, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'cl-retail-auth' },
   });
@@ -723,6 +724,7 @@
       hint: pass === 1 ? 'Scan the label on every sealed box. Open boxes are noted for pass 2.' : 'Scan an open box\'s label, then count what is in it.',
       onClose: function () { route(); },
       onCode: async function (code, format, ctl) {
+        if (Codes.unitCode(code)) return { tone: 'warn', words: 'That is one cigar\'s label (' + code + '). Scan the box\'s label: an open box is counted in pass 2.' };
         var r = await rpc('retail_session_box_scan', { p_session: sid, p_code: code, p_location: state.scanAt || null });
         var b = r.box;
         var name = b ? b.code + ' · ' + b.product.name : code;
@@ -1700,7 +1702,7 @@
     var have = {};
     var q = labelQueue();
     q.forEach(function (x) { have[x.code] = true; });
-    boxes.forEach(function (b) { if (!have[b.code]) q.push({ id: b.id, code: b.code, name: name }); });
+    boxes.forEach(function (b) { if (!have[b.code]) q.push({ kind: 'box', id: b.id, code: b.code, name: name }); });
     setLabelQueue(q);
     return q.length;
   }
@@ -1727,7 +1729,14 @@
     svg.append(bg, path);
     return svg;
   }
-  function labelNode(l) {
+  /** One label, by template: a box's ('box'), one cigar's ('unit'), or one cigar's as a paper band ('collar'). */
+  function labelNode(l, template) {
+    if (template === 'unit' || template === 'collar') {
+      var words = h('div', { class: 'lbl-words' }, h('div', { class: 'lbl-name' }, l.name || ''),
+        h('div', { class: 'lbl-meta' }, l.price ? h('b', {}, l.price) : null, h('span', {}, l.code)));
+      return h('div', { class: 'lbl ' + template }, h('div', { class: 'lbl-qr' }, qrNode(l.code)), words,
+        template === 'collar' ? h('div', { class: 'lbl-wrap' }, 'wrap beside the band · tape paper to paper') : null);
+    }
     return h('div', { class: 'lbl' }, h('div', { class: 'lbl-qr' }, qrNode(l.code)),
       h('div', { class: 'lbl-words' }, h('div', { class: 'lbl-brand' }, 'CIGAR LOCKER'), h('div', { class: 'lbl-code' }, l.code), h('div', { class: 'lbl-name' }, Codes.labelName(l.name))));
   }
@@ -1889,6 +1898,7 @@
       hint: 'Point the camera at the box\'s barcode or QR code.',
       onClose: function () { forget(); route(); },
       onCode: async function (code, format, ctl) {
+        if (Codes.unitCode(code)) return { tone: 'warn', words: 'That is one cigar\'s label. Scan the box\'s barcode.' };
         if (Codes.boxCode(code)) {
           var known = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code });
           return { tone: 'warn', words: known.box ? 'Already labeled: ' + code + ', ' + known.box.product.name + ', ' + known.box.path : 'That is a Cigar Locker label, not a factory code.' };
@@ -2012,71 +2022,114 @@
   }
 
   // ---- printing labels ----------------------------------------------------------------------
+  //
+  // A print job (RetailPrinters): the stock, its template, the labels. The
+  // device's Print is the one printer today; a label printer's own language
+  // would take the same job.
 
   var pageRule = null;
-  function setPageSize(layout) {
+  function setPageSize(mediaKey) {
     var sheetEl = document.styleSheets[0];
     try {
       if (pageRule !== null) sheetEl.deleteRule(pageRule);
-      var L = Codes.LAYOUTS[layout];
-      pageRule = sheetEl.insertRule('@page { size: ' + L.page[0] + 'in ' + L.page[1] + 'in; margin: 0; }', sheetEl.cssRules.length);
+      pageRule = sheetEl.insertRule(Pr.pageRule(mediaKey), sheetEl.cssRules.length);
     } catch (e) {
       pageRule = null;
     }
   }
+  function jobPages(j) {
+    var m = Pr.MEDIA[j.media];
+    var pages = [];
+    Pr.place(j).forEach(function (s, i) {
+      if (!pages[s.page]) pages[s.page] = h('div', { class: 'label-page lp-' + j.template, style: { width: m.page[0] + 'in', height: m.page[1] + 'in' } });
+      var node = labelNode(j.labels[i], j.template);
+      Object.assign(node.style, { left: s.x + 'in', top: s.y + 'in', width: m.label[0] + 'in', height: m.label[1] + 'in' });
+      pages[s.page].appendChild(node);
+    });
+    return pages.filter(Boolean);
+  }
 
   async function labelsView() {
-    var list = labelQueue();
-    var layout = state.labelLayout || 'sheet';
+    var all = labelQueue();
+    var kinds = { box: all.filter(function (l) { return l.kind !== 'unit'; }), unit: all.filter(function (l) { return l.kind === 'unit'; }) };
+    var kind = state.labelKind && kinds[state.labelKind].length ? state.labelKind : kinds.box.length || !kinds.unit.length ? 'box' : 'unit';
     var skip = 0;
     var pagesEl = h('div', { class: 'label-pages' });
-    function draw() {
-      setPageSize(layout);
-      var L = Codes.LAYOUTS[layout];
-      var spots = Codes.place(list.length, layout, layout === 'sheet' ? skip : 0);
-      var pages = [];
-      spots.forEach(function (s, i) {
-        if (!pages[s.page]) pages[s.page] = h('div', { class: 'label-page lp-' + layout, style: { width: L.page[0] + 'in', height: L.page[1] + 'in' } });
-        var node = labelNode(list[i]);
-        Object.assign(node.style, { left: s.x + 'in', top: s.y + 'in', width: L.label[0] + 'in', height: L.label[1] + 'in' });
-        pages[s.page].appendChild(node);
-      });
-      pagesEl.replaceChildren.apply(pagesEl, pages.filter(Boolean));
+    var area = h('div');
+    function mediaKey() {
+      var chosen = (state.labelMedia || {})[kind];
+      return Pr.mediaFor(kind).indexOf(chosen) >= 0 ? chosen : Pr.mediaFor(kind)[0];
     }
-    var seg = h('div', { class: 'seg' }, Object.keys(Codes.LAYOUTS).map(function (k) {
-      return h('button', { type: 'button', class: layout === k ? 'on' : '', onclick: function (ev) {
-        layout = k;
-        state.labelLayout = k;
-        seg.querySelectorAll('button').forEach(function (b) { b.classList.remove('on'); });
-        ev.currentTarget.classList.add('on');
-        skipField.hidden = k !== 'sheet';
-        draw();
-      } }, Codes.LAYOUTS[k].name);
-    }));
-    var skipField = field('Sheet partly used? Start at label number', stepper(1, function (v) { skip = Math.max(0, Math.min(29, (v || 1) - 1)); draw(); }));
-    skipField.hidden = layout !== 'sheet';
+    function draw() {
+      var list = kinds[kind];
+      var key = mediaKey();
+      var m = Pr.MEDIA[key];
+      setPageSize(key);
+      var j = Pr.job(key, list, skip);
+      pagesEl.replaceChildren.apply(pagesEl, jobPages(j));
+      var kindSeg = h('div', { class: 'seg' }, ['box', 'unit'].map(function (k) {
+        return h('button', { type: 'button', class: kind === k ? 'on' : '', onclick: function () { kind = k; state.labelKind = k; skip = 0; draw(); } },
+          (k === 'box' ? 'Box labels' : 'Cigar labels') + ' (' + kinds[k].length + ')');
+      }));
+      var stockSeg = h('div', { class: 'seg' }, Pr.mediaFor(kind).map(function (k) {
+        return h('button', { type: 'button', class: k === key ? 'on' : '', onclick: function () { state.labelMedia = Object.assign({}, state.labelMedia, (function () { var o = {}; o[kind] = k; return o; })()); skip = 0; draw(); } }, Pr.MEDIA[k].name);
+      }));
+      var per = m.across * m.down;
+      fill(area, [
+        h('div', { class: 'field' }, kindSeg),
+        list.length ? h('div', { class: 'card' },
+          h('p', { class: 'over' }, 'Label stock'), h('div', { class: 'field' }, stockSeg),
+          per > 1 ? field('Sheet partly used? Start at label number', stepper(skip + 1, function (v) { skip = Math.max(0, Math.min(per - 1, (v || 1) - 1)); draw(); })) : null,
+          h('p', { class: 'muted small' }, Pr.TEMPLATES[m.template].care),
+          h('div', { class: 'btns' }, h('button', { class: 'btn primary big', type: 'button', onclick: function () { window.print(); } }, 'Print ' + n(list.length) + (list.length === 1 ? ' label' : ' labels')),
+            h('button', { class: 'btn', type: 'button', onclick: function () {
+              if (!confirm('Clear these ' + list.length + ' from the list? Do this once they are printed. They can be printed again from the box\'s page.')) return;
+              setLabelQueue(all.filter(function (l) { return kind === 'unit' ? l.kind !== 'unit' : l.kind === 'unit'; }));
+              route();
+            } }, 'Printed: clear them')),
+          h('p', { class: 'muted small' }, 'Printer: ' + Pr.PRINTERS[0].name + '. Print at 100% (actual size), no margins. On an iPad: Share, then Print.'))
+          : h('p', { class: 'muted' }, kind === 'unit' ? 'No cigar labels waiting. They are made from an open box\'s page.' : 'No box labels waiting.'),
+      ]);
+      pagesEl.parentElement && (pagesEl.parentElement.hidden = !list.length);
+    }
     show(h('div', { class: 'no-print' }, h('h1', { text: 'Labels to print' }),
-      list.length
-        ? h('p', { class: 'lead' }, n(list.length) + (list.length === 1 ? ' label' : ' labels') + ', in the order the boxes were scanned. Each holds only its box\'s Cigar Locker code.')
-        : h('p', { class: 'lead' }, 'No labels waiting. Labels are added as boxes are received or labeled, or from a box\'s page.'),
-      list.length ? h('div', { class: 'card' }, h('div', { class: 'field' }, seg), skipField,
-        h('div', { class: 'btns' }, h('button', { class: 'btn primary big', type: 'button', onclick: function () { window.print(); } }, 'Print'),
-          h('button', { class: 'btn', type: 'button', onclick: function () {
-            if (!confirm('Clear the list? Do this once the labels are printed. A box\'s label can be printed again from its page.')) return;
-            setLabelQueue([]);
-            route();
-          } }, 'Printed: clear the list')),
-        h('p', { class: 'muted small' }, 'Print at 100% (actual size), no margins. On an iPad: Share, then Print.')) : null),
-      list.length ? h('div', { class: 'scroll-x label-preview' }, pagesEl) : null);
-    if (list.length) draw();
+      h('p', { class: 'lead' }, all.length ? 'In the order they were made. Each code holds only its own Cigar Locker code: no price, count or place.' : 'No labels waiting. Box labels come from receiving and labeling boxes; cigar labels from an open box\'s page.'),
+      area),
+      h('div', { class: 'scroll-x label-preview' }, pagesEl));
+    draw();
   }
 
   // ---- a box's page, and scanning to find one -------------------------------------------------
+
+  var UNIT_WORDS = { available: 'On a cigar', sold: 'Sold', void: 'Void', damaged: 'Damaged', missing: 'Missing' };
+  var UNIT_TONE = { available: 'good', sold: '', void: '', damaged: 'bad', missing: 'bad' };
+
+  /** Labels made for a Queen's cigars go on the list to print. */
+  function queueUnits(units, product) {
+    var have = {};
+    var q = labelQueue();
+    q.forEach(function (x) { have[x.code] = true; });
+    var short = Codes.shortName(product || {});
+    var price = Pr.priceWords(product ? (product.priceCents !== undefined ? product.priceCents : product.price_cents) : null);
+    units.forEach(function (u) { if (!have[u.token]) q.push({ kind: 'unit', id: u.id, code: u.token, name: short, price: price }); });
+    setLabelQueue(q);
+    return q.length;
+  }
+
+  /** "Make labels for its cigars?": one for each cigar in the box without one. */
+  async function makeUnitLabels(boxId, howMany) {
+    var r = await rpc('retail_box_units_make', { p_store: state.store.id, p_box: boxId, p_count: howMany || null });
+    queueUnits(r.units, r.product);
+    state.labelKind = 'unit';
+    toast(r.units.length + ' cigar labels made: ' + r.units[0].token + (r.units.length > 1 ? ' to ' + r.units[r.units.length - 1].token : '') + '.');
+    go('/s/' + state.store.id + '/labels');
+  }
 
   async function boxPage(boxId) {
     var base = '#/s/' + state.store.id;
     var d = await storeData(true);
     var b = await rpc('retail_box', { p_store: state.store.id, p_box: boxId });
+    var units = b.state === 'open' || b.state === 'empty' ? await rpc('retail_box_units', { p_store: state.store.id, p_box: boxId }) : null;
     var p = b.product || {};
     var msg = h('p', { class: 'error' });
     async function act(name, args, words) {
@@ -2089,17 +2142,53 @@
       } catch (e) { msg.textContent = errorText(e); }
     }
     function openBox() {
-      sheet('Open this King?', h('div', {},
+      var body = h('div');
+      var close = sheet('Open this King?', body);
+      async function open(anyway) {
+        try {
+          var r = await rpc('retail_box_open', { p_store: state.store.id, p_box: boxId, p_anyway: anyway });
+          if (r.warning === 'queen_exists') return warn(r);
+          forget();
+          offer(r.opened);
+        } catch (e) { fill(body, [h('p', { class: 'error', text: errorText(e) })]); }
+      }
+      function warn(r) {
+        fill(body, [
+          h('p', { class: 'over warn-text' }, 'An active Queen already exists'),
+          h('p', { class: 'lead' }, 'Current remaining quantity: ' + n(r.remaining) + (r.queens.length > 1 ? ' in ' + r.queens.length + ' open boxes' : '')),
+          h('div', { class: 'list' }, r.queens.map(function (q) {
+            return h('a', { class: 'item tap', href: base + '/box/' + q.id, onclick: function () { close(); }, style: { textDecoration: 'none', color: 'inherit' } },
+              h('div', { class: 'grow' }, h('div', { class: 'name', text: q.code }), h('div', { class: 'sub', text: q.path || '' })), h('div', { class: 'qty', text: n(q.remaining) }));
+          })),
+          h('p', {}, 'Some stores keep open boxes of one cigar in two places on purpose.'),
+          h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: function () { open(true); } }, 'Open another anyway'),
+            h('button', { class: 'btn', type: 'button', onclick: close }, 'Cancel')),
+        ]);
+      }
+      function offer(q) {
+        fill(body, [
+          h('p', { class: 'over good-text' }, 'Opened'),
+          h('p', { class: 'lead' }, q.code + ' is a Queen of ' + n(q.remaining) + '.'),
+          h('p', {}, 'Print a label for each cigar? Each gets its own code, so a cigar scanned out at the counter leaves this box and the count, once.'),
+          h('div', { class: 'btns' }, h('button', { class: 'btn primary', type: 'button', onclick: async function (ev) {
+            ev.currentTarget.disabled = true;
+            try { close(); await makeUnitLabels(boxId); } catch (e) { toast(errorText(e)); route(); }
+          } }, 'Make ' + n(q.remaining) + ' cigar labels'),
+            h('button', { class: 'btn', type: 'button', onclick: function () { close(); route(); } }, 'Not now')),
+        ]);
+      }
+      fill(body, [
         h('p', { class: 'lead' }, p.name + ' · ' + b.code),
         h('p', {}, 'It becomes a Queen: from now on its cigars are counted, not the box. The store\'s total does not change.'),
-        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { act('retail_box_open', null, b.code + ' is open: a Queen of ' + b.remaining + '.'); } }, 'Open box'),
-      ));
+        h('button', { class: 'btn primary big wide', type: 'button', onclick: function () { open(false); } }, 'Open box'),
+      ]);
     }
     function takeOut() {
       var howMany = 1;
       var why = h('select', { class: 'input' }, [['sold', 'Sold'], ['lounge', 'Lounge'], ['sample', 'Sample or gift'], ['damaged', 'Damaged cigar']].map(function (o) { return h('option', { value: o[0] }, o[1]); }));
       sheet('Cigars out of ' + b.code, h('div', {},
         b.state === 'sealed' ? h('p', { class: 'muted' }, 'The box is opened first: it becomes a Queen.') : null,
+        units && units.available ? h('p', { class: 'muted' }, 'Its cigars have labels: scanning a cigar\'s label (Scan, Cigars out by their labels) takes that very cigar out.') : null,
         field('How many', stepper(1, function (v) { howMany = v || 0; })), field('Why', why),
         h('button', { class: 'btn primary wide', type: 'button', onclick: function () { act('retail_box_take', { p_quantity: howMany, p_reason: why.value }, howMany + ' out of ' + b.code + '.'); } }, 'Take them out')));
     }
@@ -2118,7 +2207,69 @@
       if (!confirm(words)) return;
       act('retail_box_mark', { p_state: st, p_reason: '' }, b.code + ': ' + (KIND_WORDS[st] || 'found') + '.');
     }
+    function unitSheet(u) {
+      var m2 = h('p', { class: 'error' });
+      async function mark(status, reissue, reason) {
+        try {
+          var r = await rpc('retail_unit_mark', { p_store: state.store.id, p_unit: u.id, p_status: status, p_reason: reason || '', p_reissue: !!reissue });
+          close();
+          forget();
+          if (r.reissued) {
+            queueUnits([r.reissued], { brand: p.brand, line: p.line, vitola: p.vitola, priceCents: p.priceCents });
+            state.labelKind = 'unit';
+            toast(u.token + ' voided; ' + r.reissued.token + ' is ready to print.');
+            return go('/s/' + state.store.id + '/labels');
+          }
+          toast(u.token + ': ' + (UNIT_WORDS[r.result] || r.result) + '.');
+          route();
+        } catch (e) { m2.textContent = errorText(e); }
+      }
+      var close = sheet('Cigar label ' + u.token, h('div', {},
+        h('p', {}, chip(UNIT_WORDS[u.status], UNIT_TONE[u.status]), ' ', u.statusAt ? day(u.statusAt) + (u.reason ? ' · ' + u.reason : '') : 'Number ' + u.seq + ' of this box'),
+        u.status === 'available' ? h('div', { class: 'btns' },
+          h('button', { class: 'btn', type: 'button', onclick: async function () {
+            try {
+              var r = await rpc('retail_unit_sell', { p_store: state.store.id, p_token: u.token, p_reason: 'sold' });
+              close(); forget(); toast(r.words || u.token + ': sold.'); route();
+            } catch (e) { m2.textContent = errorText(e); }
+          } }, 'Sold'),
+          h('button', { class: 'btn', type: 'button', onclick: function () { mark('damaged', false, 'damaged'); } }, 'Damaged'),
+          h('button', { class: 'btn', type: 'button', onclick: function () { mark('missing', false, 'missing'); } }, 'Missing'),
+          h('button', { class: 'btn', type: 'button', onclick: function () { mark('void', true, 'label reprinted'); } }, 'Label lost or spoiled: print a new one')) : null,
+        u.status !== 'available' && u.status !== 'void' && can('manager') ? h('button', { class: 'btn', type: 'button', onclick: function () { mark('available', false, 'back in the box'); } }, 'Back in its box (a mistake or a return)') : null,
+        m2));
+    }
+    function unitsCard() {
+      if (!units) return null;
+      var without = Math.max(0, units.remaining - units.available);
+      var extra = units.available - units.remaining;
+      var list = h('div', { class: 'list', hidden: true }, units.units.map(function (u) {
+        return h('div', { class: 'item tap', onclick: function () { unitSheet(u); } },
+          h('div', { class: 'grow' }, h('div', { class: 'name', text: u.token }), h('div', { class: 'sub', text: 'Number ' + u.seq + (u.statusAt ? ' · ' + day(u.statusAt) : '') })), chip(UNIT_WORDS[u.status], UNIT_TONE[u.status]));
+      }));
+      return h('div', { class: 'card' },
+        h('h2', { style: { marginTop: 0 } }, 'Cigar labels'),
+        units.units.length
+          ? h('p', {}, n(units.available) + ' on cigars · ' + n(units.sold) + ' sold' + (units.other ? ' · ' + n(units.other) + ' void, damaged or missing' : ''))
+          : h('p', { class: 'muted' }, 'Its cigars have no labels of their own. With them, a cigar scanned out at the counter leaves this box, and the count, once.'),
+        extra > 0 ? h('p', { class: 'warn-text' }, n(extra) + (extra === 1 ? ' label is' : ' labels are') + ' on the list for cigars no longer in the box. Scan them out, or mark them missing.') : null,
+        h('div', { class: 'btns' },
+          b.state === 'open' && without ? h('button', { class: 'btn brand', type: 'button', onclick: function () { makeUnitLabels(boxId).catch(function (e) { msg.textContent = errorText(e); }); } },
+            units.units.length ? 'Make labels for the ' + n(without) + ' without one' : 'Make ' + n(without) + ' cigar labels') : null,
+          units.available ? h('button', { class: 'btn', type: 'button', onclick: async function () {
+            var again = await rpc('retail_box_unit_labels', { p_store: state.store.id, p_box: boxId });
+            queueUnits(again, { brand: p.brand, line: p.line, vitola: p.vitola, priceCents: p.priceCents });
+            state.labelKind = 'unit';
+            go('/s/' + state.store.id + '/labels');
+          } }, 'Print the ' + n(units.available) + ' again') : null,
+          units.units.length ? h('button', { class: 'btn quiet', type: 'button', onclick: function () { list.hidden = !list.hidden; } }, 'Every label (' + units.units.length + ')') : null),
+        list,
+        h('p', { class: 'muted small' }, Pr.TEMPLATES.unit.care + ' A cigar without cellophane takes a paper band instead (Labels, Paper bands).'));
+    }
     var live = b.state === 'sealed' || b.state === 'open';
+    var HISTORY = { received: 'Received', labeled: 'Labeled', opened: 'Opened', counted: 'Counted', sold: 'Sold', taken: 'Taken out', moved: 'Moved', damaged: 'Damaged',
+      missing: 'Marked missing', found: 'Found', emptied: 'Emptied', archived: 'Archived', corrected: 'Corrected', unit_labels: 'Cigar labels made',
+      unit_sold: 'A cigar sold by its label', unit_damaged: 'A cigar damaged', unit_missing: 'A cigar missing', unit_void: 'A cigar label voided', unit_returned: 'A cigar back in the box' };
     show(
       h('p', { class: 'over' }, b.path || 'No place'),
       h('h1', { text: p.name || 'Box' }),
@@ -2130,23 +2281,32 @@
         h('div', { class: 'tile' }, h('div', { class: 'label' }, b.openedAt ? 'Opened' : b.receivedAt ? 'Received' : 'Labeled'), h('div', { class: 'figure', style: { fontSize: '22px' } }, day(b.openedAt || b.receivedAt || b.labeledAt)))),
       b.state === 'sealed' ? h('button', { class: 'btn primary big wide', type: 'button', onclick: openBox }, 'Open box') : null,
       msg,
+      unitsCard(),
       h('div', { class: 'btns grid' },
         live ? h('button', { class: 'btn', type: 'button', onclick: takeOut }, 'Cigars out') : null,
         b.state === 'open' ? h('button', { class: 'btn', type: 'button', onclick: countIt }, 'Count it') : null,
         live ? h('button', { class: 'btn', type: 'button', onclick: moveIt }, 'Move') : null,
-        h('button', { class: 'btn', type: 'button', onclick: function () { queueLabels([{ id: b.id, code: b.code }], p.name); go('/s/' + state.store.id + '/labels'); } }, 'Print its label'),
+        h('button', { class: 'btn', type: 'button', onclick: function () { queueLabels([{ id: b.id, code: b.code }], p.name); state.labelKind = 'box'; go('/s/' + state.store.id + '/labels'); } }, 'Print its label'),
         live ? h('button', { class: 'btn danger', type: 'button', onclick: function () { markIt('damaged', 'Mark ' + b.code + ' damaged? Its cigars leave the count.'); } }, 'Damaged') : null,
         live ? h('button', { class: 'btn danger', type: 'button', onclick: function () { markIt('missing', 'Mark ' + b.code + ' missing? Its cigars leave the count until it is found.'); } }, 'Missing') : null,
         !live && b.state !== 'empty' && can('manager') ? h('button', { class: 'btn brand', type: 'button', onclick: function () { markIt('found', 'Found ' + b.code + '? It comes back into the count.'); } }, 'Found it') : null),
       h('h2', { text: 'History' }),
       h('div', { class: 'list' }, b.history.map(function (e) {
-        var what = { received: 'Received', labeled: 'Labeled', opened: 'Opened', counted: 'Counted', sold: 'Sold', taken: 'Taken out', moved: 'Moved', damaged: 'Damaged',
-          missing: 'Marked missing', found: 'Found', emptied: 'Emptied', archived: 'Archived', corrected: 'Corrected' }[e.kind] || e.kind;
+        var what = HISTORY[e.kind] || e.kind;
         return h('div', { class: 'item' }, h('div', { class: 'grow' }, h('div', { class: 'name', text: what + (e.reason ? ' · ' + e.reason : '') }),
           h('div', { class: 'sub', text: [day(e.at), e.by, e.kind === 'moved' ? 'to ' + e.place : ''].filter(Boolean).join(' · ') })),
           h('div', { class: 'qty', text: e.change ? (e.change > 0 ? '+' : '') + n(e.change) : n(e.remaining) }));
       })),
       h('div', { class: 'btns' }, h('a', { class: 'btn quiet', href: base + '/scan' }, 'Scan another box')));
+  }
+
+  /** What a cigar label's scan says, in the scanner. */
+  function sellWords(r) {
+    var u = r.unit;
+    var name = u && u.product ? u.product.name : '';
+    if (r.result === 'sold') return { tone: 'good', words: 'Sold: ' + name + ' · ' + u.token + ' · ' + r.box.code + ' now ' + n(r.box.remaining) + ' left' };
+    if (r.result === 'already_sold') return { tone: 'bad', words: r.words };
+    return { tone: r.result === 'review' ? 'warn' : 'bad', words: r.words || (u ? u.token + ': ' + (UNIT_WORDS[u.status] || u.status) : 'Not changed.') };
   }
 
   async function scanView() {
@@ -2158,6 +2318,21 @@
         hint: 'A Cigar Locker label opens its box. A factory barcode shows where that product is.',
         onCode: async function (code, format, ctl) {
           var r = await rpc('retail_code_resolve', { p_store: state.store.id, p_code: code });
+          if (r.kind === 'unit' && r.unit) {
+            var u = r.unit;
+            ctl.panel(h('div', { class: 'scan-choice' }, h('p', { class: 'over' }, 'One cigar\'s label'),
+              h('div', { class: 'scan-product' }, u.product.name), h('p', { class: 'muted small' }, u.token + ' · from ' + r.box.code + ' (' + n(r.box.remaining) + ' left) · ' + (r.box.path || '')),
+              h('p', {}, chip(UNIT_WORDS[u.status], UNIT_TONE[u.status]), u.statusAt ? ' ' + day(u.statusAt) : ''),
+              h('div', { class: 'btns' },
+                u.status === 'available' ? h('button', { class: 'btn primary', type: 'button', onclick: async function () {
+                  try { var s = await rpc('retail_unit_sell', { p_store: state.store.id, p_token: u.token, p_reason: 'sold' }); var w = sellWords(s); ctl.resume(); ctl.flash(w.tone, w.words); }
+                  catch (e) { ctl.resume(); ctl.flash('bad', errorText(e)); }
+                } }, 'Sold') : null,
+                h('a', { class: 'btn', href: '#' + base + '/box/' + r.box.id, onclick: function () { ctl.close(); } }, 'Its box'),
+                h('button', { class: 'btn quiet', type: 'button', onclick: function () { ctl.resume(); } }, 'Scan another'))));
+            return { tone: u.status === 'available' ? 'good' : 'warn', words: u.token };
+          }
+          if (r.kind === 'unit') return { tone: 'bad', words: r.otherStore ? 'That cigar label is another store\'s.' : 'No cigar has the label ' + code + '.' };
           if (r.kind === 'box' && r.box) {
             ctl.close();
             go(base + '/box/' + r.box.id);
@@ -2180,8 +2355,28 @@
         },
       });
     }
-    show(h('h1', { text: 'Scan' }), h('p', { class: 'lead' }, 'Scan a box\'s Cigar Locker label to open its page: open it, take cigars out, count it or move it.'),
-      h('button', { class: 'btn primary big wide', type: 'button', onclick: openScanner }, 'Open the scanner'),
+    function sellScanner() {
+      var sold = 0;
+      self.RetailScanner.open({
+        title: 'Cigars out by their labels',
+        hint: 'Scan each cigar\'s own label. Each takes that cigar out of its box once; a label scanned again is refused.',
+        onClose: function () { forget(); },
+        onCode: async function (code, format, ctl) {
+          if (!Codes.unitCode(code)) return { tone: 'bad', words: Codes.boxCode(code) ? 'That is a box\'s label. Scan the cigar\'s own label.' : 'That is not a Cigar Locker cigar label.' };
+          var r = await rpc('retail_unit_sell', { p_store: state.store.id, p_token: code, p_reason: 'sold' });
+          if (r.result === 'sold') {
+            sold += 1;
+            ctl.tally(sold + (sold === 1 ? ' cigar' : ' cigars') + ' out this time');
+          }
+          return sellWords(r);
+        },
+      });
+    }
+    show(h('h1', { text: 'Scan' }), h('p', { class: 'lead' }, 'Scan a box\'s Cigar Locker label to open its page: open it, take cigars out, count it or move it. A cigar\'s own label shows that cigar.'),
+      h('div', { class: 'btns grid' },
+        h('button', { class: 'btn primary big', type: 'button', onclick: openScanner }, 'Open the scanner'),
+        h('button', { class: 'btn big', type: 'button', onclick: sellScanner }, 'Cigars out by their labels')),
+      h('p', { class: 'muted small' }, 'Cigars out by their labels takes each scanned cigar out of its open box and the store\'s count. It records no price or payment.'),
       d.boxes.length ? null : h('div', { class: 'card' }, h('p', {}, 'No box is labeled yet. Start with Label boxes.'), h('a', { class: 'btn', href: '#' + base + '/label' }, 'Label boxes')));
   }
 

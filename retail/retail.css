@@ -328,3 +328,15 @@ html.scanning, html.scanning body { overflow: hidden; }
   .label-page { box-shadow: none; break-after: page; page-break-after: always; }
   .label-page:last-child { break-after: auto; page-break-after: auto; }
 }
+
+/* ---- cigar labels: a small label for cellophane, or a paper band ---- */
+.lbl.unit, .lbl.collar { padding: 0.03in 0.05in 0.03in 0.03in; gap: 0.05in; }
+.lbl.unit .lbl-qr, .lbl.collar .lbl-qr { width: 0.44in; height: 0.44in; }
+.lbl.collar .lbl-qr { width: 0.5in; height: 0.5in; }
+.lbl.unit .lbl-name, .lbl.collar .lbl-name { font-size: 6pt; line-height: 1.12; max-height: 2.25em; overflow: hidden; font-weight: 600; }
+.lbl-meta { display: flex; gap: 0.06in; align-items: baseline; font-size: 6pt; margin-top: 0.02in; white-space: nowrap; }
+.lbl-meta b { font-size: 7.5pt; }
+.lbl-meta span { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; letter-spacing: 0.2pt; }
+.lbl.collar { border: 0.5pt dashed #9a9a9a; }
+.lbl.collar .lbl-words { flex: 0 0 1.3in; }
+.lbl-wrap { flex: 1; align-self: stretch; display: flex; align-items: center; justify-content: center; border-left: 0.5pt dotted #b5b5b5; font-size: 5.5pt; color: #777; letter-spacing: 0.4pt; text-align: center; padding: 0 0.05in; }

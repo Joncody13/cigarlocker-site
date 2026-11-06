@@ -184,7 +184,7 @@
         if (typedWaiting) {
           var v = typedWaiting;
           typedWaiting = null;
-          handle(Codes.boxCode(v) || v, '');
+          handle(Codes.ownCode(v) || v, '');
         }
       },
       forget: function (code) {
@@ -229,7 +229,7 @@
             if (paused || taken || seen === 'held') continue;
             taken = true;
             guard.take(raw, now);
-            handle(Codes.boxCode(raw) || raw, found[i].format);
+            handle(Codes.ownCode(raw) || raw, found[i].format);
           }
         } catch (e) {
           /* a frame that could not be read */
@@ -310,7 +310,7 @@
         ctl.say('Next: ' + v);
         return;
       }
-      handle(Codes.boxCode(v) || v, '');
+      handle(Codes.ownCode(v) || v, '');
     });
     photoBtn.addEventListener('click', function () {
       photo.click();
@@ -323,7 +323,7 @@
       try {
         var found = await detector.detect(f);
         if (!found.length) return ctl.flash('bad', 'No code found in that photo. Hold it closer and steady.');
-        handle(Codes.boxCode(found[0].rawValue) || found[0].rawValue, found[0].format);
+        handle(Codes.ownCode(found[0].rawValue) || found[0].rawValue, found[0].format);
       } catch (e) {
         ctl.flash('bad', 'That photo could not be read.');
       }
