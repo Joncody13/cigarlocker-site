@@ -1,7 +1,8 @@
 /* Cigar Locker: the website's one stylesheet (redone 2026-10-29, his words:
    "modern and sleek with moving tiles and icons and make it feel special
-   and expensive", "use stock images"). Deep espresso and gold, the logo's
-   colours, in every scheme. The home page moves (tiles that drift, icons
+   and expensive", "use stock images"). Re-dressed 2026-11-10 in the app's
+   own Havana Deco 2.0: deep teal and cream, the Deco gold for small
+   headings and lines, coral for the one action, the wordmark in Limelight. The home page moves (tiles that drift, icons
    that draw themselves, screens that rise into place, numbers that count);
    site.js starts it, and nothing moves for anyone who asks for less motion.
    Support, privacy and terms share the header, type and footer. */
@@ -9,21 +10,23 @@
 :root {
   color-scheme: dark;
 
-  --bg: #0f0906;
-  --bg-2: #160e09;
-  --bg-3: #1e140d;
-  --card: rgba(255, 236, 210, 0.035);
-  --card-2: rgba(255, 236, 210, 0.07);
-  --line: rgba(227, 188, 140, 0.14);
-  --line-2: rgba(227, 188, 140, 0.32);
-  --text: #f7eddf;
-  --muted: #c4ae95;
-  --dim: #8f7b66;
-  --gold: #e3bc8c;
-  --gold-hi: #f8e2bf;
-  --gold-lo: #a8763f;
-  --green: #86c497;
-  --amber: #e5a24c;
+  --bg: #0b2f2c;
+  --bg-2: #0f3d3a;
+  --bg-3: #154b47;
+  --card: rgba(244, 233, 216, 0.045);
+  --card-2: rgba(244, 233, 216, 0.08);
+  --line: rgba(237, 201, 119, 0.16);
+  --line-2: rgba(237, 201, 119, 0.34);
+  --text: #f4e9d8;
+  --muted: #cbc3b1;
+  --dim: #a9a493;
+  --gold: #edc977;
+  --gold-hi: #f6e2ae;
+  --gold-lo: #b08a3e;
+  --coral: #ec8466;
+  --wordmark: "Limelight", "Instrument Serif", Georgia, serif;
+  --green: #a7dcc8;
+  --amber: #f49a7e;
 
   --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -96,7 +99,7 @@ a:hover {
 }
 
 ::selection {
-  background: rgba(227, 188, 140, 0.35);
+  background: rgba(237, 201, 119, 0.35);
 }
 
 .skip {
@@ -216,7 +219,7 @@ p {
   top: 0;
   z-index: 50;
   border-bottom: 1px solid var(--line);
-  background: rgba(15, 9, 6, 0.72);
+  background: rgba(11, 47, 44, 0.72);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   backdrop-filter: blur(18px) saturate(1.4);
   transition: background 0.4s var(--ease), border-color 0.4s var(--ease);
@@ -234,7 +237,7 @@ p {
 }
 
 .home .site-header.scrolled {
-  background: rgba(15, 9, 6, 0.72);
+  background: rgba(11, 47, 44, 0.72);
   border-color: var(--line);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   backdrop-filter: blur(18px) saturate(1.4);
@@ -266,10 +269,10 @@ p {
   width: 38px;
   height: 38px;
   border-radius: 11px;
-  background: linear-gradient(160deg, #2f1e15, #1e130d);
+  background: linear-gradient(160deg, #1c5853, #0b2f2c);
   display: grid;
   place-items: center;
-  box-shadow: 0 0 0 1px rgba(227, 188, 140, 0.28) inset, 0 6px 18px -6px rgba(227, 188, 140, 0.35);
+  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.28) inset, 0 6px 18px -6px rgba(237, 201, 119, 0.35);
   flex: none;
 }
 
@@ -280,10 +283,12 @@ p {
 
 .brand-name {
   white-space: nowrap;
-  font-family: var(--serif);
-  font-size: 25px;
+  font-family: var(--wordmark);
+  font-size: 17px;
   line-height: 1.2;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
 }
 
 .site-nav {
@@ -351,7 +356,7 @@ p {
 .button {
   font: inherit;
   font-weight: 600;
-  color: #1a100a;
+  color: #0b2f2c;
   background: var(--gold);
   border: 0;
   border-radius: 12px;
@@ -370,7 +375,7 @@ p {
   padding: 8px 22px 8px 18px;
   border-radius: 16px;
   border: 1px solid var(--line-2);
-  background: linear-gradient(180deg, rgba(255, 236, 210, 0.1), rgba(255, 236, 210, 0.03));
+  background: linear-gradient(180deg, rgba(244, 233, 216, 0.1), rgba(244, 233, 216, 0.03));
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   color: var(--text);
@@ -389,7 +394,7 @@ p {
   bottom: 0;
   width: 40%;
   left: -60%;
-  background: linear-gradient(100deg, transparent, rgba(248, 226, 191, 0.22), transparent);
+  background: linear-gradient(100deg, transparent, rgba(246, 226, 174, 0.22), transparent);
   animation: sheen 5.5s ease-in-out infinite 1.5s;
 }
 
@@ -490,9 +495,9 @@ p {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(120% 80% at 80% 30%, rgba(227, 188, 140, 0.12), transparent 60%),
-    linear-gradient(180deg, rgba(15, 9, 6, 0.55) 0%, rgba(15, 9, 6, 0.35) 35%, rgba(15, 9, 6, 0.9) 82%, var(--bg) 100%),
-    linear-gradient(90deg, rgba(15, 9, 6, 0.92) 0%, rgba(15, 9, 6, 0.6) 48%, rgba(15, 9, 6, 0.2) 100%);
+    radial-gradient(120% 80% at 80% 30%, rgba(237, 201, 119, 0.12), transparent 60%),
+    linear-gradient(180deg, rgba(11, 47, 44, 0.55) 0%, rgba(11, 47, 44, 0.35) 35%, rgba(11, 47, 44, 0.9) 82%, var(--bg) 100%),
+    linear-gradient(90deg, rgba(11, 47, 44, 0.92) 0%, rgba(11, 47, 44, 0.6) 48%, rgba(11, 47, 44, 0.2) 100%);
 }
 
 .hero .wrap {
@@ -572,7 +577,7 @@ p {
   width: 520px;
   height: 520px;
   transform: translate(-50%, -50%);
-  background: radial-gradient(closest-side, rgba(227, 188, 140, 0.28), transparent);
+  background: radial-gradient(closest-side, rgba(237, 201, 119, 0.28), transparent);
   filter: blur(10px);
   animation: breathe 6s ease-in-out infinite;
   pointer-events: none;
@@ -640,7 +645,7 @@ p {
     0 0 0 1px rgba(255, 255, 255, 0.08) inset,
     0 0 0 2px #050404,
     0 50px 80px -30px rgba(0, 0, 0, 0.9),
-    0 30px 60px -40px rgba(227, 188, 140, 0.35);
+    0 30px 60px -40px rgba(237, 201, 119, 0.35);
 }
 
 .phone img {
@@ -648,7 +653,7 @@ p {
   height: auto;
   aspect-ratio: 660 / 1431;
   border-radius: 38px;
-  background: #0b0705;
+  background: #0b2f2c;
 }
 
 /* The island. */
@@ -747,8 +752,8 @@ p {
   border-radius: 11px;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, rgba(227, 188, 140, 0.2), rgba(227, 188, 140, 0.05));
-  box-shadow: 0 0 0 1px rgba(227, 188, 140, 0.25) inset;
+  background: linear-gradient(160deg, rgba(237, 201, 119, 0.2), rgba(237, 201, 119, 0.05));
+  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.25) inset;
   color: var(--gold);
   flex: none;
 }
@@ -853,7 +858,7 @@ p {
   height: 440px;
   max-width: 110vw;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(227, 188, 140, 0.2), transparent);
+  background: radial-gradient(closest-side, rgba(237, 201, 119, 0.2), transparent);
 }
 
 /* Thin gold rings drawn behind a screen, turning slowly. */
@@ -872,7 +877,7 @@ p {
   width: 360px;
   height: 360px;
   border-style: dashed;
-  border-color: rgba(227, 188, 140, 0.18);
+  border-color: rgba(237, 201, 119, 0.18);
   animation-duration: 80s;
   animation-direction: reverse;
 }
@@ -886,7 +891,7 @@ p {
   height: 7px;
   border-radius: 50%;
   background: var(--gold);
-  box-shadow: 0 0 14px 3px rgba(227, 188, 140, 0.6);
+  box-shadow: 0 0 14px 3px rgba(237, 201, 119, 0.6);
 }
 
 @keyframes spin {
@@ -904,7 +909,7 @@ p {
   gap: 12px;
   padding: 12px 16px;
   border-radius: 18px;
-  background: rgba(30, 20, 13, 0.72);
+  background: rgba(15, 61, 58, 0.72);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   box-shadow: 0 0 0 1px var(--line-2) inset, 0 24px 40px -20px rgba(0, 0, 0, 0.9);
@@ -927,7 +932,7 @@ p {
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(227, 188, 140, 0.14);
+  background: rgba(237, 201, 119, 0.14);
   color: var(--gold);
   flex: none;
 }
@@ -980,8 +985,8 @@ p {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, rgba(227, 188, 140, 0.18), rgba(227, 188, 140, 0.04));
-  box-shadow: 0 0 0 1px rgba(227, 188, 140, 0.24) inset;
+  background: linear-gradient(160deg, rgba(237, 201, 119, 0.18), rgba(237, 201, 119, 0.04));
+  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.24) inset;
   color: var(--gold);
   flex: none;
 }
@@ -1022,7 +1027,7 @@ p {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(180deg, var(--bg) 0%, rgba(15, 9, 6, 0.72) 22%, rgba(15, 9, 6, 0.8) 78%, var(--bg) 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(11, 47, 44, 0.72) 22%, rgba(11, 47, 44, 0.8) 78%, var(--bg) 100%);
 }
 
 /* A section where the photo is the point: clear at the top, dark under the words. */
@@ -1035,7 +1040,7 @@ p {
 }
 
 .photo-band.vivid::before {
-  background: linear-gradient(180deg, var(--bg) 0%, rgba(15, 9, 6, 0.1) 14%, rgba(15, 9, 6, 0.2) 30%, rgba(15, 9, 6, 0.74) 48%, rgba(15, 9, 6, 0.94) 78%, var(--bg) 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(11, 47, 44, 0.1) 14%, rgba(11, 47, 44, 0.2) 30%, rgba(11, 47, 44, 0.74) 48%, rgba(11, 47, 44, 0.94) 78%, var(--bg) 100%);
 }
 
 .photo-band.vivid .section-head {
@@ -1062,7 +1067,7 @@ p {
   text-align: center;
   padding: 18px 8px 16px;
   border-radius: var(--radius-sm);
-  background: rgba(30, 20, 13, 0.6);
+  background: rgba(15, 61, 58, 0.6);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   box-shadow: 0 0 0 1px var(--line) inset;
@@ -1081,7 +1086,7 @@ p {
 }
 
 .gauge .track {
-  stroke: rgba(227, 188, 140, 0.14);
+  stroke: rgba(237, 201, 119, 0.14);
 }
 
 .gauge .fill {
@@ -1126,7 +1131,7 @@ p {
 .stars svg {
   width: 26px;
   height: 26px;
-  color: rgba(227, 188, 140, 0.22);
+  color: rgba(237, 201, 119, 0.22);
   transition: color 0.4s var(--ease), transform 0.4s var(--ease);
 }
 
@@ -1265,7 +1270,7 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   position: relative;
   padding: 30px 26px 26px;
   border-radius: var(--radius);
-  background: linear-gradient(180deg, rgba(255, 236, 210, 0.06), rgba(255, 236, 210, 0.02));
+  background: linear-gradient(180deg, rgba(244, 233, 216, 0.06), rgba(244, 233, 216, 0.02));
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   box-shadow: 0 0 0 1px var(--line) inset, 0 30px 50px -36px rgba(0, 0, 0, 0.9);
@@ -1295,8 +1300,8 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, rgba(227, 188, 140, 0.22), rgba(227, 188, 140, 0.05));
-  box-shadow: 0 0 0 1px rgba(227, 188, 140, 0.28) inset;
+  background: linear-gradient(160deg, rgba(237, 201, 119, 0.22), rgba(237, 201, 119, 0.05));
+  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.28) inset;
   color: var(--gold);
   margin-bottom: 22px;
 }
@@ -1327,17 +1332,17 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   width: 76px;
   height: auto;
   margin: 0 auto 30px;
-  filter: drop-shadow(0 0 26px rgba(227, 188, 140, 0.45));
+  filter: drop-shadow(0 0 26px rgba(237, 201, 119, 0.45));
   animation: breathe-mark 5s ease-in-out infinite;
 }
 
 @keyframes breathe-mark {
   0%,
   100% {
-    filter: drop-shadow(0 0 18px rgba(227, 188, 140, 0.3));
+    filter: drop-shadow(0 0 18px rgba(237, 201, 119, 0.3));
   }
   50% {
-    filter: drop-shadow(0 0 34px rgba(227, 188, 140, 0.6));
+    filter: drop-shadow(0 0 34px rgba(237, 201, 119, 0.6));
   }
 }
 
@@ -1387,7 +1392,7 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
 /* ---------- Support (questions) ---------- */
 
 .contact-card {
-  background: linear-gradient(180deg, rgba(255, 236, 210, 0.06), rgba(255, 236, 210, 0.02));
+  background: linear-gradient(180deg, rgba(244, 233, 216, 0.06), rgba(244, 233, 216, 0.02));
   border-radius: var(--radius);
   padding: 26px 24px;
   box-shadow: 0 0 0 1px var(--line) inset;
@@ -1489,7 +1494,7 @@ details ol {
 
 .draft {
   border: 1px dashed var(--line-2);
-  background: rgba(227, 188, 140, 0.08);
+  background: rgba(237, 201, 119, 0.08);
   border-radius: var(--radius-sm);
   padding: 16px 18px;
   margin: 24px 0 8px;
@@ -1626,7 +1631,7 @@ tr:last-child td {
 /* A point a lawyer or the owner must settle before this is published. */
 .decide {
   display: inline;
-  background: rgba(227, 188, 140, 0.1);
+  background: rgba(237, 201, 119, 0.1);
   border: 1px dashed var(--line-2);
   border-radius: 6px;
   padding: 1px 6px;
@@ -1687,9 +1692,11 @@ tr:last-child td {
   align-items: center;
   gap: 12px;
   margin-bottom: 14px !important;
-  font-family: var(--serif);
-  font-size: 22px;
-  color: var(--text);
+  font-family: var(--wordmark);
+  font-size: 16px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
 }
 
 .foot-brand img {
@@ -1756,7 +1763,7 @@ tr:last-child td {
   }
 
   .brand-name {
-    font-size: 23px;
+    font-size: 15px;
   }
 
   .stage {
@@ -1771,7 +1778,8 @@ tr:last-child td {
   }
 
   .brand-name {
-    font-size: 20px;
+    font-size: 13px;
+    letter-spacing: 0.2em;
   }
 
   .site-nav {
