@@ -156,7 +156,7 @@
     <section class="row two" data-tab="featured">
       <div class="card">
         <div class="card-head"><h3 id="h-featured">Featured shops</h3><span class="muted small" id="featured-today"></span></div>
-        <p class="muted small">A featured shop comes first in Places, under “Featured” and marked Sponsored, for anyone searching within its area, on the days set. Turn this off while Apple reviews the app, and on again after it is approved.</p>
+        <p class="muted small">A featured shop comes first in Places, under “Featured” and marked “Cigar Locker’s pick”, for anyone searching within its area, on the days set. These are your own picks: no shop pays for the place. If one ever does, the app must mark it Sponsored first.</p>
         <label class="switch-row" for="featured-on"><input id="featured-on" type="checkbox"> Show featured shops in the app</label>
         <div class="table-wrap"><table class="plain" id="features"></table></div>
       </div>
@@ -173,8 +173,8 @@
           <input id="feature-ends" type="date" required>
           <label for="feature-miles">Its area: searches within this many miles show it first</label>
           <input id="feature-miles" type="number" min="1" max="150" step="1" value="30" required>
-          <label for="feature-note">A note only you see (what was paid, who arranged it)</label>
-          <input id="feature-note" type="text" maxlength="300" placeholder="$… for November">
+          <label for="feature-note">A note only you see (why you picked it)</label>
+          <input id="feature-note" type="text" maxlength="300" placeholder="A friend’s shop">
           <button type="submit" class="primary">Feature it</button>
           <span class="muted small" id="feature-result" role="status"></span>
         </form>
