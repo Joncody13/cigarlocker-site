@@ -1740,6 +1740,8 @@
           vitola: c && c.vitola ? c.vitola : r.vitola,
           size_text: r.size_text, length_in: c && c.lengthIn ? c.lengthIn : r.length_in, ring: c && c.ring ? c.ring : r.ring,
           quantity: r.quantity, cost_cents: r.cost_cents, price_cents: r.price_cents, sku: r.sku, upc: r.upc, box_count: r.box_count, location: r.location,
+          // The leaf, strength and supplier go onto the product where it has none (007's import trigger).
+          wrapper: r.wrapper, binder: r.binder, filler: r.filler, country: r.country, strength: r.strength, supplier: r.supplier,
           cigar_id: c ? c.cigarId : null, line_key: c ? c.lineKey : x.m.best ? x.m.best.lineKey : null,
           match_status: c ? (x.m.status === 'matched' ? 'matched' : 'confirmed') : x.m.status === 'possible' ? 'possible' : 'unmatched',
         };

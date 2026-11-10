@@ -19,7 +19,8 @@
     { key: 'size', label: 'Size (6 x 52)', names: ['size', 'dimensions', 'length x ring', 'lxr'] },
     { key: 'length', label: 'Length', names: ['length', 'len', 'inches'] },
     { key: 'ring', label: 'Ring gauge', names: ['ring', 'ring gauge', 'rg', 'gauge'] },
-    { key: 'quantity', label: 'Quantity', names: ['quantity', 'qty', 'count', 'on hand', 'stock', 'inventory', 'units', 'qoh', 'in stock'] },
+    // A total of all the store's cigars comes before a part of them (a shop's sheet may have Boxes, Singles and Total Sticks).
+    { key: 'quantity', label: 'Quantity', names: ['total sticks', 'total cigars', 'total quantity', 'total qty', 'quantity', 'qty', 'count', 'on hand', 'stock', 'inventory', 'units', 'qoh', 'in stock', 'sticks'] },
     { key: 'cost', label: 'Cost', names: ['cost', 'unit cost', 'cost each', 'wholesale', 'our cost', 'cost per'] },
     { key: 'price', label: 'Retail price', names: ['price', 'retail', 'retail price', 'msrp', 'sell price', 'selling price', 'unit price'] },
     { key: 'sku', label: 'SKU', names: ['sku', 'item #', 'item number', 'item no', 'code', 'product code', 'part'] },
@@ -31,7 +32,8 @@
     { key: 'filler', label: 'Filler', names: ['filler', 'fillers'] },
     { key: 'country', label: 'Country', names: ['country', 'origin', 'country of origin'] },
     { key: 'strength', label: 'Strength', names: ['strength', 'body', 'profile'] },
-    { key: 'supplier', label: 'Supplier / distributor', names: ['supplier', 'distributor', 'wholesaler', 'vendor name', 'source'] },
+    // "Vendor" is the brand only when there is no Brand column (the brand's names come first and prefer "brand").
+    { key: 'supplier', label: 'Supplier / distributor', names: ['supplier', 'distributor', 'wholesaler', 'vendor', 'vendor name', 'source'] },
   ];
 
   function plain(s) {
@@ -240,33 +242,55 @@
     return 0;
   }
 
-  /** Each field's column, guessed from the headings (exact names first, then a heading that starts with one). */
+  var CODES = { sku: true, upc: true };
+
+  /** A heading read three ways: whole, without what is in brackets ("Boxes (Nov 9 count)" is "boxes"), and what is in them ("Item # (SKU)" names "sku"). */
+  function headingForms(h) {
+    var raw = String(h == null ? '' : h);
+    return {
+      whole: plain(raw),
+      core: plain(raw.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')),
+      inner: (raw.match(/\([^)]*\)|\[[^\]]*\]/g) || []).map(plain).filter(Boolean),
+    };
+  }
+
+  /**
+   * Each field's column, guessed from the headings. First exact names, each field's in its own order of
+   * preference ("Brand" before "Vendor", "Total Sticks" before "Count"), a heading matching whole, without
+   * its brackets, or by what its brackets say; then a heading, without its brackets, that starts or ends
+   * with a field's name.
+   */
   function guessMapping(headers) {
-    var names = headers.map(plain);
+    var hs = headers.map(headingForms);
     var used = {};
     var out = {};
-    function take(field, test) {
-      if (out[field.key] != null) return;
-      for (var i = 0; i < names.length; i++) {
-        if (used[i] || !names[i]) continue;
-        if (field.names.some(function (n) {
-          return test(names[i], n);
+    FIELDS.forEach(function (f) {
+      for (var a = 0; a < f.names.length && out[f.key] == null; a++) {
+        var n = f.names[a];
+        for (var i = 0; i < hs.length; i++) {
+          if (used[i] || !hs[i].whole) continue;
+          // What brackets say names only a code ("Item # (SKU)"); "Boxes (count)" is not a quantity of cigars.
+          if (hs[i].whole === n || hs[i].core === n || (CODES[f.key] && hs[i].inner.indexOf(n) >= 0)) {
+            out[f.key] = i;
+            used[i] = true;
+            break;
+          }
+        }
+      }
+    });
+    FIELDS.forEach(function (f) {
+      if (out[f.key] != null) return;
+      for (var i = 0; i < hs.length; i++) {
+        var h = hs[i].core;
+        if (used[i] || !h) continue;
+        if (f.names.some(function (n) {
+          return h.indexOf(n + ' ') === 0 || h.indexOf(' ' + n) > 0;
         })) {
-          out[field.key] = i;
+          out[f.key] = i;
           used[i] = true;
           return;
         }
       }
-    }
-    FIELDS.forEach(function (f) {
-      take(f, function (h, n) {
-        return h === n;
-      });
-    });
-    FIELDS.forEach(function (f) {
-      take(f, function (h, n) {
-        return h.indexOf(n + ' ') === 0 || h.indexOf(' ' + n) > 0;
-      });
     });
     // A single "Cigar" or "Name" column with no brand column is the full name.
     if (out.brand == null && out.line != null && out.name == null) {
@@ -377,7 +401,30 @@
         supplier: get('supplier'),
       });
     }
-    return out;
+    return withSharedSkus(out);
+  }
+
+  /**
+   * A SKU written on rows of different cigars (a placeholder such as "PORTAL", or one number a shop reused)
+   * names none of them: it is taken off those rows (kept in their original cells, and as sku_shared) so the
+   * import never makes them one product by it. Rows of the same cigar keep it.
+   */
+  function withSharedSkus(recs) {
+    var names = {};
+    recs.forEach(function (r) {
+      var k = plain(r.sku);
+      if (!k) return;
+      var who = plain([r.brand, r.line, r.name, r.vitola, r.size_text].join(' '));
+      (names[k] = names[k] || {})[who] = true;
+    });
+    recs.forEach(function (r) {
+      var k = plain(r.sku);
+      if (k && Object.keys(names[k]).length > 1) {
+        r.sku_shared = r.sku;
+        r.sku = '';
+      }
+    });
+    return recs;
   }
 
   /** A whole row that is a total or a heading inside the list ("Total", "Subtotal"), to leave out. */
@@ -397,6 +444,8 @@
     count: count,
     size: size,
     records: records,
+    withSharedSkus: withSharedSkus,
+    headingForms: headingForms,
     isTotalRow: isTotalRow,
     plain: plain,
   };
