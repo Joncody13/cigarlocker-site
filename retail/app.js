@@ -1664,7 +1664,7 @@
         var out = [];
         for (var i = 0; i < recs.length; i += 400) {
           var chunk = recs.slice(i, i + 400);
-          var r = await retailFn({ action: 'match', store: state.store.id, rows: chunk.map(function (x) { return { brand: x.brand, line: x.line, name: x.name, vitola: x.vitola, lengthIn: x.length_in, ring: x.ring }; }) });
+          var r = await retailFn({ action: 'match', store: state.store.id, rows: chunk.map(function (x) { return { brand: x.brand, line: x.line, name: x.name, vitola: x.vitola, lengthIn: x.length_in, ring: x.ring, boxCount: x.box_count }; }) });
           out = out.concat(r.results);
           st.progress = Math.min(recs.length, i + 400);
           draw();
