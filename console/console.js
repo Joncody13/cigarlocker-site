@@ -1628,7 +1628,7 @@
       ...fact('Say yes to news', plural(t.news, 'member')),
       ...fact('Say yes to offers', plural(t.offers, 'member')),
       ...fact('Say yes to market insights', plural(t.insights, 'member')),
-      ...fact('Apple relay addresses', `${n(t.relay)} of ${n(t.accounts)}: they reach people once atlantisdev.ai is registered with Apple`),
+      ...fact('Apple relay addresses', `${n(t.relay)} of ${n(t.accounts)}: they reach people once cigarlocker.app is registered with Apple`),
       ...fact('Never written to again', `${plural(mail.blocked, 'address', 'addresses')} (bounced, or marked as spam)`),
     );
     // Every email to members, from sent to sold.
