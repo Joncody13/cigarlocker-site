@@ -7,7 +7,7 @@
   <meta name="referrer" content="no-referrer">
   <!-- Nothing but this page's own files, and only the app's server to talk to. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://nypahhdmoxrfvwnfufdf.supabase.co wss://nypahhdmoxrfvwnfufdf.supabase.co; base-uri 'none'; form-action 'none'">
-  <title>Cigar Locker Console</title>
+  <title>Cigar Locker Mission Control</title>
   <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="console.css">
 </head>
@@ -15,7 +15,7 @@
   <header class="top">
     <div class="brand">
       <img src="../assets/mark.svg" alt="" width="28" height="28">
-      <span>Cigar Locker</span><span class="sub">Console</span>
+      <span class="brand-name">Cigar Locker</span><span class="sub">Mission Control</span>
     </div>
     <div class="top-right" id="top-right" hidden>
       <input id="lookup" type="search" placeholder="Look up a person" aria-label="Look up a person by name, email, phone, town or ZIP">
@@ -26,16 +26,31 @@
     </div>
   </header>
 
-  <!-- One button for each part of the console (his words, 2026-10-30: "buttons at the top"). -->
+  <!-- One button for each part of the console (his words, 2026-10-30: "buttons at the top"), in groups
+       since Mission Control (2026-11-11: "Group intelligently"). Every earlier part is still here. -->
   <nav class="tabs" id="tabs" role="tablist" aria-label="Parts of the console" hidden>
-    <button type="button" role="tab" data-show="global">Global</button>
-    <button type="button" role="tab" data-show="people">People</button>
-    <button type="button" role="tab" data-show="market">Market</button>
-    <button type="button" role="tab" data-show="emails">Emails</button>
-    <button type="button" role="tab" data-show="deals">Deals</button>
-    <button type="button" role="tab" data-show="knowledge">Knowledge</button>
-    <button type="button" role="tab" data-show="featured">Featured</button>
-    <button type="button" role="tab" data-show="health">Health</button>
+    <span class="tab-group"><span class="tab-group-name">Command</span>
+      <button type="button" role="tab" data-show="global">Mission Control</button>
+    </span>
+    <span class="tab-group"><span class="tab-group-name">Audience</span>
+      <button type="button" role="tab" data-show="growth">Growth</button>
+      <button type="button" role="tab" data-show="people">People</button>
+    </span>
+    <span class="tab-group"><span class="tab-group-name">Intelligence</span>
+      <button type="button" role="tab" data-show="market">Market</button>
+      <button type="button" role="tab" data-show="knowledge">Knowledge</button>
+    </span>
+    <span class="tab-group"><span class="tab-group-name">Outreach</span>
+      <button type="button" role="tab" data-show="emails">Emails</button>
+      <button type="button" role="tab" data-show="deals">Deals</button>
+      <button type="button" role="tab" data-show="featured">Featured</button>
+    </span>
+    <span class="tab-group"><span class="tab-group-name">Business</span>
+      <button type="button" role="tab" data-show="money">Revenue and costs</button>
+    </span>
+    <span class="tab-group"><span class="tab-group-name">Platform</span>
+      <button type="button" role="tab" data-show="health">Health</button>
+    </span>
   </nav>
 
   <!-- Signing in: the email, then the authenticator code. -->
@@ -76,12 +91,40 @@
   </div>
 
   <main id="board" class="board" hidden>
-    <section aria-labelledby="h-today" data-tab="global">
-      <h2 id="h-today" class="overline">At a glance</h2>
-      <div class="tiles" id="tiles"></div>
+    <!-- Mission Control (2026-11-11): the day in a few true sentences, eight figures each with what it is
+         set against and fourteen days of it, what needs him, how each part stands. Written by mission.js
+         from what the server sent and nothing else. -->
+    <section class="mc-head" aria-labelledby="h-mission" data-tab="global">
+      <p class="overline" id="mc-day"></p>
+      <h1 id="h-mission">Mission Control</h1>
+      <p class="mc-summary" id="mc-summary"></p>
     </section>
 
-    <section class="row three" data-tab="global">
+    <section class="kpis" id="kpis" aria-label="The figures that matter most" data-tab="global"></section>
+
+    <section class="row three mc-row" data-tab="global">
+      <div class="card">
+        <h3>Worth your attention</h3>
+        <p class="muted small">The three most pressing, the worst first</p>
+        <ol id="attention" class="notices"></ol>
+      </div>
+      <div class="card">
+        <h3>How things stand</h3>
+        <p class="muted small" id="standing-note">Each part of the business, checked each time this opens</p>
+        <ul id="alerts" class="notices"></ul>
+      </div>
+      <div class="card feed-card">
+        <h3>What's happening</h3>
+        <ol id="feed" class="feed"></ol>
+      </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-today" data-tab="global">
+      <div class="card-head"><h3 id="h-today">Every figure</h3><span class="muted small">Where things stand now, and this week</span></div>
+      <div class="tiles ledger" id="tiles"></div>
+    </section>
+
+    <section class="row three" data-tab="growth">
       <div class="card">
         <h3>People in the app, by day</h3>
         <p class="muted small">Each person or install that opened it, last 30 days</p>
@@ -92,13 +135,14 @@
         <p class="muted small">Every cigar or box scanned, last 30 days</p>
         <div id="chart-scans" class="chart"></div>
       </div>
-      <div class="card feed-card">
-        <h3>What's happening</h3>
-        <ol id="feed" class="feed"></ol>
+      <div class="card">
+        <h3>New installs, by day</h3>
+        <p class="muted small">Phones and browsers that opened it for the first time, last 14 days</p>
+        <div id="chart-installs" class="chart"></div>
       </div>
     </section>
 
-    <section class="card wide" aria-labelledby="h-launch" data-tab="global">
+    <section class="card wide" aria-labelledby="h-launch" data-tab="growth">
       <div class="card-head"><h3 id="h-launch">The launch</h3><span class="muted small" id="launch-note"></span></div>
       <div id="launch"></div>
     </section>
@@ -153,9 +197,79 @@
       </div>
     </section>
 
+    <section class="card wide" aria-labelledby="h-states" data-tab="market">
+      <div class="card-head"><h3 id="h-states">The market, by state</h3><span class="muted small">Counts only. A state is the smallest place shown here: never a town, a ZIP code or an address.</span></div>
+      <div id="by-state"></div>
+    </section>
+
+    <section class="row two" data-tab="market">
+      <div class="card">
+        <h3>Shops on record</h3>
+        <p class="muted small">One record a shop: the place Cigar Locker listed, with the names members write for it</p>
+        <dl class="facts" id="shop-facts"></dl>
+      </div>
+      <div class="card">
+        <h3>Prices on record</h3>
+        <p class="muted small" id="price-note"></p>
+        <div class="table-wrap"><table class="plain" id="price-table"></table></div>
+      </div>
+    </section>
+
     <section class="card wide" aria-labelledby="h-knows" data-tab="knowledge">
       <div class="card-head"><h3 id="h-knows">What Cigar Locker knows</h3><span class="muted small">Cigars on record, from makers’ catalogues, web look-ups and members’ scans</span></div>
-      <div class="tiles" id="knowledge"></div>
+      <div class="tiles ledger" id="knowledge"></div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-cover" data-tab="knowledge">
+      <div class="card-head"><h3 id="h-cover">How complete the catalogue is</h3><span class="muted small" id="cover-note"></span></div>
+      <div class="cover-grid">
+        <div>
+          <h4 id="cover-lines-head">Lines in the library</h4>
+          <div class="cover" id="cover-lines"></div>
+        </div>
+        <div>
+          <h4 id="cover-products-head">Makers’ listed sizes</h4>
+          <div class="cover" id="cover-products"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row two" data-tab="knowledge">
+      <div class="card">
+        <h3>What was learned</h3>
+        <p class="muted small">Added to the record today, in 7 days and in 30. Days are Massachusetts time.</p>
+        <div class="table-wrap"><table class="plain" id="learned"></table></div>
+      </div>
+      <div class="card">
+        <h3>How far each fact can be trusted</h3>
+        <p class="muted small">Every piece of evidence is kept with where it came from and one of these. The record itself is the best-known reading; a guess is never shown as fact.</p>
+        <table class="plain" id="evidence-states"></table>
+        <dl class="facts" id="evidence-sources"></dl>
+      </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-queues" data-tab="knowledge">
+      <div class="card-head"><h3 id="h-queues">What to research next</h3><span class="muted small">Each list is the most seen first</span></div>
+      <div id="queues"></div>
+      <p class="muted small" id="queue-result" role="status"></p>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-money" data-tab="money">
+      <div class="card-head"><h3 id="h-money">Revenue and costs</h3><span class="muted small">Plus as it stands, and what the AI behind scans and look-ups cost. What a deal or an email earned is on its own page, under Deals and Emails.</span></div>
+      <div class="tiles ledger" id="money-facts"></div>
+    </section>
+
+    <section class="row two" data-tab="money">
+      <div class="card">
+        <h3>AI cost, by day</h3>
+        <p class="muted small">An estimate from each answer’s size, last 14 days. The bill is in the Anthropic Console.</p>
+        <div id="chart-ai" class="chart"></div>
+      </div>
+      <div class="card">
+        <h3>The Plus page, by day</h3>
+        <p class="muted small">Times it was opened, last 14 days</p>
+        <div id="chart-plus" class="chart"></div>
+      </div>
     </section>
 
     <section class="row two" data-tab="featured">
@@ -318,6 +432,16 @@
       <p class="muted small" id="switch-result" role="status"></p>
     </section>
 
+    <section class="card wide" aria-labelledby="h-jobs" data-tab="health">
+      <div class="card-head"><h3 id="h-jobs">Scheduled work</h3><span class="muted small" id="jobs-note">What the server does by itself, over the last day</span></div>
+      <div class="table-wrap"><table class="plain" id="jobs"></table></div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-providers" data-tab="health">
+      <div class="card-head"><h3 id="h-providers">Connections</h3><span class="muted small">Each source of figures outside Cigar Locker’s own records. A key goes into Supabase’s secrets, never into this page; no password is kept anywhere.</span></div>
+      <div id="providers" class="providers"></div>
+    </section>
+
     <section class="row two" data-tab="health">
       <div class="card">
         <h3>App health</h3>
@@ -365,6 +489,7 @@
   <script src="supabase.js"></script>
   <script src="groups.js"></script>
   <script src="launch.js"></script>
+  <script src="mission.js"></script>
   <script src="console.js"></script>
 </body>
 </html>

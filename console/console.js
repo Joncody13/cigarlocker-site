@@ -1,4 +1,6 @@
 // Cigar Locker's console (2026-10-29): his control panel, on the web only.
+// Since 2026-11-11 it opens on Mission Control (the last part of this file;
+// mission.js writes its words): every part that was here before is still here.
 // This page holds nothing. It signs in with his console email (a link, or a
 // code where the email shows one), then the six-digit code from his
 // authenticator app, and only then asks the console function for the
@@ -57,7 +59,8 @@
   // The buttons along the top (his words: "buttons at the top that'll say
   // global"): one part of the console at a time, remembered.
   const TAB = 'console.tab';
-  const TABS = ['global', 'people', 'market', 'emails', 'deals', 'knowledge', 'featured', 'health'];
+  const TABS = ['global', 'growth', 'people', 'market', 'knowledge', 'emails', 'deals', 'featured', 'money', 'health'];
+  const TAB_NAMES = { global: 'Mission Control', growth: 'Growth', people: 'People', market: 'Market', knowledge: 'Knowledge', emails: 'Emails', deals: 'Deals', featured: 'Featured', money: 'Revenue and costs', health: 'Health' };
   function showTab(name) {
     const tab = TABS.includes(name) ? name : 'global';
     for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.dataset.tab !== tab;
@@ -73,6 +76,11 @@
     });
   }
   showTab(recall(TAB) || 'global');
+  /** To another part of the console, from a figure or a notice. */
+  function go(tab) {
+    showTab(tab);
+    window.scrollTo(0, 0);
+  }
 
   /** An element with its attributes and children; strings become text. */
   function h(tag, attrs, ...children) {
@@ -274,6 +282,9 @@
 
   let refreshTimer = null;
   let snapshot = null;
+  // Mission Control's answer (116): the front page's figures, the schedule, what is known and lacking, the
+  // market by state, prices, shops and connections. Null, or a part of it null, when it could not be read.
+  let mission = null;
 
   async function openBoard() {
     $('gate').hidden = true;
@@ -293,8 +304,11 @@
   async function refresh(fresh = false) {
     $('board').classList.add('loading');
     try {
-      snapshot = await ask({ action: 'snapshot', fresh: fresh === true });
+      const [board, more] = await Promise.all([ask({ action: 'snapshot', fresh: fresh === true }), ask({ action: 'mission' }).catch(() => null)]);
+      snapshot = board;
+      mission = more;
       render(snapshot);
+      drawMission();
     } catch (e) {
       if (e.status === 401 || e.status === 403) {
         await signOut(e.message);
@@ -381,7 +395,9 @@
 
   // One series per chart, so no legend: the title says what it is. Each bar
   // shows its day and figure on hover or focus, and the numbers are below.
-  function barChart(box, daily, key, words) {
+  function barChart(box, daily, key, words, fmt = {}) {
+    const tickWords = fmt.tick || compact;
+    const cellWords = fmt.cell || n;
     const W = 520;
     const H = 170;
     const pad = { l: 34, r: 8, t: 10, b: 26 };
@@ -394,7 +410,7 @@
     for (const tick of [0, top / 2, top]) {
       svg.append(s('line', { x1: pad.l, x2: W - pad.r, y1: y(tick), y2: y(tick), class: 'grid' }));
       const label = s('text', { x: pad.l - 6, y: y(tick) + 4, class: 'tick', 'text-anchor': 'end' });
-      label.textContent = compact(tick);
+      label.textContent = tickWords(tick);
       svg.append(label);
     }
     daily.forEach((d, i) => {
@@ -422,7 +438,7 @@
     const rows = daily
       .filter((d, i) => values[i] > 0)
       .reverse()
-      .map((d) => h('tr', {}, h('td', { text: longDay(d.day) }), h('td', { class: 'num', text: n(d[key]) })));
+      .map((d) => h('tr', {}, h('td', { text: longDay(d.day) }), h('td', { class: 'num', text: cellWords(d[key]) })));
     box.replaceChildren(
       svg,
       h('details', { class: 'numbers' }, h('summary', { text: 'Show the numbers' }), rows.length ? h('table', { class: 'plain' }, h('tbody', {}, rows)) : h('p', { class: 'muted small', text: 'Nothing yet.' })),
@@ -2151,6 +2167,310 @@
         ? table(L.CAMPAIGN_HEADS, campaigns, [3, 4, 5, 6, 7])
         : h('p', { class: 'muted small', text: 'None came from a tagged link yet. A link to the app with utm_source, utm_medium and utm_campaign on it shows here; an install that came with no link is in no row.' }),
     );
+  }
+
+  // ---- Mission Control (2026-11-11; 116_mission_control.sql, mission.js) ----------
+  // His words: "the central command center and intelligence platform for the entire Cigar Locker business",
+  // "Never invent insights". Every sentence, figure and row here is mission.js's, made from what the server
+  // sent; this only draws them. A part that could not be read says so and leaves the rest standing.
+
+  const MC = window.CigarMission;
+  const UNREAD = 'Could not be read just now. Try Refresh.';
+  const dayOf = (iso) => (iso ? dayFmt.format(new Date(iso)) : '');
+
+  function standingMark(standing, words) {
+    return h('span', { class: `standing ${standing}` }, h('span', { class: 'mark', 'aria-hidden': 'true', text: MC.STANDING_MARKS[standing] }), words || MC.STANDING_WORDS[standing]);
+  }
+
+  /** Fourteen days as a small line, today as its dot. The figure beside it carries the meaning. */
+  function sparkline(values) {
+    const sp = MC.spark(values, 96, 28);
+    if (!sp) return null;
+    const svg = s('svg', { viewBox: '0 0 96 28', class: 'kpi-spark', 'aria-hidden': 'true' });
+    svg.append(s('path', { d: sp.area, class: 'area' }), s('path', { d: sp.line, class: 'line' }), s('circle', { cx: sp.last.x, cy: sp.last.y, r: 3.5, class: 'now' }));
+    return svg;
+  }
+
+  const ARROWS = { up: ['▲', 'Up'], down: ['▼', 'Down'], flat: ['–', 'No change'] };
+
+  function drawKpis(all) {
+    const figures = MC.metrics(mission && mission.mission, all);
+    if (!figures) return $('kpis').replaceChildren(h('p', { class: 'kpi-unread', text: `The day’s figures: ${UNREAD.toLowerCase()}` }));
+    $('kpis').replaceChildren(
+      ...figures.map((m) =>
+        h(
+          'button',
+          { type: 'button', class: 'kpi', onclick: () => go(m.tab), title: m.spark ? `The last 14 days, oldest first: ${m.spark.map(n).join(', ')}` : null },
+          h('span', { class: 'kpi-label', text: m.label }),
+          h('span', { class: 'kpi-value' }, m.standing ? standingMark(m.standing) : m.value),
+          m.spark ? sparkline(m.spark) : null,
+          h(
+            'span',
+            { class: 'kpi-delta' },
+            m.change
+              ? [
+                  h('span', { class: `arrow${m.change.good === true ? ' good' : m.change.good === false ? ' bad' : ''}`, role: 'img', 'aria-label': ARROWS[m.change.dir][1], text: ARROWS[m.change.dir][0] }),
+                  h('span', { text: m.change.words }),
+                ]
+              : null,
+          ),
+          h('span', { class: 'kpi-note', text: m.note }),
+        ),
+      ),
+    );
+  }
+
+  function notice(a) {
+    return h(
+      'li',
+      { class: a.standing },
+      h('div', { class: 'notice-head' }, standingMark(a.standing), h('span', { class: 'notice-area', text: a.area })),
+      h('div', { class: 'notice-title', text: a.title }),
+      a.detail ? h('div', { class: 'notice-detail', text: a.detail }) : null,
+      a.tab ? h('button', { type: 'button', class: 'notice-go', onclick: () => go(a.tab), text: `Open ${TAB_NAMES[a.tab]}` }) : null,
+    );
+  }
+
+  function drawFront() {
+    const m = mission && mission.mission;
+    const opts = { clock: (iso) => timeFmt.format(new Date(iso)) };
+    const all = MC.alerts({ ...(mission || {}), totals: snapshot && snapshot.totals, errors: snapshot && snapshot.errors }, opts);
+    $('mc-day').textContent = m ? `${MC.dayWords(m.today)} · as of ${timeFmt.format(new Date(m.asOf))}, Massachusetts time` : '';
+    $('mc-summary').textContent = MC.summary(mission || {}, opts).join(' ');
+    drawKpis(all);
+    const top = MC.attention(all);
+    $('attention').replaceChildren(...(top.length ? top.map(notice) : [h('li', { class: 'none', text: mission ? 'Nothing needs you today.' : UNREAD })]));
+    // A line a part of the business, its worst notice first; the three above have the detail.
+    const parts = MC.board(all);
+    $('alerts').replaceChildren(
+      ...parts.map((p) =>
+        h(
+          'li',
+          { class: `part ${p.standing}`, title: p.detail || null },
+          h('button', { type: 'button', class: 'part-go', onclick: () => go(p.tab) }, h('span', { class: 'part-area', text: p.area }), standingMark(p.standing), h('span', { class: 'part-title', text: p.more ? `${p.title} (and ${n(p.more)} more)` : p.title })),
+        ),
+      ),
+    );
+    const counts = MC.STANDINGS.map((st) => [st, parts.filter((p) => p.standing === st).length]).filter(([, c]) => c);
+    $('standing-note').textContent = mission ? `${plural(parts.length, 'part')} of the business: ${counts.map(([st, c]) => `${c} ${MC.STANDING_WORDS[st].toLowerCase()}`).join(' · ')}` : UNREAD;
+  }
+
+  function drawGrowth() {
+    const m = mission && mission.mission;
+    if (!m) return $('chart-installs').replaceChildren(h('p', { class: 'muted small', text: UNREAD }));
+    barChart($('chart-installs'), MC.daily(m, 'installs'), 'installs', (v) => plural(v, 'install'));
+  }
+
+  function drawMoney() {
+    const m = mission && mission.mission;
+    const facts = MC.moneyFacts(m);
+    if (!facts) {
+      $('money-facts').replaceChildren(h('p', { class: 'muted', text: UNREAD }));
+      $('chart-ai').replaceChildren();
+      return $('chart-plus').replaceChildren();
+    }
+    $('money-facts').replaceChildren(...facts.map(([label, value, note]) => tile(label, value, note)));
+    barChart($('chart-ai'), MC.daily(m, 'aiCents'), 'aiCents', (v) => money(v), { tick: (v) => `$${Math.round(v / 100)}`, cell: money });
+    barChart($('chart-plus'), MC.daily(m, 'plusViews'), 'plusViews', (v) => plural(v, 'time'));
+  }
+
+  function drawMarketMap() {
+    const st = MC.byState(mission && mission.byState);
+    $('by-state').replaceChildren(
+      ...(st
+        ? [
+            st.rows.length ? table(st.heads, st.rows, st.numeric) : h('p', { class: 'muted', text: st.empty }),
+            st.smallWords ? h('p', { class: 'held-back', text: st.smallWords }) : null,
+            st.unplacedWords ? h('p', { class: 'held-back', text: st.unplacedWords }) : null,
+          ].filter(Boolean)
+        : [h('p', { class: 'muted', text: UNREAD })]),
+    );
+    const shopRows = MC.shops(mission && mission.shops);
+    $('shop-facts').replaceChildren(...(shopRows ? shopRows.flatMap(([label, value]) => fact(label, value)) : fact('Shops', UNREAD)));
+    const pr = MC.prices(mission && mission.prices);
+    $('price-note').textContent = pr ? pr.note : UNREAD;
+    $('price-table').replaceChildren(
+      ...(pr && pr.rows.length
+        ? [
+            h('thead', {}, h('tr', {}, pr.heads.map((t, i) => h('th', { class: pr.numeric.includes(i) ? 'num' : null, text: t })))),
+            h('tbody', {}, pr.rows.map((r) => h('tr', {}, r.map((c, i) => h('td', { class: pr.numeric.includes(i) ? 'num' : null, text: c }))))),
+          ]
+        : pr
+          ? [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: 'No price is on record yet.' })))]
+          : []),
+    );
+  }
+
+  function coverRows(rows) {
+    return rows.map((r) =>
+      h(
+        'div',
+        { class: 'cover-row', title: `${r.label}: ${n(r.have)} of ${n(r.of)} have it, ${n(r.missing)} do not` },
+        h('span', { text: r.label }),
+        h('span', { class: 'cover-track' }, h('span', { class: 'cover-fill', style: { width: `${r.pct}%` } })),
+        h('span', { class: 'cover-pct', text: `${r.pct}%` }),
+        h('span', { class: 'cover-count', text: `${n(r.have)} of ${n(r.of)}` }),
+      ),
+    );
+  }
+
+  function drawKnowledge() {
+    const c = MC.coverage(mission && mission.coverage);
+    if (c) {
+      $('cover-note').textContent = c.images ? '' : 'Photos of scans are not kept, so no image counts as evidence yet.';
+      $('cover-lines-head').textContent = `Lines in the library (${n(c.linesOf)})`;
+      $('cover-products-head').textContent = `Makers’ listed sizes (${n(c.productsOf)})`;
+      $('cover-lines').replaceChildren(...coverRows(c.lines));
+      $('cover-products').replaceChildren(...coverRows(c.products));
+      $('evidence-states').replaceChildren(h('tbody', {}, c.states.map((st) => h('tr', {}, h('td', { text: st.name }), h('td', { class: 'means', text: st.means }), h('td', { class: 'num', text: n(st.count) })))));
+      $('evidence-sources').replaceChildren(...c.sources.flatMap(([label, value]) => fact(`Lines: ${label.toLowerCase()}`, value)));
+    } else {
+      $('cover-note').textContent = UNREAD;
+      for (const id of ['cover-lines', 'cover-products', 'evidence-states', 'evidence-sources']) $(id).replaceChildren();
+    }
+    const g = MC.growth(mission && mission.growth);
+    $('learned').replaceChildren(
+      ...(g
+        ? [
+            h('thead', {}, h('tr', {}, MC.GROWTH_HEADS.map((t, i) => h('th', { class: i ? 'num' : null, text: t })))),
+            h('tbody', {}, g.map((r) => h('tr', {}, h('td', { text: r.label }), r.cells.map((v) => h('td', { class: 'num', text: v }))))),
+          ]
+        : [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: UNREAD })))]),
+    );
+    drawQueues();
+  }
+
+  // How a code he names is known: his own choice, never "inferred".
+  const NAMED_AS = [
+    ['VERIFIED', 'On the maker’s own page'],
+    ['SUPPORTED', 'On a distributor’s or shop’s listing'],
+    ['OBSERVED', 'Seen on the box or band'],
+  ];
+  const NAMES_A = [
+    ['product', 'A cigar in one size'],
+    ['package', 'A box or pack'],
+    ['line', 'A line'],
+    ['brand', 'A brand'],
+    ['maker', 'A maker'],
+    ['vitola', 'A size'],
+  ];
+
+  function nameCodeForm(item) {
+    const kind = h('select', { 'aria-label': 'What it names' }, NAMES_A.map(([v, t]) => h('option', { value: v, text: t })));
+    const key = h('input', { type: 'text', maxlength: 300, placeholder: 'Maker, line and size, as the library writes them', 'aria-label': 'Which one' });
+    const how = h('select', { 'aria-label': 'How you know' }, NAMED_AS.map(([v, t]) => h('option', { value: v, text: t })));
+    const note = h('input', { type: 'text', maxlength: 500, placeholder: 'A note (where you found it)', 'aria-label': 'A note' });
+    const save = h('button', { type: 'button', class: 'ghost small', text: 'Name it' });
+    save.addEventListener('click', async () => {
+      if (!key.value.trim()) return ($('queue-result').textContent = 'Say which cigar, box or line the code is for.');
+      save.disabled = true;
+      try {
+        const out = await ask({ action: 'identifier-assign', id: item.id, entityType: kind.value, entityKey: key.value.trim(), state: how.value, note: note.value.trim() });
+        if (mission && out.queues) mission.queues = out.queues;
+        $('queue-result').textContent = `${item.value} is now on record as ${key.value.trim()}. What it was before is kept in its history.`;
+        drawQueues();
+        drawFront();
+      } catch (e) {
+        save.disabled = false;
+        $('queue-result').textContent = e.message;
+      }
+    });
+    return h('div', { class: 'name-code' }, kind, key, how, note, save);
+  }
+
+  function queueBox(title, count, noteWords, body, open) {
+    return h(
+      'details',
+      { class: 'queue', open: open ? true : null },
+      h('summary', {}, h('span', { class: `queue-count${count ? '' : ' none'}`, text: typeof count === 'string' ? count : n(count) }), h('span', { class: 'queue-title', text: title }), h('span', { class: 'queue-note', text: noteWords })),
+      h('div', { class: 'queue-body' }, body),
+    );
+  }
+
+  function drawQueues() {
+    const q = MC.queues(mission && mission.queues, { when: dayOf });
+    if (!q) return $('queues').replaceChildren(h('p', { class: 'muted', text: UNREAD }));
+    const codes = q.identifiers;
+    $('queues').replaceChildren(
+      queueBox(
+        codes.title,
+        codes.count,
+        codes.note,
+        codes.items.length
+          ? codes.items.map((it) =>
+              h(
+                'div',
+                {},
+                h('div', {}, h('span', { class: 'code', text: it.value }), ` · ${it.kind} · ${it.seenWords} · first ${it.firstSeen}, last ${it.lastSeen} · ${it.status}`),
+                it.likely ? h('div', { class: 'muted small', text: it.likely }) : null,
+                nameCodeForm(it),
+              ),
+            )
+          : h('p', { class: 'empty', text: codes.empty }),
+        codes.count > 0,
+      ),
+      ...q.sections.map((sec) => queueBox(sec.title, sec.count, sec.note, sec.rows.length ? table(sec.heads, sec.rows, sec.numeric) : h('p', { class: 'empty', text: sec.empty }), false)),
+      queueBox(
+        'Fill these first',
+        q.fillFirst.rows.length ? q.fillFirst.count : 0,
+        'Lines members hold that still lack something, the most held first.',
+        q.fillFirst.rows.length ? table(q.fillFirst.heads, q.fillFirst.rows, q.fillFirst.numeric) : h('p', { class: 'empty', text: 'Every line members hold is complete.' }),
+        false,
+      ),
+      h('h4', { text: 'Still missing across the catalogue' }),
+      q.missing.length ? h('ul', { class: 'missing-list' }, q.missing.map((r) => h('li', {}, h('b', { text: n(r.count) }), ` ${r.words}`))) : h('p', { class: 'muted small', text: 'Nothing is missing.' }),
+    );
+  }
+
+  function drawPlatform() {
+    const jobs = MC.jobRows(mission && mission.jobs, { clock: (iso) => timeFmt.format(new Date(iso)) });
+    $('jobs').replaceChildren(
+      ...(jobs
+        ? [
+            h('thead', {}, h('tr', {}, MC.JOB_HEADS.map((t, i) => h('th', { class: i >= 1 && i <= 3 ? 'num' : null, text: t })))),
+            h(
+              'tbody',
+              {},
+              jobs.map((j) =>
+                h(
+                  'tr',
+                  {},
+                  h('td', {}, j.name, h('span', { class: 'muted small', text: j.code })),
+                  h('td', { class: 'num', text: j.runs }),
+                  h('td', { class: 'num', text: j.failed }),
+                  h('td', { class: 'num', text: j.slowest }),
+                  h('td', { text: j.last }),
+                  h('td', {}, standingMark(j.standing), h('span', { class: 'muted small', text: j.words })),
+                ),
+              ),
+            ),
+          ]
+        : [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: UNREAD })))]),
+    );
+    const providers = MC.providerRows(mission && mission.providers);
+    $('providers').replaceChildren(
+      ...(providers
+        ? providers.map((p) =>
+            h(
+              'div',
+              { class: 'provider' },
+              h('span', { class: 'provider-name', text: p.name }),
+              h('span', { class: `plug ${p.status}`, text: p.standing }),
+              h('span', { class: 'provider-feeds', text: p.feeds }),
+              h('span', { class: 'provider-words', text: p.words }),
+            ),
+          )
+        : [h('p', { class: 'muted', text: UNREAD })]),
+    );
+  }
+
+  function drawMission() {
+    drawFront();
+    drawGrowth();
+    drawMoney();
+    drawMarketMap();
+    drawKnowledge();
+    drawPlatform();
   }
 
   function browserOf(agent) {
