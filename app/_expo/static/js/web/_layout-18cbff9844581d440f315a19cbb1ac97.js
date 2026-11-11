@@ -25,11 +25,11 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
   module.exports = Object.assign({
     "emptyTabBadge": "EFtDwW_emptyTabBadge",
     "nativeTabsContainer": "EFtDwW_nativeTabsContainer",
+    "navigationMenuRoot": "EFtDwW_navigationMenuRoot",
     "tabContent": "EFtDwW_tabContent",
     "tabBadge": "EFtDwW_tabBadge",
-    "tabText": "EFtDwW_tabText",
-    "navigationMenuRoot": "EFtDwW_navigationMenuRoot",
-    "navigationMenuTrigger": "EFtDwW_navigationMenuTrigger"
+    "navigationMenuTrigger": "EFtDwW_navigationMenuTrigger",
+    "tabText": "EFtDwW_tabText"
   }, {
     unstable_styles: {
       "emptyTabBadge": {
@@ -40,6 +40,10 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
         "$$css": true,
         "_": "EFtDwW_nativeTabsContainer"
       },
+      "navigationMenuRoot": {
+        "$$css": true,
+        "_": "EFtDwW_navigationMenuRoot"
+      },
       "tabContent": {
         "$$css": true,
         "_": "EFtDwW_tabContent"
@@ -48,17 +52,13 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
         "$$css": true,
         "_": "EFtDwW_tabBadge"
       },
-      "tabText": {
-        "$$css": true,
-        "_": "EFtDwW_tabText"
-      },
-      "navigationMenuRoot": {
-        "$$css": true,
-        "_": "EFtDwW_navigationMenuRoot"
-      },
       "navigationMenuTrigger": {
         "$$css": true,
         "_": "EFtDwW_navigationMenuTrigger"
+      },
+      "tabText": {
+        "$$css": true,
+        "_": "EFtDwW_tabText"
       }
     }
   }, {});

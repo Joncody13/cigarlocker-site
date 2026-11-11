@@ -322,7 +322,7 @@
     today = d.today;
     names = d.names || {};
     $('updated').textContent = `Updated ${timeFmt.format(new Date(d.at))}`;
-    tiles(d.totals, d.plus || {});
+    tiles(d.totals, d.plus || {}, d.errors);
     barChart($('chart-active'), d.daily, 'active', (v) => plural(v, 'person', 'people'));
     barChart($('chart-scans'), d.daily, 'scans', (v) => plural(v, 'scan'));
     feed(d.feed);
@@ -333,6 +333,11 @@
     mailBox(d.mail, d.totals);
     health(d.health, d.totals);
     log(d.log);
+    drawLaunch(d.launch);
+    // The board carries a week of errors; another span is asked for on its own.
+    if (errorDays === 7) drawErrors(d.errors);
+    else loadErrors();
+    drawSwitches(d.flags);
   }
 
   /** What Cigar Locker knows of cigars: its libraries, look-ups and scans. */
@@ -353,7 +358,8 @@
     return h('div', { class: 'tile' }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), note ? h('div', { class: 'tile-note', text: note }) : null);
   }
 
-  function tiles(t, plus) {
+  function tiles(t, plus, errors) {
+    const wrong = L.errorTotals(errors);
     $('tiles').replaceChildren(
       tile('Members', n(t.accounts), `${n(t.joined7)} new this week · ${n(t.finished)} finished sign-up`),
       tile('Plus members', n(plus.plus), `${n(plus.paying)} paying · ${n(plus.gifts)} given · ${plus.keysSet ? 'Apple keys in' : 'Apple keys not set yet'}`),
@@ -364,6 +370,12 @@
       tile('AI this month', money(t.aiCentsMonth), 'Estimated; the bill is in the Anthropic Console'),
       tile('Cigars tracked', n(t.cigarsTracked), 'In members’ humidors now'),
       tile('On Friends', n(t.usernames), `${plural(t.posts7, 'post')} and ${plural(t.messages7, 'message')} this week${t.openReports ? ` · ${plural(t.openReports, 'report')} waiting` : ''}`),
+      // What the app itself reported going wrong; the Health tab has each one.
+      tile(
+        'Errors from the app, 7 days',
+        errors ? n(errors.times) : '–',
+        wrong.none ? (errors ? 'None reported' : 'Could not be read just now') : `On ${plural(errors.installs, 'phone')} · ${plural((errors.groups || []).length, 'kind')} · ${n(errors.fatal)} stopped the app · see Health`,
+      ),
     );
   }
 
@@ -1154,7 +1166,7 @@
     $('compose-title').textContent = composeDeal ? `Email the deal: ${composeDeal.shop}` : 'Email this group';
     $('compose-deal-words').hidden = !composeDeal;
     $('compose-who').textContent = `${t.words}: ${plural(t.total, 'person', 'people')}.`;
-    const skipped = kind === 'offers' && t.reach.skipped ? ` ${plural(t.reach.skipped, 'more lives', 'more live')} where offers are never sent.` : '';
+    const skipped = kind === 'offers' && t.reach.skipped ? ` ${plural(t.reach.skipped, 'more lives', 'more live')} where offers are never sent, or gave no ZIP code.` : '';
     $('compose-reach').textContent = `${plural(reach, 'of them said', 'of them said')} yes to ${kind === 'news' ? 'news from Cigar Locker' : 'offers from shops'} and will get it.${
       t.total > reach ? ` The other ${n(t.total - reach)} said no, gave no address, or bounced.` : ''
     }${skipped}`;
@@ -1980,6 +1992,164 @@
           ),
         ),
       ),
+    );
+  }
+
+  // ---- what the launch build reports: errors, switches, the funnel ----------------
+  // (2026-11-11; 104_app_errors.sql, 106_app_flags.sql, 112_console_launch.sql.)
+  // The words and figures are launch.js's; this only draws them. Everything a
+  // phone sent (a message, a stack, a campaign's name) goes in as text.
+
+  const L = window.CigarLaunch;
+  const when = (iso) => (iso ? `${dayFmt.format(new Date(iso))}, ${timeFmt.format(new Date(iso))}` : '');
+
+  let errorDays = 7;
+
+  function drawErrors(e) {
+    for (const b of document.querySelectorAll('#error-days [data-days]')) b.setAttribute('aria-pressed', Number(b.dataset.days) === errorDays ? 'true' : 'false');
+    const totals = L.errorTotals(e);
+    $('errors-note').textContent = totals.line;
+    $('error-tiles').replaceChildren(...(totals.tiles || []).map((t) => tile(t.label, t.value, t.note)));
+    const areas = L.byArea(e);
+    $('error-areas').textContent = areas.length ? `Where: ${areas.map((a) => `${a.words} ${n(a.times)}`).join(' · ')}` : '';
+    if (totals.none) return $('errors').replaceChildren();
+    $('errors').replaceChildren(
+      h(
+        'div',
+        { class: 'errors' },
+        (e.groups || []).map((g) => {
+          const r = L.errorRow(g);
+          return h(
+            'details',
+            {},
+            h(
+              'summary',
+              {},
+              h('span', {}, r.area, r.fatal ? [' ', h('span', { class: 'pill bad', text: 'Stopped the app' })] : null),
+              h('span', {}, h('span', { class: 'what', text: r.message }), h('div', { class: 'muted small', text: [r.name, r.version].filter(Boolean).join(' · ') })),
+              h('span', {}, r.times, h('div', { class: 'muted small', text: `Last ${ago(r.lastSeen)}` })),
+            ),
+            h('p', { class: 'more muted small', text: `First seen ${when(r.firstSeen)} · last seen ${when(r.lastSeen)}` }),
+            r.phone ? h('p', { class: 'more small', text: `The newest came from: ${r.phone}` }) : null,
+            r.extra ? h('p', { class: 'more small', text: `What the app noted: ${r.extra}` }) : null,
+            r.stack ? h('pre', { text: r.stack }) : h('p', { class: 'more muted small', text: 'No more detail was sent with it.' }),
+          );
+        }),
+      ),
+    );
+  }
+
+  async function loadErrors() {
+    try {
+      drawErrors(await ask({ action: 'errors', days: errorDays }));
+    } catch (e) {
+      $('errors-note').textContent = e.message;
+    }
+  }
+
+  for (const b of document.querySelectorAll('#error-days [data-days]')) {
+    b.addEventListener('click', () => {
+      errorDays = Number(b.dataset.days);
+      $('errors-note').textContent = 'Reading…';
+      loadErrors();
+    });
+  }
+
+  function drawSwitches(flags) {
+    $('switches').replaceChildren(
+      h(
+        'div',
+        { class: 'switches' },
+        L.switchStates(flags).map((sw) =>
+          h(
+            'div',
+            {},
+            h(
+              'label',
+              { class: 'switch-row' },
+              h('input', {
+                type: 'checkbox',
+                checked: sw.on,
+                disabled: !flags,
+                onchange: (ev) => setSwitch(sw, ev.target),
+              }),
+              sw.title,
+              sw.on ? null : h('span', { class: 'off', text: ' · Off for everyone' }),
+            ),
+            h('p', { class: 'stops muted small', text: `Off stops: ${sw.stops}` }),
+          ),
+        ),
+      ),
+    );
+    if (!flags) $('switch-result').textContent = 'The switches could not be read just now. Nothing is changed; the app treats a switch it cannot read as on.';
+  }
+
+  async function setSwitch(sw, box) {
+    const on = box.checked;
+    // Turning one off stops a part of the app for every member: asked first.
+    if (!on && !confirm(L.OFF_QUESTION(sw))) {
+      box.checked = true;
+      return;
+    }
+    box.disabled = true;
+    try {
+      const out = await ask({ action: 'flag-set', name: sw.name, on });
+      if (snapshot) snapshot.flags = out.flags;
+      drawSwitches(out.flags);
+      $('switch-result').textContent = on
+        ? `“${sw.title}” is on again. Phones pick it up the next time the app is opened, or within a quarter of an hour.`
+        : `“${sw.title}” is off. Phones pick it up the next time the app is opened, or within a quarter of an hour.`;
+    } catch (e) {
+      box.checked = !on;
+      box.disabled = false;
+      $('switch-result').textContent = e.message;
+    }
+  }
+
+  function drawLaunch(launch) {
+    const sections = L.funnel(launch);
+    if (!sections) {
+      $('launch-note').textContent = 'The launch figures could not be read just now.';
+      return $('launch').replaceChildren();
+    }
+    $('launch-note').textContent = L.nothingYet(launch)
+      ? 'Nothing counted yet. These start with version 1.3.0, the launch build; days are Massachusetts time.'
+      : `Counted since ${dayYearFmt.format(new Date(launch.since))}, by version 1.3.0 and later. Days are Massachusetts time; “7 days” is today and the six before.`;
+    const fails = L.scanFailures(launch);
+    const campaigns = L.campaignRows(launch);
+    $('launch').replaceChildren(
+      h(
+        'div',
+        { class: 'funnel' },
+        sections.map((sec) =>
+          h(
+            'div',
+            {},
+            h('h4', { text: sec.title }),
+            h('p', { class: 'muted small', text: sec.note }),
+            h(
+              'div',
+              { class: 'table-wrap' },
+              h(
+                'table',
+                { class: 'plain' },
+                h('thead', {}, h('tr', {}, h('th', { text: '' }), L.SPAN_HEADS.map((t) => h('th', { class: 'num', text: t })))),
+                h(
+                  'tbody',
+                  {},
+                  sec.rows.map((r) => h('tr', {}, h('td', {}, r.label, h('div', { class: 'counts', text: `Counts ${r.counts}` })), r.cells.map((c) => h('td', { class: 'num', text: c })))),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+      h('h4', { text: 'Why scans failed, 30 days' }),
+      fails.length ? h('p', { class: 'small', text: fails.map((f) => `${f.words}: ${n(f.times)}`).join(' · ') }) : h('p', { class: 'muted small', text: 'None failed.' }),
+      h('h4', { text: 'Where installs came from, 30 days' }),
+      campaigns.length
+        ? table(L.CAMPAIGN_HEADS, campaigns, [3, 4, 5, 6, 7])
+        : h('p', { class: 'muted small', text: 'None came from a tagged link yet. A link to the app with utm_source, utm_medium and utm_campaign on it shows here; an install that came with no link is in no row.' }),
     );
   }
 

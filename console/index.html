@@ -98,6 +98,11 @@
       </div>
     </section>
 
+    <section class="card wide" aria-labelledby="h-launch" data-tab="global">
+      <div class="card-head"><h3 id="h-launch">The launch</h3><span class="muted small" id="launch-note"></span></div>
+      <div id="launch"></div>
+    </section>
+
     <section class="card wide" aria-labelledby="h-members" data-tab="people">
       <div class="card-head">
         <h3 id="h-members">People</h3>
@@ -292,6 +297,27 @@
       </div>
     </section>
 
+    <section class="card wide" aria-labelledby="h-errors" data-tab="health">
+      <div class="card-head">
+        <h3 id="h-errors">Errors from the app</h3>
+        <span class="seg" id="error-days" role="group" aria-label="How far back">
+          <button type="button" class="ghost small" data-days="1">Last day</button>
+          <button type="button" class="ghost small" data-days="7">7 days</button>
+          <button type="button" class="ghost small" data-days="30">30 days</button>
+        </span>
+        <span class="muted small" id="errors-note"></span>
+      </div>
+      <div class="tiles" id="error-tiles"></div>
+      <p class="muted small" id="error-areas"></p>
+      <div id="errors"></div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-switches" data-tab="health">
+      <div class="card-head"><h3 id="h-switches">Switches</h3><span class="muted small">Each can only turn off a part of the app that Apple reviewed, to stop one that has broken. None reveals anything new, and the collection, scanning one cigar, the journal, backup and sign-in have no switch.</span></div>
+      <div id="switches"></div>
+      <p class="muted small" id="switch-result" role="status"></p>
+    </section>
+
     <section class="row two" data-tab="health">
       <div class="card">
         <h3>App health</h3>
@@ -338,6 +364,7 @@
   <div id="tip" class="tip" role="status" hidden></div>
   <script src="supabase.js"></script>
   <script src="groups.js"></script>
+  <script src="launch.js"></script>
   <script src="console.js"></script>
 </body>
 </html>
