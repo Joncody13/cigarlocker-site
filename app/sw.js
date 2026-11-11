@@ -51,7 +51,7 @@ self.addEventListener('fetch', (event) => {
       caches
         .open(PHOTOS)
         .then((cache) => cache.match(url.pathname))
-        .then((hit) => (hit ? isolated(hit) : new Response('', { status: 404 }))),
+        .then((hit) => (hit ? isolated(hit) : new Response('', { status: 404, headers: { 'Cache-Control': 'no-store' } }))),
     );
     return;
   }
