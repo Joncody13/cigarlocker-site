@@ -2263,7 +2263,7 @@
 
   function drawMoney() {
     const m = mission && mission.mission;
-    const facts = MC.moneyFacts(m);
+    const facts = MC.moneyFacts(m, mission && mission.fromScans);
     if (!facts) {
       $('money-facts').replaceChildren(h('p', { class: 'muted', text: UNREAD }));
       $('chart-ai').replaceChildren();
@@ -2317,7 +2317,7 @@
   function drawKnowledge() {
     const c = MC.coverage(mission && mission.coverage);
     if (c) {
-      $('cover-note').textContent = c.images ? '' : 'Photos of scans are not kept, so no image counts as evidence yet.';
+      $('cover-note').textContent = c.images ? '' : 'Photos of scans are not kept, so no image counts as evidence. What a photo showed is kept in words, below.';
       $('cover-lines-head').textContent = `Lines in the library (${n(c.linesOf)})`;
       $('cover-products-head').textContent = `Makers’ listed sizes (${n(c.productsOf)})`;
       $('cover-lines').replaceChildren(...coverRows(c.lines));
@@ -2337,8 +2337,76 @@
           ]
         : [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: UNREAD })))]),
     );
+    drawScans();
     drawQueues();
   }
+
+  // What scans have taught (117): sentences from figures that were read, each kind of fact, what stood beside
+  // the scanned cigar, and how much a scan may leave behind.
+  function drawScans() {
+    const f = MC.fromScans(mission && mission.fromScans);
+    const pick = $('learn-setting');
+    if (!f) {
+      $('scans-says').replaceChildren(h('p', { class: 'muted', text: UNREAD }));
+      $('scans-facts').replaceChildren();
+      $('scans-seen').replaceChildren();
+      pick.replaceChildren();
+      pick.disabled = true;
+      $('learn-save').disabled = true;
+      $('learn-means').textContent = '';
+      return;
+    }
+    $('scans-says').replaceChildren(...f.says.map((t) => h('p', { text: t })));
+    $('scans-facts').replaceChildren(
+      ...(f.rows.length
+        ? [
+            h('thead', {}, h('tr', {}, f.heads.map((t, i) => h('th', { class: i ? 'num' : null, text: t })))),
+            h('tbody', {}, f.rows.map((r) => h('tr', {}, r.map((v, i) => h('td', { class: i ? 'num' : null, text: v }))))),
+          ]
+        : []),
+    );
+    const seen = (title, rows, empty) =>
+      h('div', { class: 'seen' }, h('h4', { text: title }), rows.length ? h('table', { class: 'plain' }, h('tbody', {}, rows.map((r) => h('tr', {}, r.map((v, i) => h('td', { class: i === r.length - 1 ? 'num' : null, text: v })))))) : h('p', { class: 'muted small', text: empty }));
+    $('scans-seen').replaceChildren(
+      seen('Other cigars and boxes read in photos', f.nearby, 'None yet.'),
+      seen('Boxes and cases described', f.packages, 'None yet.'),
+      seen('Accessories, by maker', f.accessories, 'None yet.'),
+    );
+    pick.replaceChildren(...MC.LEARN_SETTINGS.map((v) => h('option', { value: v, text: MC.LEARN_WORDS[v][0] })));
+    pick.value = f.setting;
+    pick.dataset.now = f.setting;
+    pick.disabled = false;
+    $('learn-save').disabled = false;
+    $('learn-means').textContent = MC.LEARN_WORDS[f.setting][1];
+  }
+
+  $('learn-setting').addEventListener('change', () => {
+    $('learn-means').textContent = MC.LEARN_WORDS[$('learn-setting').value][1];
+  });
+  $('learn-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const pick = $('learn-setting');
+    const to = pick.value;
+    const now = pick.dataset.now;
+    if (to === now) return ($('learn-result').textContent = 'That is how it already stands.');
+    // Turning it down stops something being kept from every scan: asked first.
+    if (MC.LEARN_SETTINGS.indexOf(to) > MC.LEARN_SETTINGS.indexOf(now) && !confirm(MC.LEARN_QUESTION(to))) {
+      pick.value = now;
+      $('learn-means').textContent = MC.LEARN_WORDS[now][1];
+      return;
+    }
+    $('learn-save').disabled = true;
+    try {
+      const out = await ask({ action: 'learn-setting', value: to });
+      if (mission && out.fromScans) mission.fromScans = out.fromScans;
+      drawScans();
+      $('learn-result').textContent = `From the next scan: ${MC.LEARN_WORDS[to][0].toLowerCase()}.`;
+    } catch (e) {
+      pick.value = now;
+      $('learn-save').disabled = false;
+      $('learn-result').textContent = e.message;
+    }
+  });
 
   // How a code he names is known: his own choice, never "inferred".
   const NAMED_AS = [

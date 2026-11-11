@@ -98,7 +98,7 @@
     'console-refresh': 'This console’s People list',
     'console-refresh-all': 'The People list, the nightly pass',
     'email-worker': 'The email sender',
-    'knowledge-ingest': 'Scans and searches kept as evidence',
+    'knowledge-ingest': 'Scans and searches kept as evidence; a saved scan’s facts put under the cigar it was saved as',
     'places-seed': 'Places: towns searched ahead',
     'plus-recheck': 'Plus: subscriptions checked again',
     'roll-up-usage': 'Visits rolled up by the day',
@@ -580,6 +580,86 @@
     return GROWTH_ROWS.map(([key, label]) => ({ key, label, cells: [n(g.today[key]), n((g.d7 || {})[key]), n((g.d30 || {})[key])] }));
   }
 
+  // ---- what scans taught (117) ---------------------------------------------------------------------------
+
+  /** How much a scan leaves behind for the catalogue, the fullest first (117; LEARN_SETTINGS in gate.ts). */
+  const LEARN_SETTINGS = ['all', 'reading', 'off'];
+  const LEARN_WORDS = {
+    all: ['Everything the photo shows', 'What the scan read, and a second look for boxes, codes, other cigars and accessories.'],
+    reading: ['Only what the scan itself read', 'The band, the printed words and the shape. No second look, so nothing more is spent.'],
+    off: ['Nothing', 'Scans answer as usual and leave nothing behind for the catalogue.'],
+  };
+  /** Asked before the setting is turned down: what will stop being kept. */
+  const LEARN_QUESTION = (to) =>
+    to === 'off'
+      ? 'Stop learning from scans? Scans will answer as usual, and nothing more will be kept for the catalogue until this is turned on again. What is already kept stays.'
+      : 'Keep only what the scan itself reads? Boxes, codes, other cigars and accessories in the photo will no longer be kept. What is already kept stays.';
+  /** Each kind of fact a scan can leave, as he reads it (the fields learn.ts writes). */
+  const FACT_WORDS = {
+    band_look: 'The band, in words',
+    printed_text: 'Words printed on the band or box',
+    shape: 'Shape: pressed, pointed',
+    wrapper_seen: 'Wrapper, by its colour',
+    size_printed: 'A size printed on it',
+    count_printed: 'A count printed on a box',
+    looks_like: 'What it can be mistaken for',
+    dress: 'How it is dressed: bands, cellophane, tube',
+    band_serial: 'A serial number on a band',
+    barcode_seen: 'A barcode seen but not read',
+    qr_seen: 'A QR code seen',
+    printed_number: 'A printed code number',
+    package_seen: 'A box or case, described',
+    seen_nearby: 'Another cigar in the photo',
+    seen_on_shelf: 'A cigar or box on a shelf',
+    accessory_seen: 'An accessory, with its maker',
+  };
+  const FACT_HEADS = ['What was learned', '7 days', '30 days', 'In all'];
+  /** A sum in cents that may be a fraction of one: said in words then, never as "$0.00" for something spent. */
+  const smallMoney = (cents) => (num(cents) <= 0 ? '$0.00' : num(cents) < 1 ? 'under a cent' : `about ${money(cents)}`);
+  const named = (r) => [r.brand, r.line].filter(Boolean).join(' ');
+
+  /**
+   * What scans have taught, for the Knowledge part: a few sentences only from figures that were read, each
+   * kind of fact over 7 and 30 days and in all, and what was read beside the scanned cigar. Null when unread.
+   */
+  function fromScans(f) {
+    if (!f || !f.scans) return null;
+    const setting = LEARN_SETTINGS.includes(f.setting) ? f.setting : 'all';
+    const facts = Array.isArray(f.facts) ? f.facts : [];
+    const total = facts.reduce((t, r) => t + num(r.all), 0);
+    const scans = f.scans;
+    const looks = f.looks || {};
+    const tied = f.tied || {};
+    const codes = f.codes || {};
+    const says = [];
+    if (setting === 'off') says.push('Learning from scans is off: scans answer as usual and nothing more is kept for the catalogue.');
+    if (num(scans.all) === 0) {
+      if (setting !== 'off') says.push('No scan has left anything yet. From here each one leaves what its photo showed, in words and numbers. The photo itself is still not kept.');
+    } else {
+      says.push(`${plural(scans.all, 'scan')} ${Math.round(num(scans.all)) === 1 ? 'has' : 'have'} left ${plural(total, 'fact')} for the catalogue (${plural(scans.d7, 'scan')} in the last 7 days). The photos themselves are not kept.`);
+      if (num(tied.confirmed) + num(tied.corrected) + num(tied.waiting) > 0) {
+        says.push(
+          `Facts about the scanned cigar itself: ${n(tied.confirmed)} under a cigar saved as the scan named it, ${n(tied.corrected)} under one the member corrected, ${n(tied.waiting)} waiting for the scan to be saved. A fact that is waiting is one reading, not yet anyone’s word.`,
+        );
+      }
+      if (num(codes.seen)) {
+        const likely = num(codes.withLikely);
+        says.push(`${plural(codes.seen, 'barcode')} read off photos${likely ? `; ${n(likely)} still unnamed ${Math.round(likely) === 1 ? 'has' : 'have'} a likely cigar` : ''}. They are in the list of codes below.`);
+      }
+    }
+    if (num(looks.d30)) says.push(`The second looks cost ${smallMoney(looks.cents30)} in 30 days (${plural(looks.d30, 'look')}), beside the AI cost under Revenue and costs.`);
+    return {
+      setting,
+      says,
+      heads: FACT_HEADS,
+      rows: facts.map((r) => [FACT_WORDS[r.field] || String(r.field || '').replace(/_/g, ' '), n(r.d7), n(r.d30), n(r.all)]),
+      nearby: (Array.isArray(f.nearby) ? f.nearby : []).map((r) => [named(r), plural(r.times, 'time')]).filter((r) => r[0]),
+      packages: (Array.isArray(f.packages) ? f.packages : []).map((r) => [named(r), String(r.kind || 'box'), plural(r.times, 'time')]).filter((r) => r[0]),
+      accessories: (Array.isArray(f.accessories) ? f.accessories : []).map((r) => [String(r.maker || ''), String(r.kind || ''), plural(r.times, 'time')]).filter((r) => r[0]),
+      cost: { looks30: num(looks.d30), words: smallMoney(looks.cents30) },
+    };
+  }
+
   const MISSING_WORDS = {
     releaseYear: 'lines with no release year',
     maker: 'lines with no maker named',
@@ -807,7 +887,7 @@
   // ---- revenue and costs -----------------------------------------------------------
 
   /** Plus and the AI's cost as label, value, note. The stores' share is a range, not a guess at which applies. */
-  function moneyFacts(mission) {
+  function moneyFacts(mission, scans) {
     if (!mission || !mission.series) return null;
     const s = mission.series;
     const now = mission.now || {};
@@ -822,6 +902,9 @@
       ['AI cost today', money(at(s.aiCents, 13)), 'An estimate from each answer’s size'],
       ['AI cost, 7 days', money(sum(s.aiCents, 7, 14)), `${money(sum(s.aiCents, 0, 7))} the 7 days before`],
       ['AI cost, 14 days', money(sum(s.aiCents, 0, 14)), 'Scans, look-ups, suggestions and towns searched ahead'],
+      // The second looks that learn from scans run on the small model and are counted apart (117): said
+      // beside the rest, never folded in unseen. Left out when that part could not be read.
+      ...(scans && scans.looks ? [['Learning from scans, 30 days', smallMoney(scans.looks.cents30), `${plural(scans.looks.d30, 'second look')}, not in the figures above`]] : []),
     ];
   }
 
@@ -860,6 +943,11 @@
     JOB_HEADS,
     GROWTH_HEADS,
     PROVIDER_WORDS,
+    LEARN_SETTINGS,
+    LEARN_WORDS,
+    LEARN_QUESTION,
+    FACT_WORDS,
+    fromScans,
     share,
     percent,
     dayWords,

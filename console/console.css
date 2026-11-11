@@ -617,3 +617,12 @@ ul.notices li.part { padding: 0; }
 }
 #shop-facts { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
 #shop-facts dd { overflow-wrap: anywhere; }
+
+/* What scans taught (117): the setting sits under the figures, one line where there is room. */
+.learn-setting { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.learn-setting label { font-weight: 600; }
+.learn-setting select { min-width: 0; max-width: 100%; }
+.learn-setting p { flex-basis: 100%; margin: 0; }
+#scans-says p { margin: 0 0 8px; max-width: 86ch; }
+#scans-seen .seen + .seen { margin-top: 14px; }
+#scans-seen h4 { margin: 0 0 4px; }
