@@ -171,6 +171,37 @@ body.locked { overflow: hidden; }
 .person-sub { color: var(--text); margin: 6px 0 4px; }
 .person .tiles { margin-bottom: 6px; }
 
+/* Cigar Locker Plus on a person's page: how they have it, and Plus given free (118). */
+.plus-panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; margin: 14px 0 4px; }
+.plus-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 24px; }
+.plus-words { flex: 1 1 320px; min-width: 0; }
+/* Its small heading is the page's own (h4), so it takes the heading's colour and letters. */
+.plus-panel h4.plus-kicker { margin: 0; }
+.plus-title { font-size: 20px; font-weight: 600; margin-top: 2px; }
+.plus-title.on { color: var(--green); }
+.plus-line { margin: 3px 0 0; color: var(--muted); max-width: 78ch; overflow-wrap: anywhere; }
+.plus-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.plus-actions button.primary.inline { margin-top: 0; }
+.plus-warn { margin: 12px 0 0; padding: 10px 12px; border: 1px solid var(--line-strong); border-left: 3px solid var(--amber); border-radius: 10px; background: var(--tint); max-width: 96ch; }
+.plus-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; max-width: 980px; }
+.plus-form input, .plus-form select { min-width: 0; padding: 8px 10px; }
+.plus-form select { flex: 0 0 210px; width: 210px; }
+.plus-form input[type='date'] { flex: 0 0 170px; width: 170px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-2); color: var(--text); }
+.plus-form input[type='text'] { flex: 1 1 260px; width: auto; }
+.plus-form button { flex: 0 0 auto; white-space: nowrap; }
+/* A phone: one under the other, each the whole width. */
+@media (max-width: 560px) {
+  .plus-form select, .plus-form input[type='date'], .plus-form input[type='text'], .plus-form button { flex: 1 1 100%; width: 100%; }
+}
+.plus-means { margin: 8px 0 0; }
+.plus-said { margin: 10px 0 0; min-height: 0; font-weight: 500; }
+.plus-said:empty { display: none; }
+.plus-said.error { color: var(--red); }
+.plus-history { margin-top: 12px; }
+.plus-history summary { color: var(--muted); font-size: 13px; cursor: pointer; }
+.plus-history ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.plus-history li { padding: 6px 0; border-top: 1px solid var(--line); font-size: 13.5px; overflow-wrap: anywhere; }
+
 /* Signing in. */
 .gate { display: grid; place-items: center; min-height: calc(100vh - 60px); padding: 24px 16px; }
 .gate-card {

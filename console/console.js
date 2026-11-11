@@ -1272,7 +1272,10 @@
     document.body.classList.add('locked');
     $('person-back').focus();
     const known = details.get(m.id);
-    const show = (d) => personFor === m.id && inner.replaceChildren(personHead(m), ...detail(m, d));
+    // Drawn again, where it was, after Plus is given or ended on it.
+    const show = (d) => personFor === m.id && inner.replaceChildren(personHead(m), ...detail(m, d, () => show(d)));
+    // What was said after the last change belongs to that visit.
+    if (known) delete known.plusSaid;
     if (known) show(known);
     else
       ask({ action: 'member', id: m.id })
@@ -1324,12 +1327,12 @@
     return h('div', { class: 'tile' }, h('div', { class: 'tile-label', text: label }), h('div', { class: 'tile-value', text: value }), note ? h('div', { class: 'tile-note', text: note }) : null);
   }
 
-  function detail(m, d) {
+  function detail(m, d, redraw) {
     const about = h(
       'dl',
       { class: 'facts' },
       fact('Email', m.email + (m.relay ? ' (Apple relay: reaches them once the domain is registered with Apple)' : '')),
-      fact('Cigar Locker Plus', plusWords(d.plus)),
+      fact('Cigar Locker Plus', P ? P.line(d.plus) : 'Reload this page to see it'),
       fact('Phone', m.phone ? formatPhone(m.phone) : 'Not given'),
       fact('Address', [m.street, m.city, [m.state, m.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ') || 'Not given'),
       fact('Born', m.birthDate ? `${longDay(m.birthDate)} (${m.age})` : 'Not given'),
@@ -1504,6 +1507,7 @@
     // Only what there is: an empty slot would show as words.
     return [
       figures,
+      plusPanel(m, d, redraw),
       h(
         'div',
         { class: 'detail-grid' },
@@ -1577,13 +1581,125 @@
     return [h('dt', { text: label }), h('dd', { text: value })];
   }
 
-  /** A member's Plus in a line: paying, given, lapsed, or none. */
-  function plusWords(x) {
-    if (!x || !x.status) return 'No';
-    const until = x.expiresAt ? dayYearFmt.format(new Date(x.expiresAt)) : null;
-    if (x.provider === 'gift') return x.plus ? `Yes, given${until ? ` until ${until}` : ''}` : 'A gift that has ended';
-    if (x.plus) return `Yes, paying${x.environment === 'Sandbox' ? ' (sandbox)' : ''}${x.autoRenew === false ? `, cancelled, ends ${until}` : until ? `, renews ${until}` : ''}`;
-    return `No: ${x.status}${until ? ` ${until}` : ''}`;
+  // Cigar Locker Plus on a person's page (his words, 2026-11-11: "would it be
+  // possible to be able to see someones profile from my console and turn on
+  // Plus for them for free?"): how they have it, and Plus given free, changed
+  // or ended (118). plus.js writes every word; the server checks each request
+  // again and keeps it in the log of looks.
+  const P = window.CigarPlus || null;
+
+  function plusPanel(m, d, redraw) {
+    // A browser still holding the page from before this part was added: the rest of the person's page opens all the same.
+    if (!P) return h('p', { class: 'muted small', text: 'Reload this page to see Cigar Locker Plus here.' });
+    const name = m.name || (m.username ? `@${m.username}` : m.email) || 'this member';
+    const st = P.standing(d.plus);
+    const said = h('p', { class: 'plus-said', role: 'status', text: d.plusSaid || '' });
+    const formSlot = h('div', {});
+    const buttons = () => [...panel.querySelectorAll('button, select, input')];
+
+    /** One request at a time; the page is drawn again with the answer, or says why not. */
+    async function act(body, words) {
+      const held = buttons();
+      for (const b of held) b.disabled = true;
+      said.classList.remove('error');
+      said.textContent = 'Saving…';
+      try {
+        const out = await ask(body);
+        d.plus = out.plus;
+        d.plusSaid = words(out.plus);
+        if (redraw) redraw();
+      } catch (e) {
+        for (const b of held) b.disabled = false;
+        said.classList.add('error');
+        said.textContent = e.message;
+      }
+    }
+
+    function openForm() {
+      const todayDay = P.today();
+      const length = h('select', { 'aria-label': 'How long' }, P.LENGTHS.map((l) => h('option', { value: l.key, text: l.label })));
+      const day = h('input', { type: 'date', min: todayDay, 'aria-label': 'The last day', hidden: true });
+      const note = h('input', { type: 'text', maxlength: P.NOTE_MAX, placeholder: 'A note for yourself (they never see it)', 'aria-label': 'A note for yourself' });
+      // Changing how long keeps the note he wrote, unless he changes that too.
+      if (st.canEnd && d.plus && d.plus.gift && d.plus.gift.note) note.value = d.plus.gift.note;
+      const means = h('p', { class: 'muted small plus-means' });
+      const say = () => {
+        day.hidden = length.value !== 'day';
+        const u = P.untilFor(length.value, day.value, todayDay);
+        means.textContent = u.error ? '' : P.meansWords(u.until);
+        // What was said of an earlier choice no longer holds.
+        said.classList.remove('error');
+        said.textContent = '';
+      };
+      length.addEventListener('change', say);
+      day.addEventListener('change', say);
+      const give = h('button', { type: 'button', class: 'primary inline', text: st.canEnd ? 'Save' : 'Give Plus' });
+      give.addEventListener('click', () => {
+        const u = P.untilFor(length.value, day.value, todayDay);
+        if (u.error) {
+          said.classList.add('error');
+          said.textContent = u.error;
+          return;
+        }
+        act({ action: 'plus-give', id: m.id, until: u.until, note: note.value.trim() }, (plus) => P.givenWords(name, plus, st.canEnd));
+      });
+      const cancel = h('button', {
+        type: 'button',
+        class: 'ghost',
+        text: 'Cancel',
+        onclick: () => {
+          formSlot.replaceChildren();
+          actions.hidden = false;
+          said.textContent = '';
+        },
+      });
+      formSlot.replaceChildren(h('div', { class: 'plus-form' }, length, day, note, give, cancel), means);
+      actions.hidden = true;
+      said.classList.remove('error');
+      said.textContent = '';
+      say();
+      length.focus();
+    }
+
+    const actions = h(
+      'div',
+      { class: 'plus-actions' },
+      st.canGive ? h('button', { type: 'button', class: 'primary inline', text: 'Give Plus free', onclick: openForm }) : null,
+      st.canEnd ? h('button', { type: 'button', class: 'ghost', text: 'Change how long', onclick: openForm }) : null,
+      st.canEnd
+        ? h('button', {
+            type: 'button',
+            class: 'ghost',
+            text: 'End the gift',
+            onclick: () => {
+              if (!confirm(P.END_QUESTION(name))) return;
+              act({ action: 'plus-end', id: m.id }, (plus) => P.endedWords(name, plus));
+            },
+          })
+        : null,
+    );
+    const log = P.history(d.plus);
+    const panel = h(
+      'section',
+      { class: 'plus-panel', 'aria-label': 'Cigar Locker Plus' },
+      h(
+        'div',
+        { class: 'plus-head' },
+        h(
+          'div',
+          { class: 'plus-words' },
+          h('h4', { class: 'plus-kicker', text: 'Cigar Locker Plus' }),
+          h('div', { class: `plus-title${st.on ? ' on' : ''}`, text: st.headline }),
+          st.lines.map((t) => h('p', { class: 'plus-line', text: t })),
+        ),
+        actions,
+      ),
+      st.warn && (st.canGive || st.canEnd) ? h('p', { class: 'plus-warn', text: st.warn }) : null,
+      formSlot,
+      said,
+      log.length ? h('details', { class: 'plus-history' }, h('summary', { text: `History (${n(log.length)})` }), h('ul', {}, log.map((t) => h('li', { text: t })))) : null,
+    );
+    return panel;
   }
 
   function table(heads, rows, numeric) {
