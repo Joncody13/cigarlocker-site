@@ -10,6 +10,7 @@
 // itself (AppleID.auth.signIn, which answers in a promise in its pop-up
 // mode): his first try, on an iPhone the same day, went no further than this
 // page with Apple's script drawing the button.
+/* global AppleID */
 (() => {
   const CLIENT = 'com.cigarlocker.web';
   const RETURN = 'https://cigarlocker.app/signin/';
