@@ -1,43 +1,89 @@
-/* Cigar Locker: the website's one stylesheet (redone 2026-10-29, his words:
-   "modern and sleek with moving tiles and icons and make it feel special
-   and expensive", "use stock images"). Re-dressed 2026-11-10 in the app's
-   own Havana Deco 2.0: deep teal and cream, the Deco gold for small
-   headings and lines, coral for the one action, the wordmark in Limelight. The home page moves (tiles that drift, icons
-   that draw themselves, screens that rise into place, numbers that count);
-   site.js starts it, and nothing moves for anyone who asks for less motion.
-   Support, privacy and terms share the header, type and footer. */
+/* Cigar Locker: the website's one stylesheet.
+
+   Redone 2026-10-29 (his words: "modern and sleek with moving tiles and
+   icons and make it feel special and expensive", "use stock images"),
+   re-dressed 2026-11-10 in Havana Deco 2.0, and brought into line with the
+   refreshed app on 2026-11-13 (his words: "I want all three experiences to
+   feel like one premium brand"): the phone app, the web app and this site
+   stand in the same two rooms. Reserve, the dark room, is the page; a
+   section marked .cellar stands in the light one. Coral is the one action
+   (the download, once the app is in a store), gold is small headings and
+   hairlines, the wordmark is Limelight, headings are Instrument Serif, and
+   figures are the system face, as in the app.
+
+   What moves: screens and words rise into view once, drawn icons draw
+   themselves, figures count up, two rows drift (the home screens, and a
+   row of what else is inside), and photographs behind sections move a
+   little slower than the page. Nothing shimmers, spins or bobs, and nothing
+   moves at all for anyone who asks for less motion. site.js starts it.
+
+   Support, privacy, terms and the other pages share the header, the type
+   and the footer. */
 
 :root {
   color-scheme: dark;
 
-  --bg: #0b2f2c;
-  --bg-2: #0f3d3a;
-  --bg-3: #154b47;
+  /* Reserve, the dark room: the app's own tones (src/proto/room.tsx, src/desktop/kit.tsx). */
+  --bg: #051b19;
+  --bg-2: #0a2c29;
+  --bg-3: #103c38;
+  --raised: #1a5650;
   --card: rgba(244, 233, 216, 0.045);
   --card-2: rgba(244, 233, 216, 0.08);
-  --line: rgba(237, 201, 119, 0.16);
-  --line-2: rgba(237, 201, 119, 0.34);
+  --line: rgba(244, 233, 216, 0.13);
+  --line-2: rgba(244, 233, 216, 0.26);
+  --gold-line: rgba(237, 201, 119, 0.4);
   --text: #f4e9d8;
-  --muted: #cbc3b1;
-  --dim: #a9a493;
+  --muted: #cfc7b6;
+  --dim: #aba695;
   --gold: #edc977;
   --gold-hi: #f6e2ae;
   --gold-lo: #b08a3e;
   --coral: #ec8466;
+  --on-coral: #0b2f2c;
+  --feature: linear-gradient(150deg, #1d5f58 0%, #134641 46%, #0b302d 100%);
   --wordmark: "Limelight", "Instrument Serif", Georgia, serif;
   --green: #a7dcc8;
   --amber: #f49a7e;
+  --shadow: 0 30px 60px -34px rgba(0, 0, 0, 0.9);
 
   --serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
-  --radius: 26px;
+  --radius: 24px;
   --radius-sm: 16px;
-  --gutter: 16px;
-  --wide: 1160px;
+  --gutter: 20px;
+  --wide: 1180px;
   --narrow: 740px;
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
   --grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 0.9  0 0 0 0 0.8  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* Cellar, the light room: a section that stands in daylight. The same names, the light room's tones. */
+.cellar {
+  color-scheme: light;
+  --bg: #ebdfc9;
+  --bg-2: #f4ebdb;
+  --bg-3: #fffdf8;
+  --raised: #ffffff;
+  --card: #fffdf8;
+  --card-2: #ffffff;
+  --line: rgba(11, 47, 44, 0.15);
+  --line-2: rgba(11, 47, 44, 0.32);
+  --gold-line: rgba(122, 86, 18, 0.5);
+  --text: #071f1d;
+  --muted: #35504b;
+  --dim: #566b66;
+  --gold: #7a5612;
+  --gold-hi: #5d400b;
+  --gold-lo: #9a7430;
+  --coral: #c24e2f;
+  --on-coral: #ffffff;
+  --green: #1e6b55;
+  --amber: #9e4128;
+  --shadow: 0 30px 50px -34px rgba(60, 40, 10, 0.5);
+  background: linear-gradient(180deg, #f4ebdb 0%, #ebdfc9 520px);
+  color: var(--text);
 }
 
 *,
@@ -70,7 +116,7 @@ body::after {
   position: fixed;
   inset: 0;
   background-image: var(--grain);
-  opacity: 0.07;
+  opacity: 0.06;
   pointer-events: none;
   z-index: 100;
   mix-blend-mode: overlay;
@@ -80,6 +126,10 @@ img,
 svg {
   display: block;
   max-width: 100%;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 a {
@@ -141,12 +191,12 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(50px, 11.5vw, 96px);
+  font-size: clamp(48px, 10.6vw, 92px);
   line-height: 1;
 }
 
 h2 {
-  font-size: clamp(40px, 8.5vw, 76px);
+  font-size: clamp(38px, 6.6vw, 68px);
   line-height: 1.04;
 }
 
@@ -155,26 +205,12 @@ h3 {
   line-height: 1.2;
 }
 
+/* The one word a heading leans on: the serif's italic, in the room's gold. It stays still. */
 h1 em,
 h2 em {
   font-style: italic;
-  background: linear-gradient(100deg, var(--gold-lo) 0%, var(--gold) 30%, var(--gold-hi) 50%, var(--gold) 70%, var(--gold-lo) 100%);
-  background-size: 250% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  padding-right: 0.06em;
-  animation: shimmer 7s ease-in-out infinite;
-}
-
-@keyframes shimmer {
-  0%,
-  100% {
-    background-position: 100% 0;
-  }
-  50% {
-    background-position: 0% 0;
-  }
+  color: var(--gold);
+  padding-right: 0.04em;
 }
 
 p {
@@ -183,12 +219,15 @@ p {
 
 .overline {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 8px 14px;
   margin: 0 0 18px;
-  font-size: 12px;
+  font-family: var(--sans);
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.24em;
+  line-height: 1.5;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--gold);
 }
@@ -201,7 +240,7 @@ p {
 }
 
 .lead {
-  font-size: clamp(18px, 2.2vw, 21px);
+  font-size: clamp(18px, 2.1vw, 21px);
   line-height: 1.55;
   color: var(--muted);
   max-width: 34em;
@@ -212,6 +251,50 @@ p {
   color: var(--dim);
 }
 
+/* A finger wants 44 points: on a touch screen the small print's links get that room, without moving a line. */
+@media (pointer: coarse) {
+  .fine a {
+    display: inline-block;
+    padding: 13px 4px;
+    margin: -13px -4px;
+  }
+
+  /* A page's list of contents: each line a row a finger can find. */
+  .toc a {
+    display: block;
+    padding: 9px 0;
+  }
+
+  .toc li {
+    padding: 0;
+  }
+}
+
+/* Code (the partners' page): a long line scrolls inside its own box and never widens the page. */
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+
+pre {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  box-shadow: 0 0 0 1px var(--line) inset;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+pre code {
+  font-size: inherit;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
 /* ---------- Header ---------- */
 
 .site-header {
@@ -219,7 +302,7 @@ p {
   top: 0;
   z-index: 50;
   border-bottom: 1px solid var(--line);
-  background: rgba(11, 47, 44, 0.72);
+  background: rgba(5, 27, 25, 0.78);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   backdrop-filter: blur(18px) saturate(1.4);
   transition: background 0.4s var(--ease), border-color 0.4s var(--ease);
@@ -237,7 +320,7 @@ p {
 }
 
 .home .site-header.scrolled {
-  background: rgba(11, 47, 44, 0.72);
+  background: rgba(5, 27, 25, 0.78);
   border-color: var(--line);
   -webkit-backdrop-filter: blur(18px) saturate(1.4);
   backdrop-filter: blur(18px) saturate(1.4);
@@ -249,14 +332,15 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: 8px 24px;
-  padding-top: 14px;
-  padding-bottom: 14px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
   gap: 12px;
+  min-height: 44px;
   color: var(--text);
   text-decoration: none;
 }
@@ -272,7 +356,7 @@ p {
   background: linear-gradient(160deg, #1c5853, #0b2f2c);
   display: grid;
   place-items: center;
-  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.28) inset, 0 6px 18px -6px rgba(237, 201, 119, 0.35);
+  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.28) inset, 0 6px 18px -8px rgba(0, 0, 0, 0.7);
   flex: none;
 }
 
@@ -296,7 +380,7 @@ p {
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 22px;
-  font-size: 14px;
+  font-size: 14.5px;
   letter-spacing: 0.02em;
 }
 
@@ -304,7 +388,7 @@ p {
   white-space: nowrap;
   color: var(--muted);
   text-decoration: none;
-  padding: 4px 0;
+  padding: 11px 0;
   position: relative;
 }
 
@@ -313,7 +397,7 @@ p {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: 6px;
   height: 1px;
   background: var(--gold);
   transform: scaleX(0);
@@ -331,15 +415,24 @@ p {
   transform: scaleX(1);
 }
 
+/* The header's last word: "Coming soon" outlined until the app is in a store, then the one coral button. */
 .nav-pill {
   border: 1px solid var(--line-2);
   border-radius: 999px;
-  padding: 6px 14px !important;
-  color: var(--gold) !important;
+  padding: 10px 16px !important;
+  color: var(--text) !important;
 }
 
 .nav-pill::after {
   display: none;
+}
+
+.nav-pill.is-live {
+  border-color: transparent;
+  background: var(--coral);
+  color: var(--on-coral) !important;
+  font-weight: 650;
+  box-shadow: 0 10px 24px -12px rgba(236, 132, 102, 0.8);
 }
 
 /* ---------- Buttons ---------- */
@@ -348,64 +441,218 @@ p {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px 24px;
-  margin: 34px 0 20px;
+  gap: 14px 22px;
+  margin: 32px 0 20px;
 }
 
-/* A plain button (the unsubscribe page). */
+/* The one action on a page (the unsubscribe page): coral, as in the app. */
 .button {
   font: inherit;
-  font-weight: 600;
-  color: #0b2f2c;
-  background: var(--gold);
+  font-weight: 650;
+  color: var(--on-coral);
+  background: var(--coral);
   border: 0;
-  border-radius: 12px;
-  padding: 12px 22px;
+  border-radius: 999px;
+  padding: 13px 26px;
+  min-height: 48px;
   cursor: pointer;
 }
-.button:hover { background: var(--gold-hi); }
-.button:disabled { opacity: 0.5; cursor: default; }
 
-/* A placeholder until Apple's own badge artwork goes in (it links nowhere yet). */
+.button:hover {
+  filter: brightness(1.06);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* A second, quieter action beside it: an outline in the page's own ink. */
+.button.quiet {
+  color: var(--text);
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--line-2) inset;
+}
+
+.button.quiet:hover {
+  filter: none;
+  background: var(--card-2);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* ---------- The unsubscribe page: one panel, whatever state it is in ---------- */
+
+.unsub {
+  padding-bottom: 72px;
+}
+
+.unsub .page-head h1 {
+  font-size: clamp(42px, 8vw, 68px);
+}
+
+.unsub-panel {
+  max-width: 640px;
+  margin: 28px 0 22px;
+  padding: 26px 24px;
+  border-radius: var(--radius);
+  background: rgba(16, 60, 56, 0.78);
+  box-shadow: 0 1px 0 rgba(255, 238, 208, 0.08) inset, 0 0 0 1px var(--line), var(--shadow);
+}
+
+.unsub-panel[hidden] {
+  display: none;
+}
+
+.unsub-kind {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.unsub-kind p {
+  margin: 0;
+  min-width: 0;
+}
+
+.unsub-kind strong {
+  display: block;
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+.unsub-kind p > span {
+  display: block;
+  margin-top: 3px;
+  font-size: 16px;
+  color: var(--muted);
+}
+
+.unsub-ic {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  background: var(--card-2);
+  box-shadow: 0 0 0 1px var(--line) inset;
+}
+
+.unsub-ic.ok {
+  color: var(--green);
+}
+
+.unsub-ic svg {
+  width: 24px;
+  height: 24px;
+}
+
+.unsub-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 14px;
+  margin-top: 22px;
+}
+
+.unsub-actions[hidden] {
+  display: none;
+}
+
+.unsub-note {
+  min-height: 1.6em;
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
+.unsub-note:empty {
+  min-height: 0;
+  margin: 0;
+}
+
+.unsub-panel h2 {
+  font-size: 26px;
+  margin: 0 0 16px;
+}
+
+.unsub-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.unsub-list li {
+  padding-left: 16px;
+  border-left: 1px solid var(--gold-line);
+}
+
+.unsub-list strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.unsub-list span {
+  color: var(--muted);
+}
+
+@media (max-width: 520px) {
+  .unsub-actions .button {
+    width: 100%;
+  }
+}
+
+/* A store's button. Until the app is there it says "Coming soon" and goes nowhere; once STORES in site.js names
+   the store's address it is Apple's own badge, unaltered, or a plain button for Google Play. */
 .store-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 56px;
+  border-radius: 14px;
+  color: var(--text);
+  text-decoration: none;
+  cursor: default;
+}
+
+.store-badge .soon,
+.store-badge span.live {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   min-height: 56px;
   padding: 8px 22px 8px 18px;
-  border-radius: 16px;
+  border-radius: 14px;
   border: 1px solid var(--line-2);
   background: linear-gradient(180deg, rgba(244, 233, 216, 0.1), rgba(244, 233, 216, 0.03));
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  color: var(--text);
-  text-decoration: none;
-  cursor: default;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 14px 34px -18px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 14px 34px -20px rgba(0, 0, 0, 0.9);
 }
 
-/* A slow sheen across it. */
-.store-badge::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 40%;
-  left: -60%;
-  background: linear-gradient(100deg, transparent, rgba(246, 226, 174, 0.22), transparent);
-  animation: sheen 5.5s ease-in-out infinite 1.5s;
+.cellar .store-badge .soon,
+.cellar .store-badge span.live {
+  background: var(--card);
 }
 
-@keyframes sheen {
-  0%,
-  60% {
-    left: -60%;
-  }
-  100% {
-    left: 130%;
-  }
+.store-badge.is-live {
+  cursor: pointer;
+}
+
+.store-badge img.live {
+  height: 56px;
+  width: auto;
 }
 
 .store-badge svg {
@@ -415,15 +662,16 @@ p {
   flex: none;
 }
 
-.store-badge span {
+.store-badge .soon > span,
+.store-badge span.live > span {
   display: flex;
   flex-direction: column;
   line-height: 1.2;
 }
 
 .store-badge small {
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
+  font-size: 12.5px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -440,6 +688,11 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
+}
+
+.text-link:hover {
+  color: var(--text);
 }
 
 .text-link::after {
@@ -452,6 +705,32 @@ p {
   transform: translateX(5px);
 }
 
+/* A second action: outlined, never coral. */
+.pill-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
+}
+
+.pill-link::after {
+  content: "\2192";
+  color: var(--gold);
+}
+
+.pill-link:hover {
+  color: var(--text);
+  border-color: var(--gold);
+  background: var(--card-2);
+}
+
 /* ---------- Hero ---------- */
 
 .hero {
@@ -462,7 +741,7 @@ p {
   align-items: center;
   overflow: hidden;
   isolation: isolate;
-  padding: 110px 0 64px;
+  padding: 112px 0 64px;
 }
 
 .hero-photo {
@@ -476,16 +755,16 @@ p {
   height: 100%;
   object-fit: cover;
   object-position: 62% 50%;
-  animation: drift 26s ease-in-out infinite alternate;
+  animation: drift 30s ease-in-out infinite alternate;
   transform-origin: 70% 60%;
 }
 
 @keyframes drift {
   from {
-    transform: scale(1.12) translate3d(1.5%, 0, 0);
+    transform: scale(1.1) translate3d(1.2%, 0, 0);
   }
   to {
-    transform: scale(1.02) translate3d(-1%, -1%, 0);
+    transform: scale(1.02) translate3d(-0.8%, -0.8%, 0);
   }
 }
 
@@ -495,19 +774,19 @@ p {
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(120% 80% at 80% 30%, rgba(237, 201, 119, 0.12), transparent 60%),
-    linear-gradient(180deg, rgba(11, 47, 44, 0.55) 0%, rgba(11, 47, 44, 0.35) 35%, rgba(11, 47, 44, 0.9) 82%, var(--bg) 100%),
-    linear-gradient(90deg, rgba(11, 47, 44, 0.92) 0%, rgba(11, 47, 44, 0.6) 48%, rgba(11, 47, 44, 0.2) 100%);
+    radial-gradient(90% 70% at 78% 34%, rgba(26, 86, 80, 0.5), transparent 62%),
+    linear-gradient(180deg, rgba(5, 27, 25, 0.72) 0%, rgba(5, 27, 25, 0.62) 40%, rgba(5, 27, 25, 0.95) 84%, var(--bg) 100%),
+    linear-gradient(90deg, rgba(5, 27, 25, 0.96) 0%, rgba(5, 27, 25, 0.78) 48%, rgba(5, 27, 25, 0.5) 100%);
 }
 
 .hero .wrap {
   display: grid;
-  gap: 56px;
+  gap: 48px;
   align-items: center;
 }
 
 .hero h1 {
-  margin-bottom: 26px;
+  margin-bottom: 24px;
 }
 
 .hero h1 .line {
@@ -518,168 +797,190 @@ p {
   max-width: 34em;
 }
 
-.hero-phones {
+/* The app on a desk and in the hand: the web app's window behind, the phone in front. */
+.hero-stage {
   position: relative;
-  height: 560px;
-  max-width: 420px;
   width: 100%;
+  max-width: 620px;
   margin: 0 auto;
-  perspective: 1400px;
+  /* Room at the left and below for the phone, which stands in front of the window's sidebar. */
+  padding: 0 0 13% 10%;
 }
 
-.hero-phones .phone {
+.hero-stage::before {
+  content: "";
   position: absolute;
-  width: 250px;
-}
-
-.hero-phones .phone.front {
-  left: 50%;
-  top: 0;
-  transform: translateX(-38%) rotateY(var(--ry, -8deg)) rotateX(var(--rx, 4deg));
-  z-index: 2;
-  animation: float 7s ease-in-out infinite;
-}
-
-.hero-phones .phone.back {
-  left: 50%;
-  top: 46px;
-  transform: translateX(-104%) rotateY(12deg) scale(0.86);
-  opacity: 0.75;
-  filter: saturate(0.9) brightness(0.8);
-  z-index: 1;
-  animation: float-back 8s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 0 -14px;
-  }
-}
-
-@keyframes float-back {
-  0%,
-  100% {
-    translate: 0 6px;
-  }
-  50% {
-    translate: 0 -8px;
-  }
-}
-
-.hero-glow {
-  position: absolute;
-  left: 50%;
-  top: 46%;
-  width: 520px;
-  height: 520px;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(closest-side, rgba(237, 201, 119, 0.28), transparent);
-  filter: blur(10px);
-  animation: breathe 6s ease-in-out infinite;
+  inset: -10% -6% -4% -6%;
+  background: radial-gradient(closest-side, rgba(237, 201, 119, 0.14), transparent 72%);
   pointer-events: none;
 }
 
-@keyframes breathe {
-  0%,
-  100% {
-    opacity: 0.6;
-    transform: translate(-50%, -50%) scale(0.92);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1.05);
-  }
+.hero-desk {
+  position: relative;
+  width: 100%;
 }
 
-.scroll-cue {
+.hero-stage .hero-phone {
   position: absolute;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%);
-  width: 26px;
-  height: 42px;
-  border-radius: 14px;
-  border: 1px solid var(--line-2);
-  display: none;
-}
-
-.scroll-cue::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 8px;
-  width: 3px;
-  height: 8px;
-  margin-left: -1.5px;
-  border-radius: 2px;
-  background: var(--gold);
-  animation: cue 2.2s ease-in-out infinite;
-}
-
-@keyframes cue {
-  0% {
-    opacity: 0;
-    transform: translateY(0);
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(14px);
-  }
+  left: 0;
+  bottom: 0;
+  width: 31%;
+  min-width: 128px;
+  transform: rotateY(var(--ry, 0deg)) rotateX(var(--rx, 0deg));
+  transition: transform 0.5s var(--ease);
 }
 
 /* ---------- The phone ---------- */
 
 .phone {
   position: relative;
-  border-radius: 46px;
-  padding: 9px;
-  background: linear-gradient(145deg, #3a332e 0%, #141110 38%, #0a0908 62%, #2a2420 100%);
+  border-radius: 13.5% / 6.3%;
+  padding: 3.2%;
+  background: linear-gradient(145deg, #3a3a38 0%, #131413 38%, #090a09 62%, #2a2b29 100%);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-    0 0 0 2px #050404,
-    0 50px 80px -30px rgba(0, 0, 0, 0.9),
-    0 30px 60px -40px rgba(237, 201, 119, 0.35);
+    0 0 0 2px #050504,
+    0 50px 80px -34px rgba(0, 0, 0, 0.92),
+    0 26px 50px -40px rgba(0, 0, 0, 0.8);
+}
+
+.cellar .phone {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 0 2px #050504,
+    0 44px 60px -34px rgba(40, 26, 6, 0.6),
+    0 18px 30px -22px rgba(40, 26, 6, 0.4);
 }
 
 .phone img {
   width: 100%;
   height: auto;
   aspect-ratio: 660 / 1431;
-  border-radius: 38px;
-  background: #0b2f2c;
-}
-
-/* The island. */
-.phone::after {
-  content: "";
-  position: absolute;
-  top: 19px;
-  left: 50%;
-  width: 30%;
-  height: 7%;
-  max-height: 30px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: #000;
-  height: 26px;
+  border-radius: 11.2% / 5.2%;
+  background: #051b19;
 }
 
 /* A glint along the glass. */
 .phone::before {
   content: "";
   position: absolute;
-  inset: 9px;
-  border-radius: 38px;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.09) 0%, transparent 28%);
+  inset: 3.2%;
+  border-radius: 11.2% / 5.2%;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.07) 0%, transparent 26%);
   pointer-events: none;
   z-index: 1;
+}
+
+/* ---------- A browser window (the web app's screens) ---------- */
+
+.browser {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #020d0c;
+  box-shadow:
+    0 0 0 1px rgba(244, 233, 216, 0.14),
+    0 50px 90px -40px rgba(0, 0, 0, 0.95),
+    0 20px 40px -30px rgba(0, 0, 0, 0.8);
+}
+
+.cellar .browser {
+  box-shadow:
+    0 0 0 1px rgba(11, 47, 44, 0.3),
+    0 50px 80px -44px rgba(40, 26, 6, 0.75),
+    0 18px 34px -26px rgba(40, 26, 6, 0.5);
+}
+
+.browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  background: #0a1f1d;
+  border-bottom: 1px solid rgba(244, 233, 216, 0.08);
+}
+
+.browser-bar i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(244, 233, 216, 0.22);
+  flex: none;
+}
+
+.browser-bar span {
+  margin: 0 auto;
+  padding: 2px 16px;
+  border-radius: 6px;
+  background: rgba(244, 233, 216, 0.07);
+  color: rgba(244, 233, 216, 0.6);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  transform: translateX(-21px);
+  white-space: nowrap;
+}
+
+.browser img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1600 / 1039;
+  background: #051b19;
+}
+
+/* ---------- What it does: three plain statements ---------- */
+
+.pillars {
+  padding-top: 72px;
+  padding-bottom: 72px;
+  background: linear-gradient(180deg, var(--bg), var(--bg-2));
+  border-bottom: 1px solid var(--line);
+}
+
+.pillars h2.overline {
+  letter-spacing: 0.22em;
+}
+
+.pillar-row {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.pillar {
+  position: relative;
+  padding: 28px 26px 22px;
+  border-radius: var(--radius);
+  background: var(--bg-3);
+  box-shadow: 0 1px 0 rgba(255, 238, 208, 0.08) inset, 0 0 0 1px var(--line), var(--shadow);
+}
+
+.pillar .ic {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--card-2);
+  box-shadow: 0 0 0 1px var(--line) inset;
+  color: var(--gold);
+  margin-bottom: 20px;
+}
+
+.pillar .ic svg {
+  width: 23px;
+  height: 23px;
+}
+
+.pillar h3 {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.pillar p {
+  color: var(--muted);
+  margin: 0 0 6px;
+  font-size: 16.5px;
 }
 
 /* ---------- Moving tiles ---------- */
@@ -688,7 +989,7 @@ p {
   padding: 26px 0 30px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: linear-gradient(180deg, var(--bg), var(--bg-2));
+  background: var(--bg-2);
   display: grid;
   gap: 14px;
 }
@@ -706,18 +1007,13 @@ p {
 }
 
 .js .marquee-track {
-  animation: slide 60s linear infinite;
+  animation: slide 70s linear infinite;
 }
 
 .marquee-group {
   display: flex;
   gap: 14px;
   padding-right: 14px;
-}
-
-.js .marquee.reverse .marquee-track {
-  animation-direction: reverse;
-  animation-duration: 70s;
 }
 
 .marquee:hover .marquee-track {
@@ -737,8 +1033,8 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px 12px 14px;
-  border-radius: 18px;
+  padding: 11px 20px 11px 12px;
+  border-radius: 999px;
   background: var(--card);
   box-shadow: 0 0 0 1px var(--line) inset;
   white-space: nowrap;
@@ -747,28 +1043,34 @@ p {
 }
 
 .tile .ic {
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, rgba(237, 201, 119, 0.2), rgba(237, 201, 119, 0.05));
-  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.25) inset;
+  background: var(--card-2);
+  box-shadow: 0 0 0 1px var(--line) inset;
   color: var(--gold);
   flex: none;
 }
 
 .tile .ic svg {
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
 }
 
 /* ---------- Sections ---------- */
 
 .section {
   position: relative;
-  padding: 96px 0;
+  padding: 84px 0;
   overflow-x: clip;
+}
+
+/* Where the light room meets the dark one: a hairline of gold. */
+.cellar {
+  border-top: 1px solid var(--gold-line);
+  border-bottom: 1px solid var(--gold-line);
 }
 
 .section-head {
@@ -808,7 +1110,7 @@ p {
 /* A feature: words on one side, the screen on the other. */
 .showcase .wrap {
   display: grid;
-  gap: 56px;
+  gap: 52px;
   align-items: center;
 }
 
@@ -839,6 +1141,17 @@ p {
   max-width: 30em;
 }
 
+/* Something not in the app yet says so beside its name. */
+.soon-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--gold-line);
+  font-size: 12.5px;
+  letter-spacing: 0.14em;
+  color: var(--text);
+}
+
 .stage {
   position: relative;
   display: grid;
@@ -847,60 +1160,42 @@ p {
 }
 
 .stage .phone {
-  width: min(280px, 72vw);
+  width: min(280px, 70vw);
   z-index: 1;
 }
 
+/* A still, soft light behind a screen. */
 .stage::before {
   content: "";
   position: absolute;
-  width: 440px;
-  height: 440px;
-  max-width: 110vw;
-  border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(237, 201, 119, 0.2), transparent);
-}
-
-/* Thin gold rings drawn behind a screen, turning slowly. */
-.orbit {
-  position: absolute;
-  width: 470px;
-  height: 470px;
+  width: 520px;
+  height: 520px;
   max-width: 120vw;
-  max-height: 120vw;
   border-radius: 50%;
-  border: 1px solid var(--line);
-  animation: spin 50s linear infinite;
+  background: radial-gradient(closest-side, rgba(26, 86, 80, 0.75), transparent);
 }
 
-.orbit.two {
-  width: 360px;
-  height: 360px;
-  border-style: dashed;
-  border-color: rgba(237, 201, 119, 0.18);
-  animation-duration: 80s;
-  animation-direction: reverse;
+.cellar .stage::before {
+  background: radial-gradient(closest-side, rgba(255, 253, 248, 0.95), transparent);
 }
 
-.orbit::after {
-  content: "";
+/* Two screens together: one stands a step behind the other. */
+.stage.pair .phone {
+  width: min(250px, 58vw);
+  margin-left: 22%;
+}
+
+.stage.pair .phone.behind {
   position: absolute;
-  top: -4px;
-  left: 50%;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--gold);
-  box-shadow: 0 0 14px 3px rgba(237, 201, 119, 0.6);
+  left: 2%;
+  top: 9%;
+  margin-left: 0;
+  width: min(222px, 50vw);
+  z-index: 0;
+  filter: brightness(0.97);
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Small glass cards that hover beside a screen. */
+/* Small cards beside a screen. They stay still. */
 .float-card {
   position: absolute;
   z-index: 2;
@@ -908,15 +1203,14 @@ p {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-radius: 18px;
-  background: rgba(15, 61, 58, 0.72);
+  border-radius: 16px;
+  background: rgba(16, 60, 56, 0.86);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  box-shadow: 0 0 0 1px var(--line-2) inset, 0 24px 40px -20px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 0 0 1px var(--line-2) inset, 0 24px 40px -22px rgba(0, 0, 0, 0.9);
   font-size: 13.5px;
   line-height: 1.3;
   color: var(--muted);
-  animation: bob 6s ease-in-out infinite;
 }
 
 .float-card strong {
@@ -932,7 +1226,7 @@ p {
   border-radius: 10px;
   display: grid;
   place-items: center;
-  background: rgba(237, 201, 119, 0.14);
+  background: var(--card-2);
   color: var(--gold);
   flex: none;
 }
@@ -944,23 +1238,12 @@ p {
 
 .float-card.a {
   left: 0;
-  top: 18%;
+  top: 16%;
 }
 
 .float-card.b {
   right: 0;
-  bottom: 18%;
-  animation-delay: -3s;
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+  bottom: 16%;
 }
 
 /* What a feature does, as a list with drawn icons. */
@@ -969,7 +1252,7 @@ p {
   padding: 0;
   margin: 30px 0 0;
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .marks li {
@@ -977,6 +1260,7 @@ p {
   align-items: flex-start;
   gap: 14px;
   color: var(--text);
+  font-weight: 600;
 }
 
 .marks .ic {
@@ -985,8 +1269,8 @@ p {
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, rgba(237, 201, 119, 0.18), rgba(237, 201, 119, 0.04));
-  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.24) inset;
+  background: var(--card-2);
+  box-shadow: 0 0 0 1px var(--line) inset;
   color: var(--gold);
   flex: none;
 }
@@ -999,7 +1283,8 @@ p {
 .marks span small {
   display: block;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 15.5px;
+  font-weight: 400;
 }
 
 /* ---------- A section over a photo ---------- */
@@ -1027,12 +1312,12 @@ p {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(180deg, var(--bg) 0%, rgba(11, 47, 44, 0.72) 22%, rgba(11, 47, 44, 0.8) 78%, var(--bg) 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(5, 27, 25, 0.78) 22%, rgba(5, 27, 25, 0.84) 78%, var(--bg) 100%);
 }
 
 /* A section where the photo is the point: clear at the top, dark under the words. */
 .photo-band.vivid {
-  padding-top: min(52vh, 460px);
+  padding-top: min(46vh, 400px);
 }
 
 .photo-band.vivid .bg img {
@@ -1040,7 +1325,7 @@ p {
 }
 
 .photo-band.vivid::before {
-  background: linear-gradient(180deg, var(--bg) 0%, rgba(11, 47, 44, 0.1) 14%, rgba(11, 47, 44, 0.2) 30%, rgba(11, 47, 44, 0.74) 48%, rgba(11, 47, 44, 0.94) 78%, var(--bg) 100%);
+  background: linear-gradient(180deg, var(--bg) 0%, rgba(5, 27, 25, 0.12) 14%, rgba(5, 27, 25, 0.24) 30%, rgba(5, 27, 25, 0.78) 48%, rgba(5, 27, 25, 0.95) 78%, var(--bg) 100%);
 }
 
 .photo-band.vivid .section-head {
@@ -1048,29 +1333,21 @@ p {
 }
 
 /* The humidity rings. */
-.climate {
-  display: grid;
-  gap: 28px;
-  align-items: center;
-  justify-items: center;
-}
-
 .gauges {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   width: 100%;
   max-width: 460px;
+  margin-top: 26px;
 }
 
 .gauge {
   text-align: center;
   padding: 18px 8px 16px;
   border-radius: var(--radius-sm);
-  background: rgba(15, 61, 58, 0.6);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 0 0 1px var(--line) inset;
+  background: var(--bg-3);
+  box-shadow: 0 1px 0 rgba(255, 238, 208, 0.08) inset, 0 0 0 1px var(--line);
 }
 
 .gauge svg {
@@ -1086,7 +1363,7 @@ p {
 }
 
 .gauge .track {
-  stroke: rgba(237, 201, 119, 0.14);
+  stroke: rgba(244, 233, 216, 0.12);
 }
 
 .gauge .fill {
@@ -1097,25 +1374,22 @@ p {
   transition: stroke-dashoffset 2s var(--ease);
 }
 
-.gauge .fill.amber {
-  stroke: var(--amber);
-}
-
 .gauge.on .fill {
   stroke-dashoffset: calc(100 - var(--v));
 }
 
 .gauge b {
   display: block;
-  font-family: var(--serif);
-  font-weight: 400;
-  font-size: 34px;
-  line-height: 1.1;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 28px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .gauge span {
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-size: 13px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -1132,7 +1406,7 @@ p {
   width: 26px;
   height: 26px;
   color: rgba(237, 201, 119, 0.22);
-  transition: color 0.4s var(--ease), transform 0.4s var(--ease);
+  transition: color 0.4s var(--ease);
 }
 
 .stars svg.lit,
@@ -1140,19 +1414,13 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   color: var(--gold);
 }
 
-.stars svg.lit {
-  animation: pop 0.5s var(--ease);
-}
-
-@keyframes pop {
-  50% {
-    transform: scale(1.3);
-  }
-}
-
 .stars-note {
-  color: var(--dim);
-  font-size: 14px;
+  color: var(--muted);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 20px;
+  line-height: 1.4;
+  max-width: 24em;
 }
 
 /* ---------- Figures ---------- */
@@ -1174,16 +1442,34 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
 
 .figure b {
   display: block;
-  font-family: var(--serif);
-  font-weight: 400;
-  font-size: clamp(46px, 8vw, 68px);
-  line-height: 1.1;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: clamp(38px, 6.6vw, 56px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .figure span {
   color: var(--muted);
   font-size: 15px;
+}
+
+/* ---------- At your desk ---------- */
+
+.desk-stage {
+  position: relative;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding-bottom: 9%;
+}
+
+.desk-stage .browser.inset {
+  position: absolute;
+  right: -3%;
+  bottom: 0;
+  width: 50%;
 }
 
 /* ---------- The styles gallery ---------- */
@@ -1196,7 +1482,7 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
 }
 
 .js .screens .marquee-track {
-  animation-duration: 90s;
+  animation-duration: 110s;
 }
 
 .screens .marquee-group {
@@ -1225,7 +1511,7 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
 .screens figcaption small {
   display: block;
   font-family: var(--sans);
-  font-size: 11px;
+  font-size: 12.5px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--dim);
@@ -1252,11 +1538,6 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   height: 26px;
   border-radius: 50%;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16) inset, 0 6px 16px -6px rgba(0, 0, 0, 0.8);
-  transition: transform 0.3s var(--ease);
-}
-
-.palette:hover i {
-  transform: scale(1.18);
 }
 
 /* ---------- Cards ---------- */
@@ -1270,28 +1551,16 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   position: relative;
   padding: 30px 26px 26px;
   border-radius: var(--radius);
-  background: linear-gradient(180deg, rgba(244, 233, 216, 0.06), rgba(244, 233, 216, 0.02));
+  background: rgba(16, 60, 56, 0.78);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
-  box-shadow: 0 0 0 1px var(--line) inset, 0 30px 50px -36px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 1px 0 rgba(255, 238, 208, 0.08) inset, 0 0 0 1px var(--line), var(--shadow);
   transition: transform 0.5s var(--ease), box-shadow 0.5s var(--ease);
   overflow: hidden;
 }
 
-.card::before {
-  content: "";
-  position: absolute;
-  left: 26px;
-  right: 26px;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  opacity: 0.6;
-}
-
 .card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 0 0 1px var(--line-2) inset, 0 40px 60px -36px rgba(0, 0, 0, 0.95);
+  transform: translateY(-4px);
 }
 
 .card .ic {
@@ -1300,8 +1569,8 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   border-radius: 14px;
   display: grid;
   place-items: center;
-  background: linear-gradient(160deg, rgba(237, 201, 119, 0.22), rgba(237, 201, 119, 0.05));
-  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.28) inset;
+  background: var(--card-2);
+  box-shadow: 0 0 0 1px var(--line) inset;
   color: var(--gold);
   margin-bottom: 22px;
 }
@@ -1321,29 +1590,91 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   font-size: 16px;
 }
 
+/* ---------- Free and Plus ---------- */
+
+.plan-row {
+  display: grid;
+  gap: 16px;
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.plan {
+  padding: 30px 28px 26px;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), var(--shadow);
+}
+
+/* Plus stands on the app's feature panel: dark in both rooms. */
+.plan.plus {
+  --text: #f4e9d8;
+  --muted: rgba(244, 233, 216, 0.78);
+  --gold: #edc977;
+  --line: rgba(244, 233, 216, 0.16);
+  color: var(--text);
+  background: var(--feature);
+  box-shadow: 0 0 0 1px rgba(237, 201, 119, 0.34), var(--shadow);
+}
+
+.plan h3 {
+  font-size: 30px;
+}
+
+.plan .price {
+  margin: 10px 0 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.plan .price small {
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.plan ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.plan li {
+  position: relative;
+  padding-left: 22px;
+}
+
+.plan li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.62em;
+  width: 9px;
+  height: 1px;
+  background: var(--gold);
+}
+
 /* ---------- Closing ---------- */
 
 .closing {
   text-align: center;
-  padding: 130px 0 120px;
+  padding: 120px 0 110px;
 }
 
 .closing .mark {
   width: 76px;
   height: auto;
   margin: 0 auto 30px;
-  filter: drop-shadow(0 0 26px rgba(237, 201, 119, 0.45));
-  animation: breathe-mark 5s ease-in-out infinite;
-}
-
-@keyframes breathe-mark {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 18px rgba(237, 201, 119, 0.3));
-  }
-  50% {
-    filter: drop-shadow(0 0 34px rgba(237, 201, 119, 0.6));
-  }
+  filter: drop-shadow(0 0 22px rgba(237, 201, 119, 0.32));
 }
 
 .closing .cta {
@@ -1358,6 +1689,68 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   margin: 0 auto;
 }
 
+/* On a phone, once the app is in a store: the download stays one tap away. */
+.get-bar {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 8px 8px 16px;
+  border-radius: 999px;
+  background: rgba(16, 60, 56, 0.94);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 0 0 1px var(--line-2) inset, 0 20px 40px -18px rgba(0, 0, 0, 0.9);
+  transform: translateY(140%);
+  transition: transform 0.5s var(--ease);
+}
+
+.get-bar.on {
+  transform: none;
+}
+
+.get-bar span {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--wordmark);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.get-bar span b {
+  font-weight: 400;
+}
+
+.get-bar span img {
+  height: 22px;
+  width: auto;
+}
+
+.get-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: var(--coral);
+  color: var(--on-coral);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.get-button:hover {
+  color: var(--on-coral);
+  filter: brightness(1.06);
+}
+
 /* ---------- Drawn icons ---------- */
 
 /* Every drawn icon's lines have pathLength="1", and the dash settings are
@@ -1369,19 +1762,19 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
 
 .js .draw.on {
   stroke-dashoffset: 0;
-  transition: stroke-dashoffset 1.8s var(--ease) var(--d, 0s);
+  transition: stroke-dashoffset 1.6s var(--ease) var(--d, 0s);
 }
 
 /* ---------- Coming into view ---------- */
 
 .js .reveal {
   opacity: 0;
-  transform: translateY(34px);
-  transition: opacity 1s var(--ease) var(--d, 0s), transform 1.1s var(--ease) var(--d, 0s);
+  transform: translateY(26px);
+  transition: opacity 0.9s var(--ease) var(--d, 0s), transform 1s var(--ease) var(--d, 0s);
 }
 
 .js .reveal.rise {
-  transform: translateY(80px) scale(0.96);
+  transform: translateY(56px) scale(0.98);
 }
 
 .js .reveal.on {
@@ -1481,6 +1874,60 @@ details ol {
   white-space: nowrap;
 }
 
+/* ---------- The home page in seven parts (2026-11-13): a scan's three steps, the catalog's figures under
+   them, a note under a pictured demo, the short way on to the second page, and that page's own top ---------- */
+
+.marks .ic.n {
+  font-family: var(--serif);
+  font-size: 23px;
+  line-height: 1;
+  color: var(--gold);
+}
+
+.marks + .marks {
+  margin-top: 16px;
+}
+
+.showcase .wrap.figures-wrap {
+  display: block;
+  margin-top: 72px;
+  text-align: center;
+}
+
+.figures-wrap .overline {
+  margin-bottom: 22px;
+}
+
+.figures-wrap .figures {
+  text-align: start;
+}
+
+.figures-wrap .fine {
+  max-width: 46em;
+  margin: 18px auto 0;
+}
+
+.stage-note {
+  margin: 16px 0 0;
+  text-align: center;
+}
+
+.section.more {
+  padding: 72px 0;
+}
+
+.section.more .section-head {
+  margin-bottom: 0;
+}
+
+.section.more .section-head p:last-child {
+  margin: 26px 0 0;
+}
+
+.section.sub-head {
+  padding: 8px 0 0;
+}
+
 /* ---------- Legal pages ---------- */
 
 .page-head {
@@ -1525,7 +1972,7 @@ details ol {
 
 .toc p {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -1671,12 +2118,13 @@ tr:last-child td {
 .site-footer nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 22px;
+  gap: 2px 22px;
 }
 
 .site-footer nav a {
   color: var(--muted);
   text-decoration: none;
+  padding: 11px 0;
 }
 
 .site-footer nav a:hover {
@@ -1708,23 +2156,24 @@ tr:last-child td {
 
 @media (max-width: 759px) {
   .hero {
-    padding-top: 120px;
+    padding-top: 104px;
+    min-height: 0;
   }
 
-  .hero-phones {
-    height: 470px;
+  /* On a phone the phone leads: the web app's window behind and above, the phone in front and below it. */
+  .hero-stage {
+    max-width: 440px;
+    padding: 0 0 76% 0;
   }
 
-  .hero-phones .phone {
-    width: 210px;
-  }
-
-  .hero-phones .phone.back {
-    transform: translateX(-96%) rotateY(12deg) scale(0.86);
+  .hero-stage .hero-phone {
+    left: auto;
+    right: 5%;
+    width: 52%;
   }
 
   .float-card {
-    font-size: 12.5px;
+    font-size: 13px;
     padding: 10px 12px;
   }
 
@@ -1747,15 +2196,15 @@ tr:last-child td {
 
   .site-nav {
     flex-wrap: nowrap;
-    gap: 18px;
+    gap: 14px;
   }
 
-  /* On a phone Sign in takes the pill's place ("Coming soon" is the page's own button). */
+  /* On a phone Sign in takes the pill's place (the download is the page's own button). */
   .site-nav .nav-signin {
     border: 1px solid var(--line-2);
     border-radius: 999px;
-    padding: 6px 14px;
-    color: var(--gold);
+    padding: 10px 15px;
+    color: var(--text);
   }
 
   .site-nav .nav-signin::after {
@@ -1763,32 +2212,80 @@ tr:last-child td {
   }
 
   .brand-name {
-    font-size: 15px;
+    font-size: 14px;
+    letter-spacing: 0.22em;
   }
 
   .stage {
-    min-height: 520px;
+    min-height: 0;
+    padding: 12px 0;
+  }
+
+  .stage.pair .phone {
+    margin-left: 26%;
+  }
+
+  .desk-stage .browser.inset {
+    right: 0;
+    width: 56%;
+  }
+
+  .store-badge,
+  .store-badge .soon,
+  .store-badge span.live {
+    width: 100%;
+  }
+
+  .cta .text-link {
+    width: 100%;
+  }
+
+  .closing .store-badge,
+  .closing .store-badge .soon,
+  .closing .store-badge span.live {
+    width: auto;
   }
 }
 
-/* The narrowest phones. */
-@media (max-width: 359px) {
+/* Most phones: the wordmark a little smaller, so the name, Support and Sign in share one line. */
+@media (max-width: 419px) {
   .brand {
-    gap: 8px;
+    gap: 9px;
+  }
+
+  .brand-tile {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .brand-tile img {
+    height: 21px;
   }
 
   .brand-name {
-    font-size: 13px;
-    letter-spacing: 0.2em;
+    font-size: 12.5px;
+    letter-spacing: 0.16em;
+  }
+
+  .site-header .wrap {
+    gap: 10px;
   }
 
   .site-nav {
-    gap: 10px;
-    font-size: 13px;
+    gap: 12px;
+    font-size: 14px;
   }
 
   .site-nav .nav-signin {
-    padding: 5px 11px;
+    padding: 10px 13px;
+  }
+}
+
+/* The narrowest phones: Support is at the foot of every page, so the header keeps the name and Sign in. */
+@media (max-width: 359px) {
+  .site-nav a:not(.nav-signin) {
+    display: none;
   }
 }
 
@@ -1800,29 +2297,22 @@ tr:last-child td {
   }
 
   .section {
-    padding: 140px 0;
+    padding: 118px 0;
   }
 
-  .hero .wrap {
-    grid-template-columns: 1.15fr 0.85fr;
-    gap: 40px;
+  .pillars {
+    padding-top: 84px;
+    padding-bottom: 84px;
   }
 
-  .hero-phones {
-    height: 640px;
-  }
-
-  .hero-phones .phone {
-    width: 290px;
-  }
-
-  .scroll-cue {
-    display: block;
+  .pillar-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
   }
 
   .showcase .wrap {
     grid-template-columns: 1fr 1fr;
-    gap: 80px;
+    gap: 76px;
   }
 
   .showcase.flip .copy {
@@ -1830,11 +2320,22 @@ tr:last-child td {
   }
 
   .stage {
-    min-height: 680px;
+    min-height: 660px;
   }
 
   .stage .phone {
-    width: 310px;
+    width: 300px;
+  }
+
+  .stage.pair .phone {
+    width: 270px;
+    margin-left: 30%;
+  }
+
+  .stage.pair .phone.behind {
+    width: 240px;
+    left: 4%;
+    top: 10%;
   }
 
   .figures {
@@ -1846,9 +2347,9 @@ tr:last-child td {
     gap: 20px;
   }
 
-  .climate {
-    grid-template-columns: 1fr 1fr;
-    gap: 60px;
+  .plan-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
   }
 
   .screens figure {
@@ -1862,6 +2363,37 @@ tr:last-child td {
   .site-footer .wrap {
     grid-template-columns: 1fr auto;
     align-items: start;
+  }
+
+  /* The download bar is for phones. */
+  .get-bar {
+    display: none;
+  }
+}
+
+/* The hero's words beside its pictures, once there is room for both. */
+@media (min-width: 1000px) {
+  .hero .wrap {
+    grid-template-columns: 0.92fr 1.08fr;
+    gap: 44px;
+  }
+
+  /* The headline keeps to two lines in its column, whatever the window's width. */
+  .hero h1 {
+    font-size: clamp(56px, 5.9vw, 92px);
+  }
+
+  .hero-stage {
+    max-width: none;
+    margin-right: -6%;
+    width: 106%;
+  }
+}
+
+/* The page's own sections are named in the header only where they fit on one line. */
+@media (max-width: 1099px) {
+  .site-nav .hide-mid {
+    display: none;
   }
 }
 
@@ -1931,7 +2463,8 @@ tr:last-child td {
   body::after,
   .site-header nav,
   .skip,
-  .toc {
+  .toc,
+  .get-bar {
     display: none;
   }
 }

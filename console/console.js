@@ -1772,6 +1772,7 @@
       ...fact('Say yes to news', plural(t.news, 'member')),
       ...fact('Say yes to offers', plural(t.offers, 'member')),
       ...fact('Say yes to market insights', plural(t.insights, 'member')),
+      ...(t.insightsOff != null ? fact('Market insights off', `${plural(t.insightsOff, 'member')}: left out of the collection and market figures`) : []),
       ...fact('Apple relay addresses', `${n(t.relay)} of ${n(t.accounts)}: they reach people once cigarlocker.app is registered with Apple`),
       ...fact('Never written to again', `${plural(mail.blocked, 'address', 'addresses')} (bounced, or marked as spam)`),
     );
@@ -2398,6 +2399,7 @@
             st.rows.length ? table(st.heads, st.rows, st.numeric) : h('p', { class: 'muted', text: st.empty }),
             st.smallWords ? h('p', { class: 'held-back', text: st.smallWords }) : null,
             st.unplacedWords ? h('p', { class: 'held-back', text: st.unplacedWords }) : null,
+            st.insightsOffWords ? h('p', { class: 'held-back', text: st.insightsOffWords }) : null,
           ].filter(Boolean)
         : [h('p', { class: 'muted', text: UNREAD })]),
     );

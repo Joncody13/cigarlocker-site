@@ -3,10 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cigar Locker Emails</title>
-  <meta name="description" content="Stop emails from Cigar Locker.">
+  <title>Unsubscribe · Cigar Locker</title>
+  <meta name="description" content="Stop marketing emails from Cigar Locker. No sign-in needed.">
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#0f0906">
+  <!-- The link in the address is only good for unsubscribing; it is still never passed on as a referrer. -->
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#051b19">
   <link rel="canonical" href="https://cigarlocker.app/unsubscribe.html">
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
@@ -35,15 +37,50 @@
     </div>
   </header>
 
-  <main id="main" class="wrap narrow">
+  <main id="main" class="wrap narrow unsub">
     <div class="page-head">
       <p class="overline">Emails</p>
-      <h1 id="unsub-title">Unsubscribe</h1>
-      <p class="lead" id="unsub-words">Stop these emails from Cigar Locker.</p>
+      <h1 id="unsub-title">Email preferences</h1>
+      <p class="lead" id="unsub-lead">To stop marketing emails from Cigar Locker, use the Unsubscribe link at the bottom of any email we sent you. You don’t need to sign in.</p>
     </div>
-    <p><button type="button" class="button" id="unsub-button">Unsubscribe</button></p>
-    <p class="fine" id="unsub-note" role="status"></p>
-    <p class="fine">You can turn each kind of email on or off any time in the app: Settings, then Account. Emails about your account itself always come.</p>
+
+    <!-- Opened from an email's link: one button, so a mail app or a link checker that only opens the page never
+         unsubscribes anyone. unsubscribe.js shows this once it has read the link. -->
+    <section class="unsub-panel" id="unsub-ask" aria-labelledby="unsub-kind-name" hidden>
+      <div class="unsub-kind">
+        <span class="unsub-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 7 8.5 6.5L20.5 7"/></svg></span>
+        <p><strong id="unsub-kind-name"></strong><span id="unsub-kind-what"></span></p>
+      </div>
+      <div class="unsub-actions">
+        <button type="button" class="button" id="unsub-button">Unsubscribe</button>
+        <button type="button" class="button quiet" id="unsub-all">Unsubscribe from all marketing emails</button>
+      </div>
+      <p class="fine unsub-note" id="unsub-note" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Done. -->
+    <section class="unsub-panel" id="unsub-done" aria-labelledby="unsub-done-name" hidden>
+      <div class="unsub-kind">
+        <span class="unsub-ic ok" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>
+        <p><strong id="unsub-done-name"></strong><span id="unsub-done-what"></span></p>
+      </div>
+      <div class="unsub-actions" id="unsub-more">
+        <button type="button" class="button quiet" id="unsub-rest"></button>
+      </div>
+      <p class="fine unsub-note" id="unsub-done-note" role="status" aria-live="polite"></p>
+    </section>
+
+    <!-- Opened without a link, with a link that was cut short, or with scripts off: the other ways. -->
+    <section class="unsub-panel" id="unsub-ways" aria-labelledby="unsub-ways-title">
+      <h2 id="unsub-ways-title">Two other ways</h2>
+      <ul class="unsub-list">
+        <li><strong>In the app</strong><span>Open Settings, then Account. Under Emails, turn off News from Cigar Locker, Emails from Cigar Locker partners, or both.</span></li>
+        <li><strong>By email</strong><span>Write to <a href="mailto:support@cigarlocker.app?subject=Unsubscribe">support@cigarlocker.app</a> from the address our emails come to, and we’ll turn them off for you.</span></li>
+      </ul>
+    </section>
+    <noscript><p class="fine">This page needs JavaScript to finish an unsubscribe from a link. With it off, use either way above.</p></noscript>
+
+    <p class="fine" id="unsub-fine">Essential account, security and billing emails aren’t marketing, so they still come.</p>
   </main>
 
   <footer class="site-footer">

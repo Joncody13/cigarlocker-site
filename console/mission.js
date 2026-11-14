@@ -797,6 +797,10 @@
       smallWords: small.length ? `Fewer than ${n(b.min)} members, so no figures are shown: ${small.join(', ')}.` : '',
       unplaced: num(b.unplaced),
       unplacedWords: num(b.unplaced) ? `${plural(b.unplaced, 'member')} gave no ZIP code or state.` : '',
+      // (129) Members who turned market insights off are in no figure on this page; how many is said, never who.
+      insightsOffWords: num(b.insightsOff)
+        ? `${plural(b.insightsOff, 'member')} turned market insights off and ${num(b.insightsOff) === 1 ? 'is' : 'are'} left out of every figure here.`
+        : '',
       empty: shown.length === 0 ? `No state has ${n(b.min)} members yet. Figures by state appear as each one passes that mark.` : '',
     };
   }
