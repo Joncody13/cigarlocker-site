@@ -352,6 +352,7 @@
     if (errorDays === 7) drawErrors(d.errors);
     else loadErrors();
     drawSwitches(d.flags);
+    void loadSuggestions();
   }
 
   /** What Cigar Locker knows of cigars: its libraries, look-ups and scans. */
@@ -2236,6 +2237,57 @@
       box.checked = !on;
       box.disabled = false;
       $('switch-result').textContent = e.message;
+    }
+  }
+
+  // ---- what members sent through Settings > Suggest an app fix (131_suggestions.sql) ----
+  // The words are suggestions.js's. What a member wrote goes in as text, never as HTML.
+  const SG = window.CigarSuggestions;
+
+  function drawSuggestions(x) {
+    $('suggestions-note').textContent = SG.summary(x);
+    $('suggestions').replaceChildren(
+      ...SG.rows(x).map((r) =>
+        h(
+          'div',
+          { class: `suggestion${r.status === 'new' ? ' is-new' : ''}` },
+          h('p', { class: 'small' }, h('strong', { text: `${r.statusWords} · ${r.kindWords}` }), h('span', { class: 'muted', text: ` · ${r.head}` })),
+          h('p', { class: 'suggestion-body', text: r.body }),
+          r.from ? h('p', { class: 'muted small', text: `Sent from ${r.from}` }) : null,
+          r.note ? h('p', { class: 'small', text: `Your note: ${r.note}` }) : null,
+          h(
+            'p',
+            { class: 'suggestion-actions' },
+            ...SG.marks(r.status).map((m) => h('button', { type: 'button', class: 'ghost small', text: m.label, onclick: () => markSuggestion(r.id, m.status, null) })),
+            h('button', {
+              type: 'button',
+              class: 'ghost small',
+              text: r.note ? 'Change your note' : 'Add a note',
+              onclick: () => {
+                const note = prompt('A note for yourself about this suggestion (members never see it):', r.note);
+                if (note !== null) markSuggestion(r.id, r.status, note.trim().slice(0, 500));
+              },
+            }),
+            r.person ? h('button', { type: 'button', class: 'ghost small', text: 'Open this person', onclick: () => openPerson(r.person) }) : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  async function loadSuggestions() {
+    try {
+      drawSuggestions(await ask({ action: 'suggestions' }));
+    } catch (e) {
+      $('suggestions-note').textContent = e.message;
+    }
+  }
+
+  async function markSuggestion(id, status, note) {
+    try {
+      drawSuggestions(await ask({ action: 'suggestion-set', id, status, note }));
+    } catch (e) {
+      $('suggestions-note').textContent = e.message;
     }
   }
 

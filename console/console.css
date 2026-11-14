@@ -657,3 +657,10 @@ ul.notices li.part { padding: 0; }
 #scans-says p { margin: 0 0 8px; max-width: 86ch; }
 #scans-seen .seen + .seen { margin-top: 14px; }
 #scans-seen h4 { margin: 0 0 4px; }
+
+/* Suggestions from members (suggestions.js). */
+.suggestion { border-top: 1px solid var(--line); padding: 12px 0 4px; }
+.suggestion:first-child { border-top: 0; }
+.suggestion.is-new { border-left: 3px solid var(--series); padding-left: 12px; }
+.suggestion-body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
+.suggestion-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
