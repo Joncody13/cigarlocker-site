@@ -11,6 +11,7 @@ without his photos, which stay private).
 | File | Shows | Photographer | Source |
 |---|---|---|---|
 | bundles.jpg | Paper-banded bundles of cigars on a counter | Thibault Luycx | https://www.pexels.com/photo/stacks-of-raw-packed-cigars-in-fabric-3975067/ |
+| bundles-1000.jpg | The same photograph at 1,000 pixels wide, for phones (the home page's first picture) | Thibault Luycx | https://www.pexels.com/photo/stacks-of-raw-packed-cigars-in-fabric-3975067/ |
 | leaves.jpg | Dried tobacco leaves, close up | Mark Stebnicki | https://www.pexels.com/photo/a-close-up-of-dried-tobacco-leaves-27793718/ |
 | farm.jpg | A tobacco farm in summer, under sunbeams | Mark Stebnicki | https://www.pexels.com/photo/agbiopix-tobacco-field-agriculture-2257526/ |
 | evening.jpg | A glass and a bottle on a dark table | cottonbro studio | https://www.pexels.com/photo/a-glass-and-whiskey-on-the-table-9419353/ |

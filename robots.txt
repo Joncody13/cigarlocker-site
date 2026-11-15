@@ -1,0 +1,22 @@
+# Cigar Locker, the cigar collection app: https://cigarlocker.app/
+# The public pages may be read and listed by search engines and by AI assistants answering a question.
+# Pages that are not for search results say so themselves ("noindex").
+
+User-agent: *
+Allow: /
+
+# Search engines and AI assistants that fetch a page to answer a question.
+User-agent: Googlebot
+User-agent: Bingbot
+User-agent: Applebot
+User-agent: DuckDuckBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: DuckAssistBot
+Allow: /
+
+Sitemap: https://cigarlocker.app/sitemap.xml

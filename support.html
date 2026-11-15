@@ -10,10 +10,365 @@
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Limelight&display=swap">
+  <link rel="preload" href="assets/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/limelight.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
+  <meta property="og:site_name" content="Cigar Locker">
+  <meta property="og:title" content="Cigar Locker Support">
+  <meta property="og:description" content="Help with Cigar Locker: signing in, the 21 and over check, scanning, importing a collection, humidity, Friends, backups and deleting your account.">
+  <meta property="og:url" content="https://cigarlocker.app/support.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://cigarlocker.app/assets/share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://cigarlocker.app/#publisher",
+      "name": "Atlantis Dev, LLC",
+      "url": "https://cigarlocker.app/about.html",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://cigarlocker.app/assets/apple-touch-icon.png"
+      },
+      "email": "support@cigarlocker.app",
+      "brand": {
+        "@type": "Brand",
+        "name": "Cigar Locker"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://cigarlocker.app/#website",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "inLanguage": "en-US",
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://cigarlocker.app/#app",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web (the iPhone app is coming soon)",
+      "description": "Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.",
+      "featureList": [
+        "Identify a cigar from a photo of its band or box",
+        "Measure a cigar beside a dollar bill or a card, and confirm its size",
+        "Scan a shelf, a box or a row of cigars at once",
+        "Keep several humidors and move cigars between them",
+        "Record each purchase: how many, the date, the price and the shop",
+        "Search, filter and sort a collection of any size",
+        "Tasting journal: a rating out of ten stars, flavors by third, notes and photos",
+        "Import a collection from a spreadsheet file and export it again",
+        "Cloud backup, and the same collection on the web at a desk",
+        "Suggest One: three cigars from your own humidors, each with a reason"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to use."
+      },
+      "audience": {
+        "@type": "PeopleAudience",
+        "suggestedMinAge": 21
+      },
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://cigarlocker.app/support.html#page",
+      "url": "https://cigarlocker.app/support.html",
+      "name": "Cigar Locker Support",
+      "description": "Help with Cigar Locker: signing in, the 21 and over check, scanning, importing a collection, humidity, Friends, backups and deleting your account.",
+      "inLanguage": "en-US",
+      "isPartOf": {
+        "@id": "https://cigarlocker.app/#website"
+      },
+      "about": {
+        "@id": "https://cigarlocker.app/#app"
+      },
+      "dateModified": "2026-11-15"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Cigar Locker",
+          "item": "https://cigarlocker.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Support",
+          "item": "https://cigarlocker.app/support.html"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://cigarlocker.app/support.html#questions",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is Cigar Locker?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "A collection, inventory and journal app for iPhone. It keeps every humidor you own and every purchase in it, identifies cigars from a photo of the band or box, looks up their details, keeps your journal, and lets you share what you're enjoying with friends you choose. An Android version and humidity sensors of its own are on the way."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an account?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not to keep your collection. Your humidors, purchases, journal, the sample humidity sensors, import and export all work on your phone without one, even with no signal. Signing in backs your collection up, and it is needed for scanning, look-ups, Suggest One, pairings, the shop and lounge finder and Friends, because those use our server. Accounts are for adults 21 and over."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Cigar Locker sell cigars?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. No cigars or tobacco can be bought in or through the app, and it shows no shop prices, offers or links to stores. The cigar prices you see are what you paid, a value you set yourself, or the maker's suggested retail price (MSRP), marked as such. The one thing sold in the app is Cigar Locker Plus, a subscription to the app itself."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which phones does it run on?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "iPhones, and on a computer at cigarlocker.app/app . An Android version is on the way."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I use it on my computer?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Go to cigarlocker.app/app and sign in with the Apple ID you use in the app. Your humidors, cigars, journal and photos are there, and what you change on the computer reaches your phone within minutes. The sample humidity sensors are in the app on your phone. When you sign out, the browser forgets your collection, so it is safe on a shared computer."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I sign in?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Go to Settings > Account and tap Sign in with Apple . If you choose Apple's Hide My Email , we receive a private relay address instead of your own, and that's fine. Apple is asked for your email only; a name, phone number and address are yours to add or leave out. Use the same Apple ID on every iPhone you use Cigar Locker on, so they share one collection."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do you ask for my date of birth?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Cigar Locker is for adults 21 and over, the US age for tobacco. When the app is first opened it asks you to confirm your age, and the first time you sign in, we ask for your date of birth and can't create an account for anyone younger."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why do you ask for my ZIP code?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For the weather where you live, which Suggest One and some home screen styles use, and so the shop and lounge finder opens on your own town. It also helps us choose the news and partner emails we send, and, if you allow it, it is counted in market insights (next question)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the market insights box?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "When it is ticked, what you buy, where, what you pay and why, and what you enjoy, with your ZIP code, helps Cigar Locker understand collectors, and is shared with makers, shops and partners in a form that doesn't identify you. You can change it any time at Settings > Account ."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "I have a new phone. How do I get my collection back?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Install Cigar Locker, go to Settings > Account and sign in with the same Apple ID as before. Your backup, photos included, comes down on its own."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I scan a cigar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "On Collection, tap Scan (on a new collection, Scan a cigar ). Scanning needs a free account, so if you are not signed in the card asks you to sign in first. Then tap Scan cigar to take a photo, or Choose photo to use one already in your photos. A single cigar, a box or a whole shelf all work. The form fills itself in; check it, choose a humidor and save."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I get the size measured?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Lay the cigar flat on a table beside a dollar bill, a credit card, a business card, a quarter or a ruler. Hold the phone straight above, not at an angle, with the whole cigar and the whole card or bill in the picture. Get close enough that the band fills a good part of the photo, so it can be read. The size is matched to the nearest one that line is made in. When it isn't sure, it says check this ."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "It named the wrong cigar. What now?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tap Think harder for a slower, closer look at the same photo, or choose one of the close matches it offers. You can also tap Search catalog to find it by name, or Enter manually to type it yourself: everything a scan fills in can be changed before you save, and edited later."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is there a limit on scans?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Each account has a welcome allowance of scans, look-ups and suggestions, then a monthly one; the app says when you are near the end, and the free counts start again on the first of the month. Cigar Locker Plus ($7.99 a month, through Apple) removes the monthly limits: Settings, then Cigar Locker Plus. Plus keeps a daily limit so the service stays fair for everyone: 40 scans, 25 look-ups, 40 suggestions and 10 shop look-ups a day. Restore purchases on the same page brings a subscription back on a new phone. A subscription belongs to the Cigar Locker account it was bought for. Very occasionally the whole app's allowance for the month runs out. Scanning, look-ups and suggestions are then paused until the date the app names; everything else, your collection and journal included, works as usual."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I bring my collection from another app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "In your old app, export your collection as a spreadsheet file (CSV) and save it to the Files app. In Cigar Locker, go to Settings > Your data > Import a collection . Choose the file, or paste its contents. Check any of the spelling fixes it offers that you want, choose a humidor, and bring it in. Columns such as Brand, Line, Size or Vitola, Wrapper, Country, Quantity, Rating and Humidor are recognized by name, in any order. Cigars you already have are never added twice, and cigars with none left keep their ratings. Ratings out of 5 are doubled to fit the 10-star scale."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "It says my file can't be read.",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Import reads spreadsheet files saved as CSV. If you have an Excel or Numbers workbook, save or export it as CSV first, then choose that file."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I undo an import?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. The import can be taken back out until something happens to the cigars it brought in, such as a move or a journal entry."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I export my collection?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes: Settings > Your data has Export your collection and Export your journal , each a spreadsheet file you can save or send."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which sensors does Cigar Locker work with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "None can be connected yet. Cigar Locker's own temperature and humidity sensors are on the way; the app will show each humidor's readings shelf by shelf, with a chart of the day, week, month and year. Until they're here, you can look around with the sample."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I see it without sensors?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Add a humidor first, then go to Settings > Humidity > Humidity sensors and tap Explore the sensor demo . Six sample sensors with a month of simulated readings appear in your humidor, drawn as a cabinet map. Remove them any time from the same screen."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does Cigar Locker show when the humidity drifts?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Each humidor shows in green when it's on target, amber when it's too dry, too humid or uneven, and gray when a sensor hasn't reported for 90 minutes. A tall cabinet with several sensors is drawn as a map, and each shelf can have its own target."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I add a friend?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Open the Friends tab, choose a username and agree to the friends' rules. Then use Find people to search by name or username and send a request, or Invite with a code for someone who doesn't have the app yet. A code works once, for a week."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Who sees what I post?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only friends you have added, never the public. For each post you choose all friends or just some. In Privacy on the Friends tab you can hide your posts from particular friends, and choose whether people can find you by search. Your journal's ratings and tasting notes stay yours. Telling friends from a journal entry is off unless you turn it on."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I block or report someone?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Open their page from the Friends tab and tap Block or Report . To report a single message or reply, press and hold it. Blocking ends the friendship and hides your conversation. Reports are reviewed within 24 hours, and anyone who breaks the friends' rules is removed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where is my collection kept?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "On your phone first. When you're signed in, it is also backed up to our server, hosted by Supabase in the United States, and kept under your account; other members cannot read it. That includes the photos you take. Your humidity readings and the app's settings, such as your chosen style, stay on the phone. Backups happen when you sign in, when you open the app, every few minutes while it's open, and shortly after each change."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where do the product photos come from?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For a cigar without a photo of your own, Cigar Locker may show a product photo from the maker's or another website, loaded from where it lives, with the site named under it. Your own photo always takes its place: tap the camera button on the cigar's page."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens to my data?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Your collection lives on your phone, is backed up to your account when you sign in, and is yours to export to a spreadsheet or delete at any time. The privacy policy says exactly what is kept, why and who can see it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I delete my account?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Go to Settings > Account and tap Delete account . This permanently removes from our server your account, profile, backup and its photos, and your username, friends, posts, replies and messages. Your collection stays on your phone. To remove it from the phone as well, delete the app. No longer have the app? Ask us to delete your account: how to delete your account ."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does signing out do?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It forgets your account on that phone. Your collection stays on the phone and your backup stays on the server, ready for when you sign in again."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Our photo or logo appears in Cigar Locker. Can we have it removed?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Images from your website are shown from where they live, with your site named, and never copied to us. If you would rather they weren't shown, write to support@cigarlocker.app with your website's address and we will stop showing images from it."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -322,6 +677,7 @@
       </div>
       <nav aria-label="Footer">
         <a href="index.html">Home</a>
+        <a href="about.html">About</a>
         <a href="privacy.html">Privacy</a>
         <a href="terms.html">Terms</a>
       </nav>

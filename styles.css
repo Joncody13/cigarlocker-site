@@ -1,3 +1,9 @@
+/* The site's two typefaces, served from the site itself (SIL Open Font License; docs/asset-rights.md), so a visit
+   asks no other company for anything and the headings are there when the page first paints. */
+@font-face { font-family: "Instrument Serif"; font-style: normal; font-weight: 400; font-display: swap; src: url("assets/fonts/instrument-serif.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Serif"; font-style: italic; font-weight: 400; font-display: swap; src: url("assets/fonts/instrument-serif-italic.woff2") format("woff2"); }
+@font-face { font-family: "Limelight"; font-style: normal; font-weight: 400; font-display: swap; src: url("assets/fonts/limelight.woff2") format("woff2"); }
+
 /* Cigar Locker: the website's one stylesheet.
 
    Redone 2026-10-29 (his words: "modern and sleek with moving tiles and
@@ -1782,6 +1788,24 @@ html:not(.js) .stars svg:nth-child(-n + 9) {
   transform: none;
 }
 
+/* The first screen never waits for the script: it eases in by itself as soon as the stylesheet is here, and it
+   starts readable (never from nothing), so the page's words are on screen with the first paint and not a second
+   or two later. */
+.js .hero .reveal,
+.js .hero .reveal.rise {
+  opacity: 1;
+  transform: none;
+  transition: none;
+  animation: first-screen 0.9s var(--ease) calc(var(--d, 0s) / 2) backwards;
+}
+
+@keyframes first-screen {
+  from {
+    opacity: 0.4;
+    transform: translateY(18px);
+  }
+}
+
 /* ---------- Support (questions) ---------- */
 
 .contact-card {
@@ -2478,3 +2502,239 @@ tr:last-child td {
   cursor: pointer;
 }
 .apple-button:disabled { opacity: 0.5; cursor: default; }
+
+/* ---------- Feature pages, guides, About and Press (2026-11-15; made by scripts/site-pages.cjs) ---------- */
+
+.article .lead {
+  max-width: 62ch;
+}
+
+.article .shot {
+  margin: 40px auto 34px;
+}
+
+.article .shot-phone {
+  max-width: 290px;
+}
+
+.article .shot figcaption {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.article td:first-child {
+  white-space: normal;
+  min-width: 9em;
+}
+
+.article thead th:empty {
+  display: none;
+}
+
+.article .get-it {
+  margin-top: 56px;
+  padding-top: 34px;
+  border-top: 1px solid var(--line);
+}
+
+.article .related {
+  margin-top: 48px;
+}
+
+.article .related h2 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.article .related ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+}
+
+.article .related li + li {
+  margin-top: 0;
+}
+
+/* The comparison in the choosing guide: one card an app, the same headings in each, read down a phone. */
+.article h3 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.3rem, 2.4vw, 1.55rem);
+  margin: 0 0 12px;
+  color: var(--text);
+}
+.article .compare-card {
+  margin: 14px 0;
+  padding: 4px 22px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+}
+.article .compare-card.ours {
+  border-color: var(--gold-line);
+}
+.article .compare-card dl {
+  margin: 0;
+}
+.article .compare-card dl > div {
+  display: grid;
+  grid-template-columns: 11.5rem 1fr;
+  gap: 4px 18px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.article .compare-card dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+.article .compare-card dd {
+  margin: 0;
+}
+.article .compare-card .fine {
+  margin: 10px 0 0;
+}
+@media (max-width: 640px) {
+  .article .compare-card {
+    padding: 18px 16px 12px;
+  }
+  .article .compare-card dl > div {
+    grid-template-columns: 1fr;
+  }
+}
+/* A file's text, to copy. It scrolls sideways inside itself; the page never does. */
+.article pre.sample {
+  margin: 14px 0;
+  padding: 14px 16px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  font: 0.82rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--text);
+  -webkit-overflow-scrolling: touch;
+}
+
+.article details.compare-card[open] {
+  padding-bottom: 14px;
+}
+.article .compare-card summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 16px;
+  padding: 16px 34px 16px 0;
+}
+.article .compare-card summary h4 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.3rem, 2.4vw, 1.55rem);
+  color: var(--text);
+}
+.article .compare-card .gist {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* The action near the top of an article: the web app today, Apple's badge first once the listing is live. */
+.article .try-it {
+  margin-top: 26px;
+}
+.article .try-it .cta {
+  margin: 0 0 12px;
+  align-items: center;
+}
+.article a.button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.article .try-it .fine {
+  margin: 0;
+  max-width: 62ch;
+}
+
+/* Seven apps at a glance: one row an app. It scrolls sideways inside itself on a phone, the app's name staying put. */
+.article .glance table {
+  min-width: 860px;
+  font-size: 14.5px;
+}
+.article .glance th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 8.5em;
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 650;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: 1px 0 0 var(--line);
+}
+.article .glance thead th {
+  vertical-align: bottom;
+}
+@media (max-width: 640px) {
+  .article .glance th[scope="row"] {
+    min-width: 6.6em;
+  }
+  .article .glance td {
+    min-width: 7.6em;
+  }
+}
+/* At a desk the table is wider than the reading column, so all six columns show without sliding. */
+@media (min-width: 1140px) {
+  .article .glance {
+    width: 1060px;
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
+}
+.article .glance tr.ours th[scope="row"],
+.article .glance tr.ours td {
+  background: var(--bg-2);
+}
+.article .callout h3 {
+  margin-bottom: 10px;
+}
+.article .callout p {
+  margin: 0 0 8px;
+}
+.article .glance + .fine {
+  max-width: none;
+  margin: -4px 0 26px;
+}
+.article .glance td {
+  min-width: 8.5em;
+}
+.article .glance td.glance-not,
+.article .glance td.glance-no {
+  color: var(--muted);
+}
+.article .glance td.glance-listed::before,
+.article .glance td.glance-part::before,
+.article .glance td.glance-yes::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  vertical-align: 0.08em;
+}
+.article .glance td.glance-part::before {
+  background: transparent;
+  box-shadow: 0 0 0 1.5px var(--gold) inset;
+}
+.article .glance:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}

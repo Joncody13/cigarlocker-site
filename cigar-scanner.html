@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cigar scanner: identify a cigar from a photo · Cigar Locker</title>
+  <meta name="description" content="Photograph a cigar band or box and Cigar Locker names the maker and line, fills in the blend and helps you confirm the size. How Locker Vision works, and its limits.">
+  <meta name="theme-color" content="#051b19">
+  <link rel="canonical" href="https://cigarlocker.app/cigar-scanner.html">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/limelight.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+  <meta property="og:site_name" content="Cigar Locker">
+  <meta property="og:title" content="Cigar scanner: identify a cigar from a photo · Cigar Locker">
+  <meta property="og:description" content="Photograph a cigar band or box and Cigar Locker names the maker and line, fills in the blend and helps you confirm the size. How Locker Vision works, and its limits.">
+  <meta property="og:url" content="https://cigarlocker.app/cigar-scanner.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://cigarlocker.app/assets/share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://cigarlocker.app/#publisher",
+      "name": "Atlantis Dev, LLC",
+      "url": "https://cigarlocker.app/about.html",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://cigarlocker.app/assets/apple-touch-icon.png"
+      },
+      "email": "support@cigarlocker.app",
+      "brand": {
+        "@type": "Brand",
+        "name": "Cigar Locker"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://cigarlocker.app/#website",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "inLanguage": "en-US",
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://cigarlocker.app/#app",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web (the iPhone app is coming soon)",
+      "description": "Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.",
+      "featureList": [
+        "Identify a cigar from a photo of its band or box",
+        "Measure a cigar beside a dollar bill or a card, and confirm its size",
+        "Scan a shelf, a box or a row of cigars at once",
+        "Keep several humidors and move cigars between them",
+        "Record each purchase: how many, the date, the price and the shop",
+        "Search, filter and sort a collection of any size",
+        "Tasting journal: a rating out of ten stars, flavors by third, notes and photos",
+        "Import a collection from a spreadsheet file and export it again",
+        "Cloud backup, and the same collection on the web at a desk",
+        "Suggest One: three cigars from your own humidors, each with a reason"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to use."
+      },
+      "audience": {
+        "@type": "PeopleAudience",
+        "suggestedMinAge": 21
+      },
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://cigarlocker.app/cigar-scanner.html#page",
+      "url": "https://cigarlocker.app/cigar-scanner.html",
+      "name": "Cigar scanner: identify a cigar from a photo · Cigar Locker",
+      "description": "Photograph a cigar band or box and Cigar Locker names the maker and line, fills in the blend and helps you confirm the size. How Locker Vision works, and its limits.",
+      "inLanguage": "en-US",
+      "isPartOf": {
+        "@id": "https://cigarlocker.app/#website"
+      },
+      "about": {
+        "@id": "https://cigarlocker.app/#app"
+      },
+      "dateModified": "2026-11-15"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Cigar Locker",
+          "item": "https://cigarlocker.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Cigar scanner",
+          "item": "https://cigarlocker.app/cigar-scanner.html"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://cigarlocker.app/cigar-scanner.html#questions",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Can an app identify a cigar from a photo?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Often, yes. Cigar Locker reads the band or the box in your photo, compares it with the bands in its library, and names the maker and line. It tells you when it is sure and when it is only a possible match, and you confirm either way."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it work on a cigar with no band?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Usually not. The band and the box carry most of what identifies a cigar. Without one, Cigar Locker can still judge the shape and the wrapper’s color, but you would name the cigar yourself, by searching the catalog or typing it in."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can it scan a whole box or a whole humidor?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Photograph a shelf or a stack of boxes, or scan a row, and it lists the boxes and bands it can read. It lists what it can read, not everything in the picture, so you check the list before adding it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is the cigar scanner free?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Scans come with a free allowance to start and another each month. Cigar Locker Plus, $7.99 a month in the U.S., lifts the monthly limit; a daily limit applies. Keeping your collection, humidors and journal is free."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does it tell me whether a cigar is fake?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Cigar Locker identifies which cigar a band or box belongs to. It does not authenticate cigars."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html" aria-label="Cigar Locker, home">
+        <span class="brand-tile"><img src="assets/mark.svg" alt="" width="19" height="24"></span>
+        <span class="brand-name">Cigar Locker</span>
+      </a>
+      <nav class="site-nav" aria-label="Site">
+        <a class="hide-small" href="index.html">The app</a>
+        <a class="hide-small" href="features.html">Features</a>
+        <a href="support.html">Support</a>
+        <a class="nav-signin" href="/app/">Sign in</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap narrow legal article">
+    <div class="page-head">
+      <p class="overline">Locker Vision</p>
+      <h1>Identify a cigar <em>from a photo.</em></h1>
+      <p class="lead">Locker Vision is Cigar Locker&rsquo;s scanner. Photograph the band or the box of a cigar you own. It names the maker and the line, fills in the blend from its catalog, and asks you to confirm before anything is saved.</p>
+      <div class="try-it">
+        <div class="cta">
+          <a class="store-badge" data-store="ios" data-live hidden role="link" aria-disabled="true">
+            <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+          </a>
+          <a class="button" href="/app/" data-soon>Try Cigar Locker on the web</a>
+          <a class="text-link" href="/app/" data-live hidden>Try Cigar Locker on the web</a>
+        </div>
+        <p class="fine">Free to try, with nothing to install: it runs in your browser and you sign in with Apple. It is laid out for a computer&rsquo;s screen first. For adults 21 and over.<span data-soon> The iPhone app is coming soon to the App Store.</span></p>
+      </div>
+    </div>
+
+    <h2>How a scan works</h2>
+
+    <ol>
+      <li><strong>Photograph it.</strong> A band, a box or a whole shelf, with the camera or from your photos.</li>
+      <li><strong>Cigar Locker identifies it.</strong> It reads a band the way a collector does: its colors, shape and emblem as well as its words, set beside the bands in its band library. It names the cigar, then fills in the blend and the sizes the line comes in.</li>
+      <li><strong>You confirm, then save.</strong> Check the size and wrapper with a tap, or correct them. Say how many and which humidor. Nothing is saved until you do.</li>
+    </ol>
+
+    <figure class="shot shot-phone">
+      <div class="phone"><img src="assets/screens/scan.webp" alt="A sample scan in the app: a made-up cigar identified from its band, with its size and wrapper to confirm" width="660" height="1431" loading="lazy"></div>
+      <figcaption class="fine">Shown: a sample scan. The cigar&rsquo;s name is made up for the picture.</figcaption>
+    </figure>
+
+    <h2>Getting a good read</h2>
+
+    <p>Most scans that fail do so for the same few reasons, and each has a simple fix.</p>
+
+    <ul>
+      <li><strong>Fill the picture with the band.</strong> A band photographed from across a table is a few dozen pixels wide, too small to read. Hold the phone a hand&rsquo;s width away.</li>
+      <li><strong>Turn the lettering toward the camera</strong>, in even light. Glare on cellophane hides print: tilt the cigar a little, or slide it out of the cellophane.</li>
+      <li><strong>Get every band in.</strong> Many lines share a main band and differ only in a second band or a ribbon at the foot. If your cigar has one, it is often what tells two lines apart.</li>
+      <li><strong>One cigar to a photo</strong>, unless you are scanning a shelf or a row on purpose.</li>
+      <li><strong>For a box, photograph the lid or the printed end.</strong> That is where the name, the size and the count are, and a box&rsquo;s print is easier to read than a band.</li>
+    </ul>
+
+    <h2>Measuring the size</h2>
+
+    <p>Lay a dollar bill or a card beside a cigar and it is measured too. The length and ring gauge are worked out against the bill or card, then matched to a size the line is actually made in. With nothing of known size in the photo, the size is judged by its shape, the screen says so, and you confirm it.</p>
+
+    <p>The arithmetic is plain. A U.S. bill is 6.14 inches long and a credit card is 3.37 inches wide, so either gives the photo a scale. Ring gauge is a cigar&rsquo;s diameter in 64ths of an inch: a 50 ring cigar is 50/64, or about 0.78 inches, across.</p>
+
+    <p>For the best measurement, lay the cigar flat beside the bill or card, not on top of it, and hold the phone straight above.</p>
+
+    <h2>Why the band alone is sometimes not enough</h2>
+
+    <p>Makers reuse bands. A line sold in a natural and a maduro wrapper often wears the same band on both, so when a line comes in more than one wrapper Cigar Locker asks which yours is instead of guessing from the color in a photo.</p>
+
+    <p>One band also usually covers every size in a line, which is why the size is measured, or asked about, separately. From the band alone, the wrapper and the size of such a line can only be guessed.</p>
+
+    <h2>A shelf, a box or a row at once</h2>
+
+    <p>A collection does not have to go in one cigar at a time. Photograph a shelf or a stack of boxes, or scan a row of loose cigars, and Cigar Locker lists the boxes and bands it can read for you to check. You give each its size and count, and they are added together.</p>
+
+    <h2>When it is not sure</h2>
+
+    <p>A band read with certainty is shown as &ldquo;Identified as&rdquo;. Anything less is shown as a &ldquo;Possible match&rdquo;, with close matches to choose from. You can ask it to think harder about the same photo, search the catalog yourself, or enter the cigar by hand. A name it was not sure of is asked about before it is saved.</p>
+
+    <h2>What its catalog holds</h2>
+
+    <ul>
+      <li>800+ bands in its band library</li>
+      <li>900+ lines with blend details on record</li>
+      <li>200+ brands, from Cuba to Nicaragua</li>
+      <li>3,900+ cigars in its catalog</li>
+    </ul>
+
+    <p>Counted from Cigar Locker&rsquo;s own catalog on November 15, 2026. The catalog is built from makers&rsquo; own websites and catalogs, and from trade catalogs that reprint them. A cigar it knows is identified quickly; anything new is looked up on the web, which takes longer.</p>
+
+    <h2>What it does not do</h2>
+
+    <ul>
+      <li>It can be wrong, which is why you confirm every scan. A band with no lettering, or a photo taken from far away, may not be named at all.</li>
+      <li>We publish no accuracy figure. None has been measured on enough members&rsquo; scans for us to stand behind, and we will not print one until it has.</li>
+      <li>It does not tell a real cigar from a counterfeit, and it does not value or price a cigar for sale.</li>
+      <li>It needs a connection and a signed-in account. The photo is sent to our server and read there; the <a href="privacy.html">privacy policy</a> says what is kept from it.</li>
+    </ul>
+
+    <figure class="shot shot-desk">
+      <div class="browser"><div class="browser-bar"><i></i><i></i><i></i><span>Locker Vision</span></div><img src="assets/screens/desk-vision.webp" alt="Locker Vision on the web, with a sample: a photograph being read, and what it found" width="1600" height="1039" loading="lazy"></div>
+      <figcaption class="fine">Shown: sample screens. The cigar being read in Locker Vision is made up for the picture.</figcaption>
+    </figure>
+
+    <p>The same scan runs on the web at a desk, with photographs chosen from the computer. See <a href="desktop.html">Cigar Locker on the web</a>.</p>
+
+    <section class="faq-group">
+      <h2>Questions about scanning</h2>
+      <details>
+        <summary>Can an app identify a cigar from a photo?</summary>
+        <div>
+          <p>Often, yes. Cigar Locker reads the band or the box in your photo, compares it with the bands in its library, and names the maker and line. It tells you when it is sure and when it is only a possible match, and you confirm either way.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Does it work on a cigar with no band?</summary>
+        <div>
+          <p>Usually not. The band and the box carry most of what identifies a cigar. Without one, Cigar Locker can still judge the shape and the wrapper&rsquo;s color, but you would name the cigar yourself, by searching the catalog or typing it in.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Can it scan a whole box or a whole humidor?</summary>
+        <div>
+          <p>Yes. Photograph a shelf or a stack of boxes, or scan a row, and it lists the boxes and bands it can read. It lists what it can read, not everything in the picture, so you check the list before adding it.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Is the cigar scanner free?</summary>
+        <div>
+          <p>Scans come with a free allowance to start and another each month. Cigar Locker Plus, $7.99 a month in the U.S., lifts the monthly limit; a daily limit applies. Keeping your collection, humidors and journal is free.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Does it tell me whether a cigar is fake?</summary>
+        <div>
+          <p>No. Cigar Locker identifies which cigar a band or box belongs to. It does not authenticate cigars.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="get-it" aria-label="Get Cigar Locker">
+      <p class="lead"><span data-soon>Cigar Locker is coming soon to the App Store. The web app is open now.</span><span data-live hidden>Cigar Locker is free on the App Store.</span></p>
+      <div class="cta">
+        <a class="store-badge" data-store="ios" role="link" aria-disabled="true">
+          <span class="soon"><span><small>Coming soon to the</small><strong>App Store</strong></span></span>
+          <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+        </a>
+        <a class="text-link" href="/app/">Open the web app</a>
+      </div>
+      <p class="fine">Free, with Cigar Locker Plus at $7.99 a month in the U.S. for scans, look-ups and suggestions with no monthly limit; a daily limit applies (<a href="index.html#plus">pricing</a>). Humidity sensors and an Android app are still to come: sensors are coming soon. For adults 21 and over. Cigar Locker is a collection and journal app. It does not sell tobacco.</p>
+    </section>
+
+    <nav class="related" aria-label="Read next">
+      <h2>Read next</h2>
+      <ul>
+        <li><a href="cigar-collection-app.html">Collection and inventory</a></li>
+        <li><a href="import-cigar-collection.html">Import a collection</a></li>
+        <li><a href="desktop.html">On the web, at a desk</a></li>
+        <li><a href="features.html">Everything else it does</a></li>
+      </ul>
+    </nav>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div>
+        <p class="foot-brand"><img src="assets/mark.svg" alt="" width="21" height="26">Cigar Locker</p>
+        <p>&copy; 2026 Atlantis Dev, LLC. All rights reserved.</p>
+        <p>Cigar Locker is a collection, inventory and journal app for adults 21 and over. It does not sell tobacco.</p>
+        <p>Apple, the Apple logo and iPhone are trademarks of Apple Inc. App Store is a service mark of Apple Inc.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="support.html">Support</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

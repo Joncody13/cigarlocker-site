@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cigar collection and inventory app · Cigar Locker</title>
+  <meta name="description" content="Keep a cigar collection of any size in order: every humidor, every purchase with its date, price and shop, what is left, what it cost and how long it has rested.">
+  <meta name="theme-color" content="#051b19">
+  <link rel="canonical" href="https://cigarlocker.app/cigar-collection-app.html">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/limelight.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+  <meta property="og:site_name" content="Cigar Locker">
+  <meta property="og:title" content="Cigar collection and inventory app · Cigar Locker">
+  <meta property="og:description" content="Keep a cigar collection of any size in order: every humidor, every purchase with its date, price and shop, what is left, what it cost and how long it has rested.">
+  <meta property="og:url" content="https://cigarlocker.app/cigar-collection-app.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://cigarlocker.app/assets/share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://cigarlocker.app/#publisher",
+      "name": "Atlantis Dev, LLC",
+      "url": "https://cigarlocker.app/about.html",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://cigarlocker.app/assets/apple-touch-icon.png"
+      },
+      "email": "support@cigarlocker.app",
+      "brand": {
+        "@type": "Brand",
+        "name": "Cigar Locker"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://cigarlocker.app/#website",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "inLanguage": "en-US",
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://cigarlocker.app/#app",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web (the iPhone app is coming soon)",
+      "description": "Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.",
+      "featureList": [
+        "Identify a cigar from a photo of its band or box",
+        "Measure a cigar beside a dollar bill or a card, and confirm its size",
+        "Scan a shelf, a box or a row of cigars at once",
+        "Keep several humidors and move cigars between them",
+        "Record each purchase: how many, the date, the price and the shop",
+        "Search, filter and sort a collection of any size",
+        "Tasting journal: a rating out of ten stars, flavors by third, notes and photos",
+        "Import a collection from a spreadsheet file and export it again",
+        "Cloud backup, and the same collection on the web at a desk",
+        "Suggest One: three cigars from your own humidors, each with a reason"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to use."
+      },
+      "audience": {
+        "@type": "PeopleAudience",
+        "suggestedMinAge": 21
+      },
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://cigarlocker.app/cigar-collection-app.html#page",
+      "url": "https://cigarlocker.app/cigar-collection-app.html",
+      "name": "Cigar collection and inventory app · Cigar Locker",
+      "description": "Keep a cigar collection of any size in order: every humidor, every purchase with its date, price and shop, what is left, what it cost and how long it has rested.",
+      "inLanguage": "en-US",
+      "isPartOf": {
+        "@id": "https://cigarlocker.app/#website"
+      },
+      "about": {
+        "@id": "https://cigarlocker.app/#app"
+      },
+      "dateModified": "2026-11-15"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Cigar Locker",
+          "item": "https://cigarlocker.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Collection and inventory",
+          "item": "https://cigarlocker.app/cigar-collection-app.html"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://cigarlocker.app/cigar-collection-app.html#questions",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is the difference between a cigar collection app and an inventory app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "In practice they are the same thing: a record of which cigars you own, how many, and where they are. Cigar Locker adds what an inventory alone leaves out: each purchase’s date, price and shop, and a history of where every cigar went."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does Cigar Locker track what I paid?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, for each purchase, if you enter it. Where you did not, it can show an estimate at the maker’s suggested retail price, marked as an estimate. It never shows a shop’s price or a market value."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an account to use it?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not to keep your collection, humidors and journal on your phone. An account is needed for backup, for the web app, and for the parts that use our server, such as scanning."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can Cigar Locker be used to buy cigars?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Cigar Locker does not sell cigars or tobacco, shows no shop prices or offers, and links to no store. It is a collection and journal app for adults 21 and over."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html" aria-label="Cigar Locker, home">
+        <span class="brand-tile"><img src="assets/mark.svg" alt="" width="19" height="24"></span>
+        <span class="brand-name">Cigar Locker</span>
+      </a>
+      <nav class="site-nav" aria-label="Site">
+        <a class="hide-small" href="index.html">The app</a>
+        <a class="hide-small" href="features.html">Features</a>
+        <a href="support.html">Support</a>
+        <a class="nav-signin" href="/app/">Sign in</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap narrow legal article">
+    <div class="page-head">
+      <p class="overline">Collection and inventory</p>
+      <h1>A cigar collection, <em>kept in order.</em></h1>
+      <p class="lead">Cigar Locker is a cigar collection and inventory app. It records each purchase as you made it, counts what is left in each humidor, and keeps the history of every cigar that has come and gone.</p>
+      <div class="try-it">
+        <div class="cta">
+          <a class="store-badge" data-store="ios" data-live hidden role="link" aria-disabled="true">
+            <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+          </a>
+          <a class="button" href="/app/" data-soon>Try Cigar Locker on the web</a>
+          <a class="text-link" href="/app/" data-live hidden>Try Cigar Locker on the web</a>
+        </div>
+        <p class="fine">Free to try, with nothing to install: it runs in your browser and you sign in with Apple. It is laid out for a computer&rsquo;s screen first. For adults 21 and over.<span data-soon> The iPhone app is coming soon to the App Store.</span></p>
+      </div>
+    </div>
+
+    <h2>Built around the purchase</h2>
+
+    <p>A collection is a set of purchases, not a list of names. Each purchase in Cigar Locker keeps how many you bought, the date, what you paid, the shop, and whether it was a box, a bundle or singles. Two boxes of the same cigar bought a year apart stay two purchases, each with its own date and price.</p>
+
+    <figure class="shot shot-phone">
+      <div class="phone"><img src="assets/screens/home-locker.webp" alt="The Locker home screen: the count of cigars, each humidor, and the cigars with their photos" width="660" height="1431" loading="lazy"></div>
+      <figcaption class="fine">Shown: the app&rsquo;s demonstration collection, with sample sensors labeled as a sample.</figcaption>
+    </figure>
+
+    <h2>Counts that stay right</h2>
+
+    <p>What is left is worked out from what happened: added, moved, enjoyed, given away, traded, lost. A gift is recorded as a gift, never as a journal entry. Part of a box can move to another humidor and keep its date and price. Any of it can be undone.</p>
+
+    <p>An example. You buy a box of 20 in March. Over the summer you move 5 to a travel humidor, give 2 to a friend and enjoy 4. Cigar Locker shows 9 left in the cabinet and 5 in the travel humidor, all still dated March and priced from that box, and the box&rsquo;s history lists each of those steps in order.</p>
+
+    <h2>Search, filter and sort</h2>
+
+    <ul>
+      <li>Search by maker, line, size or wrapper, with the words in any order. A size typed as figures, such as 6 x 52, finds cigars of that size.</li>
+      <li>Filter by humidor, strength, length, how long a cigar lasts, wrapper, country and rarity.</li>
+      <li>Sort by newest, name, how many are left, your rating, rarity, or which have rested longest.</li>
+    </ul>
+
+    <h2>Prices, values and estimates</h2>
+
+    <p>A money figure is always one of three things and says which: what you paid, a value you set yourself, or an estimate at the maker&rsquo;s suggested retail price. A total says how many cigars it covers when that is not all of them. Cigar Locker shows no market value and no shop price.</p>
+
+    <figure class="shot shot-phone">
+      <div class="phone"><img src="assets/screens/cigar.webp" alt="A cigar&rsquo;s page: its photo, blend, how many are left and where they are" width="660" height="1431" loading="lazy"></div>
+      <figcaption class="fine">Shown: a cigar&rsquo;s page in the demonstration collection.</figcaption>
+    </figure>
+
+    <h2>Resting time, rarity and your likely rating</h2>
+
+    <ul>
+      <li>How long each purchase has rested, beside a rule-of-thumb resting window. The window is guidance, not a prediction.</li>
+      <li>A rarity score for a cigar whose production is known, with the reason.</li>
+      <li>Your likely rating for a cigar you have not rated: an estimate from the cigars you have rated, with the reason, always marked as an estimate.</li>
+    </ul>
+
+    <h2>The resting rule of thumb it uses</h2>
+
+    <p>Collectors disagree about aging, and no rule fits every cigar. So that &ldquo;how long has it rested&rdquo; means something, Cigar Locker shows a window by strength. It is guidance, not a guarantee: it is our rule of thumb and not a maker&rsquo;s instruction, and how a cigar was stored, its blend and your own taste all change the answer.</p>
+
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Strength</th><th>Rule-of-thumb resting window</th></tr></thead>
+        <tbody>
+          <tr><td>Mild</td><td>2 to 12 months</td></tr>
+          <tr><td>Mild to medium</td><td>3 to 18 months</td></tr>
+          <tr><td>Medium</td><td>6 to 24 months</td></tr>
+          <tr><td>Medium to full</td><td>9 to 36 months</td></tr>
+          <tr><td>Full</td><td>12 to 48 months</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>A dark wrapper, such as a maduro or a broadleaf, adds a year to the far end. A light one, such as a Connecticut shade, starts two months sooner and ends six months sooner. Past the window the app says only that, and adds that your own taste decides.</p>
+
+    <p>Inside the window the app says &ldquo;Ready now&rdquo;. That is shorthand for &ldquo;inside its rule-of-thumb window&rdquo;, not a promise about how the cigar will taste.</p>
+
+    <h2>Large collections</h2>
+
+    <p>Lists are drawn a screen at a time, so a large collection stays quick to open and to search. We test Cigar Locker with a made-up collection of 5,000 purchases, more than 50,000 cigars. That is a test of ours on our own equipment, not a promise about every phone.</p>
+
+    <h2>Yours to keep and to take</h2>
+
+    <p>Your collection lives on your phone and works with no signal and no account. Signing in backs it up and puts it <a href="desktop.html">on the web at a desk</a>. You can <a href="import-cigar-collection.html">import a collection</a> from a spreadsheet, and export your collection and journal to one whenever you like.</p>
+
+    <section class="faq-group">
+      <h2>Questions about keeping a collection</h2>
+      <details>
+        <summary>What is the difference between a cigar collection app and an inventory app?</summary>
+        <div>
+          <p>In practice they are the same thing: a record of which cigars you own, how many, and where they are. Cigar Locker adds what an inventory alone leaves out: each purchase&rsquo;s date, price and shop, and a history of where every cigar went.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Does Cigar Locker track what I paid?</summary>
+        <div>
+          <p>Yes, for each purchase, if you enter it. Where you did not, it can show an estimate at the maker&rsquo;s suggested retail price, marked as an estimate. It never shows a shop&rsquo;s price or a market value.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Do I need an account to use it?</summary>
+        <div>
+          <p>Not to keep your collection, humidors and journal on your phone. An account is needed for backup, for the web app, and for the parts that use our server, such as scanning.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Can Cigar Locker be used to buy cigars?</summary>
+        <div>
+          <p>No. Cigar Locker does not sell cigars or tobacco, shows no shop prices or offers, and links to no store. It is a collection and journal app for adults 21 and over.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="get-it" aria-label="Get Cigar Locker">
+      <p class="lead"><span data-soon>Cigar Locker is coming soon to the App Store. The web app is open now.</span><span data-live hidden>Cigar Locker is free on the App Store.</span></p>
+      <div class="cta">
+        <a class="store-badge" data-store="ios" role="link" aria-disabled="true">
+          <span class="soon"><span><small>Coming soon to the</small><strong>App Store</strong></span></span>
+          <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+        </a>
+        <a class="text-link" href="/app/">Open the web app</a>
+      </div>
+      <p class="fine">Free, with Cigar Locker Plus at $7.99 a month in the U.S. for scans, look-ups and suggestions with no monthly limit; a daily limit applies (<a href="index.html#plus">pricing</a>). Humidity sensors and an Android app are still to come: sensors are coming soon. For adults 21 and over. Cigar Locker is a collection and journal app. It does not sell tobacco.</p>
+    </section>
+
+    <nav class="related" aria-label="Read next">
+      <h2>Read next</h2>
+      <ul>
+        <li><a href="cigar-scanner.html">Cigar scanner</a></li>
+        <li><a href="humidor-management.html">Humidors</a></li>
+        <li><a href="cigar-journal.html">Tasting journal</a></li>
+        <li><a href="import-cigar-collection.html">Import a collection</a></li>
+        <li><a href="features.html">Everything else it does</a></li>
+      </ul>
+    </nav>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div>
+        <p class="foot-brand"><img src="assets/mark.svg" alt="" width="21" height="26">Cigar Locker</p>
+        <p>&copy; 2026 Atlantis Dev, LLC. All rights reserved.</p>
+        <p>Cigar Locker is a collection, inventory and journal app for adults 21 and over. It does not sell tobacco.</p>
+        <p>Apple, the Apple logo and iPhone are trademarks of Apple Inc. App Store is a service mark of Apple Inc.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="support.html">Support</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

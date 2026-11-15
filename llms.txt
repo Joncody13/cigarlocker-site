@@ -1,0 +1,45 @@
+# Cigar Locker
+
+> Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.
+
+- Publisher: Atlantis Dev, LLC.
+- Where it runs: the iPhone app is coming soon to the App Store; the web app is at https://cigarlocker.app/app/. An Android app is coming soon.
+- Price: free. Cigar Locker Plus is an optional subscription at $7.99 a month, bought in the iPhone app.
+- For adults 21 and over. Cigar Locker does not sell cigars or tobacco, shows no shop prices and links to no store.
+- Humidity sensors are coming soon. Today the app shows a sensor demo whose readings are simulated and labeled as a sample.
+- Cigar Locker publishes no accuracy figure, member count or rating: none has been measured and documented yet.
+- Contact: support@cigarlocker.app
+
+## What it does
+
+- Identify a cigar from a photo of its band or box
+- Measure a cigar beside a dollar bill or a card, and confirm its size
+- Scan a shelf, a box or a row of cigars at once
+- Keep several humidors and move cigars between them
+- Record each purchase: how many, the date, the price and the shop
+- Search, filter and sort a collection of any size
+- Tasting journal: a rating out of ten stars, flavors by third, notes and photos
+- Import a collection from a spreadsheet file and export it again
+- Cloud backup, and the same collection on the web at a desk
+- Suggest One: three cigars from your own humidors, each with a reason
+
+## Pages
+
+- [Cigar Locker: the cigar collection, humidor and journal app](https://cigarlocker.app/): Cigar Locker identifies a cigar from a photo of its band, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal.
+- [Cigar scanner: identify a cigar from a photo · Cigar Locker](https://cigarlocker.app/cigar-scanner.html): Photograph a cigar band or box and Cigar Locker names the maker and line, fills in the blend and helps you confirm the size. How Locker Vision works, and its limits.
+- [Cigar collection and inventory app · Cigar Locker](https://cigarlocker.app/cigar-collection-app.html): Keep a cigar collection of any size in order: every humidor, every purchase with its date, price and shop, what is left, what it cost and how long it has rested.
+- [Humidor management app: track every humidor · Cigar Locker](https://cigarlocker.app/humidor-management.html): Keep every humidor in one app: what is in each, how long it has rested, and cigars moved between them without losing a date or price. Humidity sensors are coming soon.
+- [Cigar journal app: ratings, flavors and notes · Cigar Locker](https://cigarlocker.app/cigar-journal.html): A cigar tasting journal: rate each cigar out of ten stars, note its flavors third by third, add notes and two photos, and see every entry on the cigar’s own page.
+- [Import a cigar collection from a spreadsheet · Cigar Locker](https://cigarlocker.app/import-cigar-collection.html): Move a cigar collection into Cigar Locker from another app or a spreadsheet: every line is accounted for, with a report, and one tap undoes it.
+- [Cigar collection software for desktop and web · Cigar Locker](https://cigarlocker.app/desktop.html): Cigar Locker on the web: the same cigar collection at a desk, with a dashboard, tables that sort, a three-pane journal and Locker Vision. Sign in at cigarlocker.app.
+- [More features · Cigar Locker](https://cigarlocker.app/features.html): More of what Cigar Locker does: Suggest One, Places, 11 home screen layouts in two themes, backup, friends and export.
+- [About Cigar Locker, the cigar collection app](https://cigarlocker.app/about.html): What Cigar Locker is, who makes it, where it runs, what it costs, and what is available today. The facts in one place, for collectors, reviewers and the press.
+- [Press kit · Cigar Locker](https://cigarlocker.app/press.html): For reviewers and the press: what Cigar Locker is in a paragraph, the logo, screenshots, the facts, and who to write to for a review copy.
+- [Cigar Locker Support](https://cigarlocker.app/support.html): Help with Cigar Locker: signing in, the 21 and over check, scanning, importing a collection, humidity, Friends, backups and deleting your account.
+- [Cigar Locker Privacy Policy](https://cigarlocker.app/privacy.html): How Cigar Locker collects, uses, keeps and deletes your information.
+- [Cigar Locker Terms of Use](https://cigarlocker.app/terms.html): The terms for using the Cigar Locker app.
+- [Delete Your Account](https://cigarlocker.app/delete-account.html): How to delete your Cigar Locker account and its data, in the app or by asking us.
+
+## Guides, written and published by Cigar Locker
+
+- [How to organize a cigar collection · Cigar Locker](https://cigarlocker.app/guide-organize-cigar-collection.html): A practical guide to cataloging cigars: what to record for each purchase, how to label humidors, how to use photos, and how to keep the record right.

@@ -187,4 +187,60 @@ const STORES = { ios: '', android: '' };
       front.style.removeProperty('--rx');
     });
   }
+  // ---- Counting visits: a number for the day, never a visitor (2026-11-15) -----------------
+  // OFF. The privacy policy says this website "has no analytics", so this stays false until that
+  // sentence is changed, on his word, in the same publish (test/site-seo.test.ts holds the two
+  // together). When on, each page view adds one to a count kept by day, page and where the
+  // visit came from (the referring site's name and the link's own utm tags). No cookie, no
+  // identifier, no address is read or kept, and a browser that asks not to be tracked is not
+  // counted. A tap on a store button or on "Open the web app" is counted the same way.
+  // The comparison's cards fold on a phone and stand open where there is room to read them side by side.
+  if (window.matchMedia && window.matchMedia('(min-width: 900px)').matches) for (const d of document.querySelectorAll('details.compare-card')) d.open = true;
+
+  // Links from a page to the web app say which page they came from (utm_source=site, the page as the campaign), so
+  // the app's own first-open record can count accounts by page. No visitor is identified: it is a label on a link.
+  {
+    const page = (location.pathname.replace(/^.*\//, '').replace(/\.html$/, '') || 'home').slice(0, 40);
+    for (const a of document.querySelectorAll('a[href^="/app/"], a[href="/app"]')) {
+      const u = new URL(a.getAttribute('href'), location.origin);
+      if (u.searchParams.has('utm_source')) continue;
+      u.searchParams.set('utm_source', 'site');
+      u.searchParams.set('utm_medium', 'page');
+      u.searchParams.set('utm_campaign', page);
+      a.setAttribute('href', u.pathname + u.search + u.hash);
+    }
+  }
+
+  const COUNT_VISITS = false;
+  const asksNotToBeCounted = navigator.globalPrivacyControl === true || navigator.doNotTrack === '1';
+  if (COUNT_VISITS && !navigator.webdriver && !asksNotToBeCounted) {
+    const COUNTER = 'https://nypahhdmoxrfvwnfufdf.supabase.co/rest/v1/rpc/mktg_site_hit';
+    const PUBLIC_KEY = 'sb_publishable_QeBMueHE5KTcVrtU4Ys8AA_nFi_kdb1';
+    const tags = new URLSearchParams(location.search);
+    let from = '';
+    try {
+      from = document.referrer ? new URL(document.referrer).hostname : '';
+    } catch {
+      from = '';
+    }
+    const count = (kind) => {
+      try {
+        fetch(COUNTER, {
+          method: 'POST',
+          keepalive: true,
+          headers: { apikey: PUBLIC_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_path: location.pathname, p_ref: from, p_source: tags.get('utm_source') || '', p_medium: tags.get('utm_medium') || '', p_campaign: tags.get('utm_campaign') || '', p_kind: kind }),
+        }).catch(() => {});
+      } catch {
+        // Counting never gets in the page's way.
+      }
+    };
+    count('view');
+    document.addEventListener('click', (e) => {
+      const link = e.target instanceof Element ? e.target.closest('a') : null;
+      if (!link) return;
+      if (link.matches('[data-store].is-live, [data-get-store], [data-get].is-live')) count('store');
+      else if (link.getAttribute('href') === '/app/') count('app');
+    });
+  }
 })();

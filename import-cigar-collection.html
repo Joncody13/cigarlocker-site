@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Import a cigar collection from a spreadsheet · Cigar Locker</title>
+  <meta name="description" content="Move a cigar collection into Cigar Locker from another app or a spreadsheet: every line is accounted for, with a report, and one tap undoes it.">
+  <meta name="theme-color" content="#051b19">
+  <link rel="canonical" href="https://cigarlocker.app/import-cigar-collection.html">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/limelight.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script src="site.js" defer></script>
+  <meta property="og:site_name" content="Cigar Locker">
+  <meta property="og:title" content="Import a cigar collection from a spreadsheet · Cigar Locker">
+  <meta property="og:description" content="Move a cigar collection into Cigar Locker from another app or a spreadsheet: every line is accounted for, with a report, and one tap undoes it.">
+  <meta property="og:url" content="https://cigarlocker.app/import-cigar-collection.html">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://cigarlocker.app/assets/share.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://cigarlocker.app/#publisher",
+      "name": "Atlantis Dev, LLC",
+      "url": "https://cigarlocker.app/about.html",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://cigarlocker.app/assets/apple-touch-icon.png"
+      },
+      "email": "support@cigarlocker.app",
+      "brand": {
+        "@type": "Brand",
+        "name": "Cigar Locker"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://cigarlocker.app/#website",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "inLanguage": "en-US",
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://cigarlocker.app/#app",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web (the iPhone app is coming soon)",
+      "description": "Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.",
+      "featureList": [
+        "Identify a cigar from a photo of its band or box",
+        "Measure a cigar beside a dollar bill or a card, and confirm its size",
+        "Scan a shelf, a box or a row of cigars at once",
+        "Keep several humidors and move cigars between them",
+        "Record each purchase: how many, the date, the price and the shop",
+        "Search, filter and sort a collection of any size",
+        "Tasting journal: a rating out of ten stars, flavors by third, notes and photos",
+        "Import a collection from a spreadsheet file and export it again",
+        "Cloud backup, and the same collection on the web at a desk",
+        "Suggest One: three cigars from your own humidors, each with a reason"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to use."
+      },
+      "audience": {
+        "@type": "PeopleAudience",
+        "suggestedMinAge": 21
+      },
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://cigarlocker.app/import-cigar-collection.html#page",
+      "url": "https://cigarlocker.app/import-cigar-collection.html",
+      "name": "Import a cigar collection from a spreadsheet · Cigar Locker",
+      "description": "Move a cigar collection into Cigar Locker from another app or a spreadsheet: every line is accounted for, with a report, and one tap undoes it.",
+      "inLanguage": "en-US",
+      "isPartOf": {
+        "@id": "https://cigarlocker.app/#website"
+      },
+      "about": {
+        "@id": "https://cigarlocker.app/#app"
+      },
+      "dateModified": "2026-11-15"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Cigar Locker",
+          "item": "https://cigarlocker.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Import a collection",
+          "item": "https://cigarlocker.app/import-cigar-collection.html"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://cigarlocker.app/import-cigar-collection.html#questions",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Can I move my collection from another cigar app?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, if that app can export your collection as a spreadsheet (CSV) file. Cigar Locker reads the columns by name, so the file does not need a particular layout."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What file types does the import read?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Spreadsheet files saved as CSV, with commas, semicolons or tabs between the columns. An Excel or Numbers workbook is saved as CSV first."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What if my file does not say which humidor each cigar is in?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Everything goes into the humidor you choose, and Cigar Locker then offers ways to sort it: check off several purchases and move them together, or photograph a shelf to place what is on it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I get my data out of Cigar Locker?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Settings, then Your data, exports your collection and your journal, each as a spreadsheet file."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="index.html" aria-label="Cigar Locker, home">
+        <span class="brand-tile"><img src="assets/mark.svg" alt="" width="19" height="24"></span>
+        <span class="brand-name">Cigar Locker</span>
+      </a>
+      <nav class="site-nav" aria-label="Site">
+        <a class="hide-small" href="index.html">The app</a>
+        <a class="hide-small" href="features.html">Features</a>
+        <a href="support.html">Support</a>
+        <a class="nav-signin" href="/app/">Sign in</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap narrow legal article">
+    <div class="page-head">
+      <p class="overline">Import a collection</p>
+      <h1>Bring your collection <em>with you.</em></h1>
+      <p class="lead">A collection you already keep somewhere else does not have to be typed in again. Cigar Locker imports a spreadsheet file from another app, accounts for every line in it, and can undo the import with one tap.</p>
+      <div class="try-it">
+        <div class="cta">
+          <a class="store-badge" data-store="ios" data-live hidden role="link" aria-disabled="true">
+            <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+          </a>
+          <a class="button" href="/app/" data-soon>Try Cigar Locker on the web</a>
+          <a class="text-link" href="/app/" data-live hidden>Try Cigar Locker on the web</a>
+        </div>
+        <p class="fine">Free to try, with nothing to install: it runs in your browser and you sign in with Apple. It is laid out for a computer&rsquo;s screen first. For adults 21 and over.<span data-soon> The iPhone app is coming soon to the App Store.</span></p>
+      </div>
+    </div>
+
+    <h2>How to import</h2>
+
+    <ol>
+      <li>In your old app or spreadsheet, export or save your collection as a CSV file. An Excel or Numbers workbook is saved as CSV first.</li>
+      <li>In Cigar Locker, open Settings, then Your data, then Import a collection, and choose the file.</li>
+      <li>Check what it found, choose the humidor for lines that name none, and bring it in.</li>
+    </ol>
+
+    <h2>What it reads</h2>
+
+    <p>Columns are found by their names, in any order. Cigar Locker reads, when the file has them:</p>
+
+    <ul>
+      <li>The maker, the line, the size name, the length and the ring gauge.</li>
+      <li>The wrapper, binder, filler, country and strength.</li>
+      <li>How many, your rating, and the humidor.</li>
+      <li>The date bought, the price, the shop, and whether it was a box or singles.</li>
+      <li>Your notes.</li>
+    </ul>
+
+    <p>A column it does not understand is named on the screen, so you know what was left out.</p>
+
+    <h2>A file it reads, to copy</h2>
+
+    <p>If you are starting from your own spreadsheet, these headings work as they are. Only the maker is required; leave out any column you do not keep.</p>
+
+    <pre class="sample" aria-label="A sample collection file"><code>Brand,Line,Vitola,Wrapper,Quantity,Date,Price,Shop,Rating,Humidor
+Arturo Fuente,Hemingway,Short Story,Cameroon,25,2026-03-14,8.50,My local shop,9,Cabinet
+My Father,Le Bijou 1922,Toro,Habano Oscuro,23,2026-01-09,12.00,My local shop,8,Cabinet
+Oliva,Serie V Melanio,Figurado,Sumatra,10,2026-06-21,14.50,Online order,9,Desktop humidor</code></pre>
+
+    <p><a href="assets/cigar-collection-template.csv" download>Download this as a starting file</a> (CSV, opens in Excel, Numbers or Google Sheets).</p>
+
+    <h2>The details that trip up an import</h2>
+
+    <ul>
+      <li><strong>Headings.</strong> Maker may be headed Brand, Manufacturer or Maker; the line may be Line, Name or Series; the size Vitola or Size; the count Quantity, Qty or Count; the place Humidor or Location. Columns can be in any order, separated by commas, semicolons or tabs.</li>
+      <li><strong>Ratings.</strong> The highest rating in the file tells Cigar Locker the scale: out of 5 is doubled, out of 10 is kept, out of 100 is divided by ten.</li>
+      <li><strong>Dates.</strong> 2026-03-14, 3/14/2026, 3/14/26, Mar 14 2026 and 14 Mar 2026 are all read. A date that cannot be read, or one in the future, is left blank and you are told which line.</li>
+      <li><strong>Prices.</strong> A column headed plainly Price could mean one cigar or the whole line. Cigar Locker makes a first guess from the amounts and asks you to confirm which it is before anything comes in.</li>
+      <li><strong>No count column.</strong> Each line is then taken as one cigar.</li>
+      <li><strong>Totals rows and blank lines</strong> are set aside and listed with the reason, not imported.</li>
+    </ul>
+
+    <h2>Every line is accounted for</h2>
+
+    <p>Each line of the file ends up as one of these, and the report says which: brought in; already in your collection; kept for its rating with none left; set aside for you to check; or not readable, with the reason. The totals add up to the number of cigars in the file. The report can be saved as a spreadsheet.</p>
+
+    <figure class="shot shot-phone">
+      <div class="phone"><img src="assets/screens/import-review.webp" alt="The import&rsquo;s review screen: five lines coming in, one kept for its rating, one to check and two that could not be read" width="660" height="1431" loading="lazy"></div>
+      <figcaption class="fine">Shown: a made-up file of eight lines, read in the demonstration collection. Its shop names are not real shops.</figcaption>
+    </figure>
+
+    <h2>Nothing is doubled, and it can be undone</h2>
+
+    <ul>
+      <li>The same file brought in twice adds nothing the second time.</li>
+      <li>Two boxes of one cigar bought on different dates stay two purchases, each with its own date and price.</li>
+      <li>One tap undoes the whole import, until something happens to the imported cigars.</li>
+    </ul>
+
+    <h2>And out again</h2>
+
+    <p>Your collection and your journal can each be exported to a spreadsheet at any time. A collection exported from Cigar Locker can be imported back whole.</p>
+
+    <section class="faq-group">
+      <h2>Questions about importing</h2>
+      <details>
+        <summary>Can I move my collection from another cigar app?</summary>
+        <div>
+          <p>Yes, if that app can export your collection as a spreadsheet (CSV) file. Cigar Locker reads the columns by name, so the file does not need a particular layout.</p>
+        </div>
+      </details>
+      <details>
+        <summary>What file types does the import read?</summary>
+        <div>
+          <p>Spreadsheet files saved as CSV, with commas, semicolons or tabs between the columns. An Excel or Numbers workbook is saved as CSV first.</p>
+        </div>
+      </details>
+      <details>
+        <summary>What if my file does not say which humidor each cigar is in?</summary>
+        <div>
+          <p>Everything goes into the humidor you choose, and Cigar Locker then offers ways to sort it: check off several purchases and move them together, or photograph a shelf to place what is on it.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Can I get my data out of Cigar Locker?</summary>
+        <div>
+          <p>Yes. Settings, then Your data, exports your collection and your journal, each as a spreadsheet file.</p>
+        </div>
+      </details>
+    </section>
+
+    <section class="get-it" aria-label="Get Cigar Locker">
+      <p class="lead"><span data-soon>Cigar Locker is coming soon to the App Store. The web app is open now.</span><span data-live hidden>Cigar Locker is free on the App Store.</span></p>
+      <div class="cta">
+        <a class="store-badge" data-store="ios" role="link" aria-disabled="true">
+          <span class="soon"><span><small>Coming soon to the</small><strong>App Store</strong></span></span>
+          <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+        </a>
+        <a class="text-link" href="/app/">Open the web app</a>
+      </div>
+      <p class="fine">Free, with Cigar Locker Plus at $7.99 a month in the U.S. for scans, look-ups and suggestions with no monthly limit; a daily limit applies (<a href="index.html#plus">pricing</a>). Humidity sensors and an Android app are still to come: sensors are coming soon. For adults 21 and over. Cigar Locker is a collection and journal app. It does not sell tobacco.</p>
+    </section>
+
+    <nav class="related" aria-label="Read next">
+      <h2>Read next</h2>
+      <ul>
+        <li><a href="cigar-collection-app.html">Collection and inventory</a></li>
+        <li><a href="desktop.html">On the web, at a desk</a></li>
+        <li><a href="cigar-scanner.html">Cigar scanner</a></li>
+        <li><a href="features.html">Everything else it does</a></li>
+      </ul>
+    </nav>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <div>
+        <p class="foot-brand"><img src="assets/mark.svg" alt="" width="21" height="26">Cigar Locker</p>
+        <p>&copy; 2026 Atlantis Dev, LLC. All rights reserved.</p>
+        <p>Cigar Locker is a collection, inventory and journal app for adults 21 and over. It does not sell tobacco.</p>
+        <p>Apple, the Apple logo and iPhone are trademarks of Apple Inc. App Store is a service mark of Apple Inc.</p>
+      </div>
+      <nav aria-label="Footer">
+        <a href="index.html">Home</a>
+        <a href="about.html">About</a>
+        <a href="support.html">Support</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

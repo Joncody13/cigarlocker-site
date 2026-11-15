@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Cigar Locker: the cigar collection, humidor and journal app</title>
-  <meta name="description" content="Cigar Locker identifies a cigar from a photo of its band, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in your tasting journal. For iPhone, with Android on the way, and on the web. For adults 21 and over.">
+  <meta name="description" content="Cigar Locker identifies a cigar from a photo of its band, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal.">
   <meta name="theme-color" content="#051b19">
   <!-- Shows Apple's own "Open in the App Store" banner in Safari on an iPhone, by itself, once the app is on the store. -->
   <meta name="apple-itunes-app" content="app-id=6827316453">
@@ -21,25 +21,118 @@
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Limelight&display=swap">
+  <link rel="preload" href="assets/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/limelight.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" as="image" href="assets/screens/home-locker.webp">
   <link rel="stylesheet" href="styles.css">
   <script>document.documentElement.classList.add('js');</script>
   <script src="site.js" defer></script>
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "Cigar Locker",
-    "applicationCategory": "LifestyleApplication",
-    "operatingSystem": "iOS, Web",
-    "url": "https://cigarlocker.app/",
-    "description": "A collection, humidor and journal app for cigar collectors, for adults 21 and over.",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-    "publisher": { "@type": "Organization", "name": "Atlantis Dev, LLC" }
-  }
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://cigarlocker.app/#publisher",
+      "name": "Atlantis Dev, LLC",
+      "url": "https://cigarlocker.app/about.html",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://cigarlocker.app/assets/apple-touch-icon.png"
+      },
+      "email": "support@cigarlocker.app",
+      "brand": {
+        "@type": "Brand",
+        "name": "Cigar Locker"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://cigarlocker.app/#website",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "inLanguage": "en-US",
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://cigarlocker.app/#app",
+      "name": "Cigar Locker",
+      "alternateName": "Cigar Locker app",
+      "url": "https://cigarlocker.app/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Web (the iPhone app is coming soon)",
+      "description": "Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.",
+      "featureList": [
+        "Identify a cigar from a photo of its band or box",
+        "Measure a cigar beside a dollar bill or a card, and confirm its size",
+        "Scan a shelf, a box or a row of cigars at once",
+        "Keep several humidors and move cigars between them",
+        "Record each purchase: how many, the date, the price and the shop",
+        "Search, filter and sort a collection of any size",
+        "Tasting journal: a rating out of ten stars, flavors by third, notes and photos",
+        "Import a collection from a spreadsheet file and export it again",
+        "Cloud backup, and the same collection on the web at a desk",
+        "Suggest One: three cigars from your own humidors, each with a reason"
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to use."
+      },
+      "audience": {
+        "@type": "PeopleAudience",
+        "suggestedMinAge": 21
+      },
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://cigarlocker.app/#webapp",
+      "name": "Cigar Locker for the web",
+      "url": "https://cigarlocker.app/app/",
+      "applicationCategory": "LifestyleApplication",
+      "operatingSystem": "Any, in a web browser",
+      "browserRequirements": "A current desktop browser with JavaScript on.",
+      "description": "The same Cigar Locker collection at a desk: a wide dashboard, tables that sort, and Locker Vision for photographs chosen from the computer. Sign in with the account the phone uses.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free to use."
+      },
+      "audience": {
+        "@type": "PeopleAudience",
+        "suggestedMinAge": 21
+      },
+      "publisher": {
+        "@id": "https://cigarlocker.app/#publisher"
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://cigarlocker.app/#page",
+      "url": "https://cigarlocker.app/",
+      "name": "Cigar Locker: the cigar collection, humidor and journal app",
+      "description": "Cigar Locker identifies a cigar from a photo of its band, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal.",
+      "inLanguage": "en-US",
+      "isPartOf": {
+        "@id": "https://cigarlocker.app/#website"
+      },
+      "about": {
+        "@id": "https://cigarlocker.app/#app"
+      },
+      "dateModified": "2026-11-15"
+    }
+  ]
+}
   </script>
 </head>
 <body class="home">
@@ -94,7 +187,7 @@
 
   <main id="main">
     <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-photo"><img src="assets/photos/bundles.jpg" alt="" width="2000" height="1331"></div>
+      <div class="hero-photo"><img src="assets/photos/bundles.jpg" srcset="assets/photos/bundles-1000.jpg 1000w, assets/photos/bundles.jpg 2000w" sizes="100vw" alt="" width="2000" height="1331" fetchpriority="high"></div>
       <div class="wrap">
         <div class="hero-copy">
           <p class="overline reveal">The cigar collector's app</p>
@@ -267,6 +360,7 @@
           <h2 id="more-title" class="reveal">There is more <em>in the app.</em></h2>
           <p class="reveal" style="--d:.1s">Suggest One picks three cigars from your own humidors for the moment. Places finds cigar shops and lounges anywhere. And the home screen comes in 11 layouts and two themes.</p>
           <p class="reveal" style="--d:.2s"><a class="pill-link" href="features.html">See more features</a></p>
+          <p class="fine reveal" style="--d:.3s">Read more: <a href="cigar-scanner.html">the cigar scanner</a>, <a href="cigar-collection-app.html">collection and inventory</a>, <a href="humidor-management.html">humidors</a>, <a href="cigar-journal.html">the journal</a>, <a href="import-cigar-collection.html">importing a collection</a>, <a href="desktop.html">Cigar Locker on the web</a>, and our guide to <a href="guide-organize-cigar-collection.html">organizing a collection</a>.</p>
         </div>
       </div>
     </section>
@@ -338,6 +432,8 @@
       </div>
       <nav aria-label="Footer">
         <a href="/app/">Web app</a>
+        <a href="about.html">About</a>
+        <a href="press.html">Press</a>
         <a href="support.html">Support</a>
         <a href="privacy.html">Privacy</a>
         <a href="terms.html">Terms</a>
