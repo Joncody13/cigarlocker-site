@@ -120,6 +120,17 @@
       </div>
     </section>
 
+    <!-- Shops and lounges (139): how many are on record and were listed lately. The Market part has them by
+         the day or the week, with what members looked at. Written by shops.js from what the server sent. -->
+    <section class="card wide" aria-labelledby="h-mc-shops" data-tab="global">
+      <div class="card-head">
+        <h3 id="h-mc-shops">Shops and lounges</h3>
+        <span class="muted small" id="mc-shops-note" role="status"></span>
+        <button type="button" class="ghost small" id="mc-shops-more">By day or week, and what members looked at</button>
+      </div>
+      <div class="tiles" id="mc-shops"></div>
+    </section>
+
     <section class="card wide" aria-labelledby="h-today" data-tab="global">
       <div class="card-head"><h3 id="h-today">Every figure</h3><span class="muted small">Where things stand now, and this week</span></div>
       <div class="tiles ledger" id="tiles"></div>
@@ -196,6 +207,52 @@
         <h3 class="spaced">Where members live</h3>
         <div id="states" class="hbars"></div>
       </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-shop-activity" data-tab="market">
+      <div class="card-head">
+        <h3 id="h-shop-activity">Shops and lounges: listed, searched and looked at</h3>
+        <span class="muted small" id="shop-activity-note" role="status"></span>
+      </div>
+      <div class="shop-filters" role="group" aria-label="Filter the shops and lounges">
+        <span class="seg" id="shop-days" role="group" aria-label="How far back"></span>
+        <span class="seg" id="shop-by" role="group" aria-label="Count by"></span>
+        <label class="shop-pick"><span class="muted small">Kind</span><select id="shop-kind" aria-label="Kind of place"></select></label>
+        <label class="shop-pick"><span class="muted small">State</span><select id="shop-state" aria-label="State"></select></label>
+        <label class="shop-pick"><span class="muted small">Who</span><select id="shop-user" aria-label="Which member"></select></label>
+      </div>
+      <p class="muted small" id="shop-chart-title"></p>
+      <div id="shop-chart"></div>
+      <p class="muted small" id="shop-chart-note"></p>
+      <div class="row two shop-lists">
+        <div>
+          <h3 class="spaced">Where they were listed</h3>
+          <div id="shop-towns" class="hbars"></div>
+        </div>
+        <div>
+          <h3 class="spaced">Towns searched for the first time</h3>
+          <div id="shop-searched"></div>
+        </div>
+      </div>
+      <h3 class="spaced">What members looked at</h3>
+      <p class="held-back" id="shop-limits"></p>
+      <div class="row two shop-lists">
+        <div>
+          <p class="muted small">Places opened most</p>
+          <table class="plain" id="shop-top-places"></table>
+        </div>
+        <div>
+          <p class="muted small">Towns explored most</p>
+          <table class="plain" id="shop-top-cities"></table>
+        </div>
+      </div>
+      <h3 class="spaced">Places they opened</h3>
+      <div id="shop-looks"></div>
+      <h3 class="spaced">Places searches</h3>
+      <p class="muted small" id="shop-searches-note"></p>
+      <div id="shop-searches"></div>
+      <h3 class="spaced">Shops they added to their own lists</h3>
+      <div id="shop-own"></div>
     </section>
 
     <section class="card wide" aria-labelledby="h-states" data-tab="market">
@@ -599,6 +656,7 @@
   <script src="mission.js"></script>
   <script src="plus.js"></script>
   <script src="suggestions.js"></script>
+  <script src="shops.js"></script>
   <script src="marketing.js"></script>
   <script src="console.js"></script>
 </body>

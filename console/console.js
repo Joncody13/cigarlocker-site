@@ -355,6 +355,7 @@
     else loadErrors();
     drawSwitches(d.flags);
     void loadSuggestions();
+    void loadShops();
   }
 
   /** What Cigar Locker knows of cigars: its libraries, look-ups and scans. */
@@ -420,7 +421,7 @@
       const v = values[i];
       const x = pad.l + i * slot + (slot - bar) / 2;
       const hit = s('rect', { x: pad.l + i * slot, y: pad.t, width: slot, height: H - pad.t - pad.b, class: 'hit', tabindex: 0 });
-      const text = `${shortDay(d.day)}: ${words(v)}`;
+      const text = `${fmt.label ? fmt.label(d) : shortDay(d.day)}: ${words(v)}`;
       hit.setAttribute('aria-label', text);
       const show = (ev) => tip(text, ev, hit);
       hit.addEventListener('pointermove', show);
@@ -434,14 +435,14 @@
       svg.append(hit);
       if (i === 0 || i === daily.length - 1 || i === Math.floor(daily.length / 2)) {
         const label = s('text', { x: x + bar / 2, y: H - 8, class: 'tick', 'text-anchor': 'middle' });
-        label.textContent = i === daily.length - 1 ? 'Today' : shortDay(d.day);
+        label.textContent = i === daily.length - 1 ? fmt.last || 'Today' : shortDay(d.day);
         svg.append(label);
       }
     });
     const rows = daily
       .filter((d, i) => values[i] > 0)
       .reverse()
-      .map((d) => h('tr', {}, h('td', { text: longDay(d.day) }), h('td', { class: 'num', text: cellWords(d[key]) })));
+      .map((d) => h('tr', {}, h('td', { text: fmt.long ? fmt.long(d) : longDay(d.day) }), h('td', { class: 'num', text: cellWords(d[key]) })));
     box.replaceChildren(
       svg,
       h('details', { class: 'numbers' }, h('summary', { text: 'Show the numbers' }), rows.length ? h('table', { class: 'plain' }, h('tbody', {}, rows)) : h('p', { class: 'muted small', text: 'Nothing yet.' })),
@@ -2241,6 +2242,117 @@
       $('switch-result').textContent = e.message;
     }
   }
+
+  // ---- shops and lounges: on record, listed by the day or week, and what members looked at (139) ----
+  // The words are shops.js's. A name a member typed goes in as text, never as HTML.
+  const SH = window.CigarShops || null;
+  const shopAsk = { days: 30, by: 'day', kind: '', state: '', user: null };
+
+  /** Who it was, with their home town under the name and a way to their page. */
+  function shopWho(r) {
+    return h(
+      'td',
+      {},
+      h('div', { class: 'shop-who' }, r.person ? h('button', { type: 'button', class: 'name-link', text: r.who, onclick: () => openPerson(r.person) }) : h('span', { text: r.who }), r.home ? h('span', { class: 'muted small', text: `Home: ${r.home}` }) : null),
+    );
+  }
+
+  function shopTable(heads, rows, empty) {
+    if (!rows.length) return h('p', { class: 'muted small', text: empty });
+    return h('div', { class: 'table-wrap' }, h('table', { class: 'plain' }, h('thead', {}, h('tr', {}, heads.map((t) => h('th', { text: t })))), h('tbody', {}, rows)));
+  }
+
+  function pairsTable(box, pairs, empty) {
+    box.replaceChildren(pairs.length ? h('tbody', {}, pairs.map(([a, b]) => h('tr', {}, h('td', { text: a }), h('td', { class: 'num', text: b })))) : h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: empty }))));
+  }
+
+  function shopChoices(x) {
+    const seg = (box, items, key) =>
+      box.replaceChildren(
+        ...items.map((it) =>
+          h('button', {
+            type: 'button',
+            class: 'ghost small',
+            text: it.label,
+            'aria-pressed': shopAsk[key] === it[key] ? 'true' : 'false',
+            onclick: () => {
+              shopAsk[key] = it[key];
+              void loadShops();
+            },
+          }),
+        ),
+      );
+    seg($('shop-days'), SH.DAYS, 'days');
+    seg($('shop-by'), SH.BY, 'by');
+    const pick = (el, options, value, onchange) => {
+      el.replaceChildren(...options.map((o) => h('option', { value: o.value, text: o.label, selected: o.value === value })));
+      el.value = value;
+      el.onchange = () => onchange(el.value);
+    };
+    pick($('shop-kind'), SH.KINDS.map((k) => ({ value: k.kind, label: k.label })), shopAsk.kind, (v) => {
+      shopAsk.kind = v;
+      void loadShops();
+    });
+    pick($('shop-state'), [{ value: '', label: 'Every state' }, ...SH.states(x).map((st) => ({ value: st.state, label: st.label }))], shopAsk.state, (v) => {
+      shopAsk.state = v;
+      void loadShops();
+    });
+    const people = SH.people(x);
+    // Whoever is chosen stays in the list even when the span no longer holds them.
+    if (shopAsk.user && !people.some((p) => p.id === shopAsk.user)) people.unshift({ id: shopAsk.user, label: 'The member chosen' });
+    pick($('shop-user'), [{ value: '', label: 'Everyone' }, ...people.map((p) => ({ value: p.id, label: p.label }))], shopAsk.user || '', (v) => {
+      shopAsk.user = v || null;
+      void loadShops();
+    });
+  }
+
+  function drawShops(x) {
+    // The little block on Mission Control: always the whole directory, whatever the filters below say.
+    const t = SH.tiles(x);
+    $('mc-shops-note').textContent = SH.summary(x);
+    $('mc-shops').replaceChildren(...(t ? t.map((it) => tile(it.label, it.value, it.note)) : [h('p', { class: 'muted', text: UNREAD })]));
+    shopChoices(x);
+    $('shop-activity-note').textContent = SH.asked(x);
+    const sr = SH.series(x);
+    $('shop-chart-title').textContent = `Places listed, ${sr.week ? 'by week' : 'by day'}`;
+    if (sr.rows.length) {
+      barChart($('shop-chart'), sr.rows, 'places', (v) => plural(v, 'place'), { last: sr.last, label: (d) => d.label, long: (d) => d.long });
+    } else $('shop-chart').replaceChildren(h('p', { class: 'muted small', text: 'Nothing in this span.' }));
+    $('shop-chart-note').textContent = SH.chartNote(x);
+    hbars($('shop-towns'), SH.byTown(x), 'places');
+    const ts = SH.townsSearched(x);
+    $('shop-searched').replaceChildren(ts.rows.length ? table(ts.heads, ts.rows, ts.numeric) : h('p', { class: 'muted small', text: 'No town was searched for the first time in this span.' }));
+    $('shop-limits').textContent = SH.LIMITS;
+    pairsTable($('shop-top-places'), SH.topPlaces(x), SH.EMPTY.looks);
+    pairsTable($('shop-top-cities'), SH.topCities(x), SH.EMPTY.looks);
+    $('shop-looks').replaceChildren(
+      shopTable(['When', 'Who', 'Place', 'Town'], SH.looks(x).map((r) => h('tr', {}, h('td', { text: r.when }), shopWho(r), h('td', {}, r.what, r.kind ? h('div', { class: 'muted small', text: r.kind }) : null), h('td', { text: r.where }))), SH.EMPTY.looks),
+    );
+    $('shop-searches-note').textContent = SH.searchesHow(x);
+    $('shop-searches').replaceChildren(
+      shopTable(['When', 'Who', 'How it was asked', 'Came back'], SH.searches(x).map((r) => h('tr', {}, h('td', { text: r.when }), shopWho(r), h('td', { text: r.how }), h('td', { text: r.found }))), SH.EMPTY.searches),
+    );
+    $('shop-own').replaceChildren(
+      shopTable(['Added', 'Who', 'Shop', 'Town'], SH.ownShops(x).map((r) => h('tr', {}, h('td', { text: r.when }), shopWho(r), h('td', { text: r.what }), h('td', { text: r.where }))), SH.EMPTY.ownShops),
+    );
+  }
+
+  async function loadShops() {
+    if (!SH) {
+      $('mc-shops-note').textContent = 'Reload this page to see the shops.';
+      return;
+    }
+    try {
+      drawShops(await ask({ action: 'shop-activity', ...shopAsk }));
+    } catch (e) {
+      $('mc-shops-note').textContent = e.message;
+      $('shop-activity-note').textContent = e.message;
+    }
+  }
+  $('mc-shops-more').addEventListener('click', () => {
+    go('market');
+    $('h-shop-activity').scrollIntoView();
+  });
 
   // ---- what members sent through Settings > Suggest an app fix (131_suggestions.sql) ----
   // The words are suggestions.js's. What a member wrote goes in as text, never as HTML.

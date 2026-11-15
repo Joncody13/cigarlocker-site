@@ -683,3 +683,13 @@ ul.notices li.part { padding: 0; }
 
 /* A wide table scrolls inside its card; the page never does. */
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* Shops and lounges (139): the filters over the chart, and its lists. */
+.shop-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; margin-bottom: 12px; }
+.shop-pick { display: grid; gap: 2px; }
+.shop-pick select { min-width: 0; max-width: 100%; padding: 6px 9px; }
+.shop-lists { margin-top: 4px; }
+.shop-who { display: grid; gap: 1px; min-width: 12em; }
+.shop-who, .shop-who button { overflow-wrap: anywhere; text-align: left; }
+#shop-looks td:first-child, #shop-searches td:first-child, #shop-own td:first-child { white-space: nowrap; }
+
