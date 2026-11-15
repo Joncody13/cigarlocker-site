@@ -664,3 +664,22 @@ ul.notices li.part { padding: 0; }
 .suggestion.is-new { border-left: 3px solid var(--series); padding-left: 12px; }
 .suggestion-body { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
 .suggestion-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+
+/* ---------- Marketing (135, 2026-11-15) ---------- */
+.mk-brief p { margin: 0 0 6px; font-size: 16px; max-width: 80ch; }
+.mk-panels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+@media (max-width: 1100px) { .mk-panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .mk-panels { grid-template-columns: 1fr; } }
+.mk-panel { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px 15px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 0 -1px -1px 0; min-width: 0; }
+.mk-headline { font-size: 19px; font-weight: 600; line-height: 1.25; }
+.mk-panel.is-not-connected .mk-headline, .mk-panel.is-waiting .mk-headline { color: var(--muted); font-weight: 500; }
+.mk-panel .kpi-spark { align-self: flex-start; }
+.mk-line { font-size: 13px; color: var(--muted); }
+.mk-trend { font-size: 12px; color: var(--faint); }
+.mk-rec { display: grid; grid-template-columns: minmax(120px, 0.34fr) 1fr; gap: 4px 14px; margin: 8px 0; font-size: 13px; }
+.mk-rec dt { color: var(--muted); }
+.mk-rec dd { margin: 0; }
+.mk-token { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; overflow-wrap: anywhere; user-select: all; }
+
+/* A wide table scrolls inside its card; the page never does. */
+.scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }

@@ -92,6 +92,8 @@
 
   /** Each scheduled job in plain words. One not named here shows under its own name. */
   const JOB_WORDS = {
+    'mktg-hourly': 'The marketing monitor: figures, the website check, findings and the brief',
+    'mktg-prune': 'The marketing monitor’s nightly tidy',
     'marketing-refresh': 'Members’ buying figures',
     'marketing-refresh-all': 'Buying figures, the nightly pass',
     'deals-watch': 'The run-out watch for deals',

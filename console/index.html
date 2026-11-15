@@ -31,6 +31,7 @@
   <nav class="tabs" id="tabs" role="tablist" aria-label="Parts of the console" hidden>
     <span class="tab-group"><span class="tab-group-name">Command</span>
       <button type="button" role="tab" data-show="global">Mission Control</button>
+      <button type="button" role="tab" data-show="marketing">Marketing</button>
     </span>
     <span class="tab-group"><span class="tab-group-name">Audience</span>
       <button type="button" role="tab" data-show="growth">Growth</button>
@@ -429,6 +430,86 @@
       </div>
     </section>
 
+    <!-- Marketing (135, 2026-11-15): what the hourly monitor recorded. Every word and figure is marketing.js's,
+         from what the server sent; a part that is not connected says what it needs and shows no figure. -->
+    <section class="mc-head" aria-labelledby="h-marketing" data-tab="marketing">
+      <p class="overline">Marketing</p>
+      <h1 id="h-marketing">Marketing</h1>
+      <p class="mc-summary" id="mk-standing"></p>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-mk-brief" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-mk-brief">Owner brief</h3>
+        <span class="muted small" id="mk-brief-day"></span>
+      </div>
+      <div id="mk-brief" class="mk-brief"></div>
+    </section>
+
+    <section class="mk-panels" id="mk-panels" aria-label="Marketing, part by part" data-tab="marketing"></section>
+
+    <section class="row two" data-tab="marketing">
+      <div class="card" aria-labelledby="h-mk-findings">
+        <div class="card-head"><h3 id="h-mk-findings">Needs attention, and opportunities</h3></div>
+        <div id="mk-findings"></div>
+      </div>
+      <div class="card" aria-labelledby="h-mk-recs">
+        <div class="card-head"><h3 id="h-mk-recs">Proposed improvements</h3><span class="muted small" id="mk-recs-note" role="status"></span></div>
+        <div id="mk-recs"></div>
+      </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-mk-bypage" data-tab="marketing">
+      <div class="card-head"><h3 id="h-mk-bypage">By page</h3><span class="muted small" id="mk-bypage-note"></span></div>
+      <div id="mk-bypage" class="scroll-x"></div>
+      <p class="muted small" id="mk-bypage-limits"></p>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-mk-ai" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-mk-ai">AI answers</h3>
+        <span class="muted small" id="mk-ai-note"></span>
+        <button type="button" class="ghost small" id="mk-ai-switch"></button>
+      </div>
+      <div id="mk-ai"></div>
+      <div id="mk-rivals"></div>
+    </section>
+
+    <section class="row two" data-tab="marketing">
+      <div class="card" aria-labelledby="h-mk-site">
+        <div class="card-head"><h3 id="h-mk-site">Website visits</h3><span class="muted small" id="mk-site-note"></span></div>
+        <div id="mk-sources"></div>
+        <div id="mk-pages"></div>
+        <div id="mk-campaigns"></div>
+      </div>
+      <div class="card" aria-labelledby="h-mk-checks">
+        <div class="card-head"><h3 id="h-mk-checks">The website, as a crawler meets it</h3><span class="muted small" id="mk-checks-note"></span></div>
+        <div id="mk-checks"></div>
+      </div>
+    </section>
+
+    <section class="row two" data-tab="marketing">
+      <div class="card" aria-labelledby="h-mk-links">
+        <div class="card-head"><h3 id="h-mk-links">Where the figures come from</h3></div>
+        <div id="mk-links"></div>
+      </div>
+      <div class="card" aria-labelledby="h-mk-runs">
+        <div class="card-head"><h3 id="h-mk-runs">The monitor’s runs</h3><button type="button" class="ghost small" id="mk-monitor-switch"></button></div>
+        <div id="mk-runs"></div>
+      </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-mk-tokens" data-tab="marketing">
+      <div class="card-head"><h3 id="h-mk-tokens">Passes for an outside AI agent</h3><span class="muted small" id="mk-tokens-note" role="status"></span></div>
+      <p class="muted small" id="mk-tokens-help"></p>
+      <div id="mk-token-made" hidden></div>
+      <div id="mk-tokens"></div>
+      <form id="mk-token-form" class="inline-form">
+        <input id="mk-token-name" type="text" maxlength="60" placeholder="A name for the pass, such as ChatGPT" aria-label="A name for the pass">
+        <button type="submit" class="ghost">Make a pass</button>
+      </form>
+    </section>
+
     <section class="card wide" aria-labelledby="h-suggestions" data-tab="health">
       <div class="card-head">
         <h3 id="h-suggestions">Suggestions from members</h3>
@@ -518,6 +599,7 @@
   <script src="mission.js"></script>
   <script src="plus.js"></script>
   <script src="suggestions.js"></script>
+  <script src="marketing.js"></script>
   <script src="console.js"></script>
 </body>
 </html>

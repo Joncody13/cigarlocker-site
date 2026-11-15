@@ -59,8 +59,8 @@
   // The buttons along the top (his words: "buttons at the top that'll say
   // global"): one part of the console at a time, remembered.
   const TAB = 'console.tab';
-  const TABS = ['global', 'growth', 'people', 'market', 'knowledge', 'emails', 'deals', 'featured', 'money', 'health'];
-  const TAB_NAMES = { global: 'Mission Control', growth: 'Growth', people: 'People', market: 'Market', knowledge: 'Knowledge', emails: 'Emails', deals: 'Deals', featured: 'Featured', money: 'Revenue and costs', health: 'Health' };
+  const TABS = ['global', 'marketing', 'growth', 'people', 'market', 'knowledge', 'emails', 'deals', 'featured', 'money', 'health'];
+  const TAB_NAMES = { global: 'Mission Control', marketing: 'Marketing', growth: 'Growth', people: 'People', market: 'Market', knowledge: 'Knowledge', emails: 'Emails', deals: 'Deals', featured: 'Featured', money: 'Revenue and costs', health: 'Health' };
   function showTab(name) {
     const tab = TABS.includes(name) ? name : 'global';
     for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.dataset.tab !== tab;
@@ -68,6 +68,7 @@
     remember(TAB, tab);
     if (tab === 'featured' && !$('board').hidden) loadFeatured();
     if (tab === 'deals' && !$('board').hidden) loadDeals();
+    if (tab === 'marketing' && !$('board').hidden) loadMarketing();
   }
   for (const b of document.querySelectorAll('#tabs [data-show]')) {
     b.addEventListener('click', () => {
@@ -294,6 +295,7 @@
     await refresh();
     if (recall(TAB) === 'featured') loadFeatured();
     if (recall(TAB) === 'deals') loadDeals();
+    if (recall(TAB) === 'marketing') loadMarketing();
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
       if (document.visibilityState === 'visible') refresh();
@@ -2290,6 +2292,174 @@
       $('suggestions-note').textContent = e.message;
     }
   }
+
+  // ---- Marketing: what the hourly monitor recorded (135_marketing_monitor.sql) ----
+  // The words and figures are marketing.js's. A proposal approved here is a decision on record; nothing
+  // is published, posted or sent from this page.
+  const MK = window.CigarMarketing;
+  let marketing = null;
+
+  function drawMarketing() {
+    const intel = marketing && marketing.intel;
+    $('mk-standing').textContent = MK.standing(intel);
+    const brief = MK.brief(intel);
+    $('mk-brief-day').textContent = brief.day ? `For ${brief.day}` : '';
+    $('mk-brief').replaceChildren(...brief.sentences.map((t) => h('p', { text: t })));
+
+    const panels = MK.panels(intel) || [];
+    $('mk-panels').replaceChildren(
+      ...panels.map((p) =>
+        h(
+          'div',
+          { class: `mk-panel is-${p.state}` },
+          h('span', { class: 'kpi-label', text: p.title }),
+          h('span', { class: 'mk-headline' }, p.standing ? standingMark(p.standing, p.headline) : p.headline),
+          p.spark && p.spark.length > 1 ? sparkline(p.spark) : null,
+          ...p.lines.map((t) => h('span', { class: 'mk-line', text: t })),
+          p.trend ? h('span', { class: 'mk-trend', text: MK.trendWords(p.trend) }) : null,
+        ),
+      ),
+    );
+
+    const found = MK.findings(intel);
+    $('mk-findings').replaceChildren(
+      ...(found.length
+        ? found.map((f) => h('div', { class: 'suggestion' }, h('p', { class: 'small' }, standingMark(f.kind, f.kindWords), h('span', { class: 'muted', text: ` · ${f.since}` })), h('p', { class: 'suggestion-body', text: f.title }), f.detail ? h('p', { class: 'muted small', text: f.detail }) : null))
+        : [h('p', { class: 'muted small', text: 'Nothing found at the last check.' })]),
+    );
+
+    const recs = MK.recommendations(intel);
+    $('mk-recs').replaceChildren(
+      ...(recs.length
+        ? recs.map((r) =>
+            h(
+              'div',
+              { class: `suggestion${r.status === 'proposed' ? ' is-new' : ''}` },
+              h('p', { class: 'small muted', text: r.head }),
+              h('p', { class: 'suggestion-body', text: r.opportunity }),
+              h('dl', { class: 'mk-rec' }, ...r.rows.flatMap(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
+              h(
+                'p',
+                { class: 'suggestion-actions' },
+                ...r.actions.map((a) =>
+                  h('button', {
+                    type: 'button',
+                    class: 'ghost small',
+                    text: a.label,
+                    onclick: () => {
+                      const result = a.status === 'done' ? prompt('What came of it? (kept with the proposal)', '') : null;
+                      if (a.status === 'done' && result === null) return;
+                      decideMarketing(r.id, a.status, result ? result.trim().slice(0, 2000) : null);
+                    },
+                  }),
+                ),
+              ),
+            ),
+          )
+        : [h('p', { class: 'muted small', text: 'None yet. The monitor proposes one when it finds something measured to act on.' })]),
+    );
+
+    const ai = (intel && intel.ai) || {};
+    const auditOn = intel && intel.settings && intel.settings.aiAudit === 'on';
+    $('mk-ai-note').textContent = ai.limits || '';
+    $('mk-ai-switch').textContent = auditOn ? 'Turn the daily sample off' : 'Turn the daily sample on';
+    $('mk-ai-switch').onclick = () => {
+      if (!auditOn && !confirm('Turn on the daily sample of AI answers? Six questions each morning are put to Claude with web search on. Each costs money at Anthropic: the first morning measures how much.')) return;
+      setMarketing('ai-audit', !auditOn);
+    };
+    $('mk-ai').replaceChildren(table(['When', 'Asked of', 'Kind', 'Question', 'Cigar Locker', 'Other apps named', 'Pages cited'], MK.aiRows(intel).map((r) => [r.when, r.platform, r.method, r.question, r.us, r.others, n(r.cited)]), [6]));
+    $('mk-rivals').replaceChildren(table(['Other apps in sampled answers', 'Answers'], (ai.competitors || []).map((c) => [c.name, n(c.answers)]), [1]));
+
+    const site = MK.siteRows(intel);
+    $('mk-site-note').textContent = site.counting ? 'Counted by the website itself, by day. No visitor is identified.' : 'Not counted yet: the counting line goes out with the website.';
+    $('mk-sources').replaceChildren(table(['Came from', 'Page views', 'Store taps'], site.sources, [1, 2]));
+    $('mk-pages').replaceChildren(table(['Page', 'Page views', 'Store taps'], site.pages, [1, 2]));
+    $('mk-campaigns').replaceChildren(table(['Campaign (source / medium / name)', 'Page views', 'Store taps'], site.campaigns, [1, 2]));
+    const byPage = MK.pages(intel);
+    $('mk-bypage-note').textContent = `Last ${byPage.days} days. ${byPage.note}`;
+    $('mk-bypage').replaceChildren(byPage.empty ? h('p', { class: 'muted', text: byPage.empty }) : table(byPage.head, byPage.rows, [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]));
+    $('mk-bypage-limits').textContent = byPage.limits;
+    $('mk-checks-note').textContent = site.checkedAt ? `Checked ${site.checkedAt}` : 'Not checked yet.';
+    $('mk-checks').replaceChildren(table(['Page', 'How it stands', 'Answered in'], site.checks, [2]));
+
+    $('mk-links').replaceChildren(table(['Source', 'What it brings', 'How it stands'], MK.connections(intel).map((c) => [c.name, c.feeds, c.words]), []));
+    $('mk-runs').replaceChildren(table(['Started', 'By', 'Outcome', 'What it did'], MK.runs(intel), []));
+    const monitorOn = !(intel && intel.settings && intel.settings.monitor === 'off');
+    $('mk-monitor-switch').textContent = monitorOn ? 'Pause the hourly monitor' : 'Start the hourly monitor';
+    $('mk-monitor-switch').onclick = () => {
+      if (monitorOn && !confirm('Pause the hourly monitor? Nothing is recorded while it is paused.')) return;
+      setMarketing('monitor', !monitorOn);
+    };
+
+    $('mk-tokens-help').textContent = MK.TOKEN_HELP;
+    const passes = MK.tokens(marketing && marketing.tokens);
+    $('mk-tokens').replaceChildren(
+      ...(passes.length
+        ? passes.map((t) =>
+            h('p', { class: 'small' }, h('strong', { text: t.name }), h('span', { class: 'muted', text: ` · ${t.words} ` }), t.live ? h('button', { type: 'button', class: 'ghost small', text: 'End this pass', onclick: () => confirm(`End the pass “${t.name}”? Whatever uses it stops being able to read.`) && endMarketingPass(t.id) }) : null),
+          )
+        : [h('p', { class: 'muted small', text: 'No pass has been made.' })]),
+    );
+  }
+
+  async function loadMarketing() {
+    try {
+      marketing = await ask({ action: 'marketing' });
+      drawMarketing();
+    } catch (e) {
+      $('mk-standing').textContent = e.message;
+    }
+  }
+
+  async function decideMarketing(id, status, result) {
+    try {
+      await ask({ action: 'marketing-rec', id, status, result });
+      $('mk-recs-note').textContent = 'Recorded. Carrying it out is still asked of you, step by step.';
+      await loadMarketing();
+    } catch (e) {
+      $('mk-recs-note').textContent = e.message;
+    }
+  }
+
+  async function setMarketing(key, on) {
+    try {
+      marketing = await ask({ action: 'marketing-setting', key, on });
+      drawMarketing();
+    } catch (e) {
+      $('mk-standing').textContent = e.message;
+    }
+  }
+
+  async function endMarketingPass(id) {
+    try {
+      const out = await ask({ action: 'marketing-token-revoke', id });
+      marketing = { ...(marketing || {}), tokens: out.tokens };
+      drawMarketing();
+    } catch (e) {
+      $('mk-tokens-note').textContent = e.message;
+    }
+  }
+
+  $('mk-token-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const name = $('mk-token-name').value.trim();
+    if (name.length < 2) return void ($('mk-tokens-note').textContent = 'Give the pass a name.');
+    try {
+      const out = await ask({ action: 'marketing-token-new', name });
+      marketing = { ...(marketing || {}), tokens: out.tokens };
+      $('mk-token-name').value = '';
+      // Shown once, as text. It is in no table and no log: copy it now.
+      $('mk-token-made').hidden = false;
+      $('mk-token-made').replaceChildren(
+        h('p', { class: 'small', text: `The pass “${out.made.name}”, shown this once. Copy it now and paste it where the agent asks for a key:` }),
+        h('p', { class: 'mk-token', text: out.made.token }),
+        h('p', { class: 'muted small', text: 'The agent sends it as “Authorization: Bearer” to the marketing address of this server, and can only read.' }),
+      );
+      drawMarketing();
+    } catch (e) {
+      $('mk-tokens-note').textContent = e.message;
+    }
+  });
 
   function drawLaunch(launch) {
     const sections = L.funnel(launch);
