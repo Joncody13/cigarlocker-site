@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <!-- Where Instagram sends the browser back after its own sign-in page. This page talks to nobody: it puts
+       the one-time code aside for the console in this tab and goes there. The code is worth nothing without
+       the Meta app's secret, which is only on the server. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Cigar Locker Mission Control</title>
+  <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="console.css">
+</head>
+<body>
+  <main class="ig-return">
+    <p id="ig-return-words">Going back to Mission Control…</p>
+    <p><a href="./">Back to Mission Control</a></p>
+  </main>
+  <script src="instagram-return.js"></script>
+</body>
+</html>

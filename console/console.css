@@ -693,3 +693,34 @@ ul.notices li.part { padding: 0; }
 .shop-who, .shop-who button { overflow-wrap: anywhere; text-align: left; }
 #shop-looks td:first-child, #shop-searches td:first-child, #shop-own td:first-child { white-space: nowrap; }
 
+
+/* Instagram, inside Marketing (142). The same panels, tables and bars as the rest; these are only its own bits. */
+.ig-off { display: none; }
+.ig-tiles { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1300px) { .ig-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .ig-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .ig-tiles { grid-template-columns: 1fr; } }
+.ig-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.ig-actions button.primary { width: auto; margin-top: 0; padding: 8px 14px; }
+.ig-setup { margin: 8px 0 12px; padding-left: 20px; max-width: 90ch; }
+.ig-setup li { margin: 4px 0; overflow-wrap: anywhere; }
+.ig-sub { font-weight: 600; margin: 14px 0 6px; }
+.ig-posts { display: grid; gap: 0; }
+.ig-post { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.ig-post:first-child { border-top: 0; }
+.ig-post p { margin: 0 0 4px; }
+.ig-thumb { width: 76px; height: 96px; object-fit: cover; border-radius: 8px; background: var(--tint); border: 1px solid var(--line); }
+.ig-thumb-none { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.ig-caption { max-width: 90ch; overflow-wrap: anywhere; }
+.ig-figures { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ig-figure-name { color: var(--muted); }
+.ig-headline { font-size: 17px; font-weight: 600; margin: 6px 0 4px; max-width: 70ch; }
+.ig-list { margin: 0 0 4px; padding-left: 18px; font-size: 14px; max-width: 80ch; }
+.ig-list li { margin: 3px 0; }
+.ig-limits { padding-left: 18px; margin: 10px 0 0; }
+.ig-limits li { margin: 4px 0; overflow-wrap: anywhere; }
+.ig-return { max-width: 520px; margin: 18vh auto 0; padding: 0 20px; text-align: center; }
+.bars .trend { fill: none; stroke: var(--series); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.bars .dot { fill: var(--series); }
+.bars .gap { stroke: var(--faint); stroke-width: 1.5; stroke-linecap: round; }
+.ig-post a, .ig-return a { color: inherit; }

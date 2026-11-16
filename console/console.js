@@ -296,6 +296,7 @@
     if (recall(TAB) === 'featured') loadFeatured();
     if (recall(TAB) === 'deals') loadDeals();
     if (recall(TAB) === 'marketing') loadMarketing();
+    void finishInstagram();
     clearInterval(refreshTimer);
     refreshTimer = setInterval(() => {
       if (document.visibilityState === 'visible') refresh();
@@ -2515,6 +2516,7 @@
   }
 
   async function loadMarketing() {
+    void loadInstagram();
     try {
       marketing = await ask({ action: 'marketing' });
       drawMarketing();
@@ -2572,6 +2574,323 @@
       $('mk-tokens-note').textContent = e.message;
     }
   });
+
+  // ---- Instagram, inside Marketing (142_social_insights.sql) ----------------------------------------------
+  // The official account's own figures, read hourly on the server with a read-only pass. The words and
+  // figures are instagram.js's. Nothing here posts, deletes or spends; the pass never reaches this page.
+  const IG = window.CigarInstagram;
+  const IG_RETURN = 'cigar.console.instagram';
+  let instagram = null;
+  let igDays = 30;
+  let igShown = 30;
+
+  /** Bars by day or week (a line for followers). A day with no figure gets a small mark, never a zero bar. */
+  function igChart(box, ser) {
+    const rows = ser.rows;
+    const known = rows.filter((r) => typeof r.value === 'number');
+    if (!known.length) return box.replaceChildren(h('p', { class: 'muted', text: 'No figure in this span yet.' }));
+    const W = 520;
+    const H = 190;
+    const pad = { l: 40, r: 8, t: 10, b: 26 };
+    const values = known.map((r) => r.value);
+    let lo = 0;
+    let hi = niceTop(Math.max(1, ...values));
+    if (ser.level) {
+      const room = Math.max(1, Math.ceil((Math.max(...values) - Math.min(...values)) * 0.15));
+      lo = Math.max(0, Math.min(...values) - room);
+      hi = Math.max(...values) + room;
+    }
+    const slot = (W - pad.l - pad.r) / rows.length;
+    const bar = Math.min(24, Math.max(2, slot - 2));
+    const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - (v - lo) / (hi - lo));
+    const svg = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'bars', role: 'img', 'aria-label': ser.title });
+    for (const tick of [lo, (lo + hi) / 2, hi]) {
+      svg.append(s('line', { x1: pad.l, x2: W - pad.r, y1: y(tick), y2: y(tick), class: 'grid' }));
+      const label = s('text', { x: pad.l - 6, y: y(tick) + 4, class: 'tick', 'text-anchor': 'end' });
+      label.textContent = compact(tick);
+      svg.append(label);
+    }
+    let line = '';
+    const dots = [];
+    const hits = [];
+    rows.forEach((r, i) => {
+      const x = pad.l + i * slot + (slot - bar) / 2;
+      const cx = pad.l + i * slot + slot / 2;
+      const measured = typeof r.value === 'number';
+      if (measured && ser.level) {
+        line += `${line ? 'L' : 'M'}${cx},${y(r.value)}`;
+        if (rows.length <= 45) dots.push(s('circle', { cx, cy: y(r.value), r: 2.5, class: 'dot' }));
+      } else if (measured && r.value > 0) {
+        svg.append(s('path', { d: roundedTop(x, y(r.value), bar, y(lo) - y(r.value)), class: i === rows.length - 1 ? 'bar now' : 'bar' }));
+      } else if (!measured) {
+        svg.append(s('line', { x1: cx - Math.min(3, slot / 3), x2: cx + Math.min(3, slot / 3), y1: y(lo) - 4, y2: y(lo) - 4, class: 'gap' }));
+      }
+      const hit = s('rect', { x: pad.l + i * slot, y: pad.t, width: slot, height: H - pad.t - pad.b, class: 'hit', tabindex: 0 });
+      const text = `${r.long}: ${measured ? n(r.value) : r.why}`;
+      hit.setAttribute('aria-label', text);
+      const show = (ev) => tip(text, ev, hit);
+      hit.addEventListener('pointermove', show);
+      hit.addEventListener('focus', show);
+      hit.addEventListener('pointerleave', hideTip);
+      hit.addEventListener('blur', hideTip);
+      hits.push(hit);
+      if (i === 0 || i === rows.length - 1 || i === Math.floor(rows.length / 2)) {
+        const label = s('text', { x: cx, y: H - 8, class: 'tick', 'text-anchor': i === 0 ? 'start' : i === rows.length - 1 ? 'end' : 'middle' });
+        label.textContent = r.label;
+        svg.append(label);
+      }
+    });
+    if (line) svg.append(s('path', { d: line, class: 'trend' }), ...dots);
+    svg.append(...hits);
+    const numbers = rows
+      .slice()
+      .reverse()
+      .map((r) => h('tr', { class: typeof r.value === 'number' ? null : 'muted' }, h('td', { text: r.long }), h('td', { class: 'num', text: typeof r.value === 'number' ? n(r.value) : r.why })));
+    box.replaceChildren(svg, h('details', { class: 'numbers' }, h('summary', { text: 'Show the numbers' }), h('table', { class: 'plain' }, h('tbody', {}, numbers))));
+  }
+
+  /** A post's thumbnail from Instagram's own picture servers, or the kind in words when there is none. */
+  function igThumb(p) {
+    const blank = () => h('span', { class: 'ig-thumb ig-thumb-none', 'aria-hidden': 'true', text: p.kindWords });
+    let ok = false;
+    try {
+      const u = new URL(p.thumb);
+      ok = u.protocol === 'https:' && /(^|\.)(cdninstagram\.com|fbcdn\.net)$/.test(u.hostname);
+    } catch {
+      ok = false;
+    }
+    if (!ok) return blank();
+    const img = h('img', { class: 'ig-thumb', src: p.thumb, alt: '', loading: 'lazy', referrerpolicy: 'no-referrer' });
+    // Instagram's picture addresses run out after a while; the next hourly reading brings a fresh one.
+    img.addEventListener('error', () => img.replaceWith(blank()));
+    return img;
+  }
+
+  function igGroups(box, title, groups, empty) {
+    box.replaceChildren(
+      h('p', { class: 'small ig-sub', text: title }),
+      groups.length ? table(IG.GROUP_HEAD.map((t, i) => (i === 0 ? '' : t)), groups.map(IG.groupRow), [1, 2, 3, 4]) : h('p', { class: 'muted small', text: empty }),
+    );
+  }
+
+  function drawInstagram() {
+    const board = instagram && instagram.board;
+    const st = IG.standing(instagram);
+    $('ig-standing').textContent = st.words;
+    $('ig-readonly').textContent = IG.READ_ONLY;
+    $('ig-connect').hidden = !(st.state === 'not-connected' || st.state === 'needs-reconnect');
+    $('ig-sync').hidden = !(st.state === 'reading' || st.state === 'waiting');
+    $('ig-disconnect').hidden = !(st.state === 'reading' || st.state === 'waiting' || st.state === 'needs-reconnect');
+    $('ig-setup').hidden = st.state !== 'not-set-up';
+    $('ig-setup').replaceChildren(...IG.SETUP.map((t) => h('li', { text: t })));
+    $('ig-spans').replaceChildren(
+      ...IG.SPANS.map(([d, words]) =>
+        h('button', {
+          type: 'button',
+          class: 'ghost small',
+          'aria-pressed': d === igDays ? 'true' : 'false',
+          text: words,
+          onclick: () => {
+            igDays = d;
+            igShown = 30;
+            void loadInstagram();
+          },
+        }),
+      ),
+    );
+
+    // The parts below show once there is an account on record, connected or not: what was collected is kept.
+    const any = !!(board && board.account && (board.account.status !== 'disconnected' || (board.daysRead || []).length || (board.media || []).length));
+    for (const el of document.querySelectorAll('.ig-part, .ig-tiles')) el.classList.toggle('ig-off', !any);
+    if (!any) return;
+
+    const tiles = IG.overview(board) || [];
+    $('ig-tiles').replaceChildren(
+      ...tiles.map((t) =>
+        h(
+          'div',
+          { class: `mk-panel${t.measured ? '' : ' is-waiting'}` },
+          h('span', { class: 'kpi-label', text: t.label }),
+          h('span', { class: 'mk-headline', text: t.value }),
+          h('span', { class: 'mk-line', text: t.note }),
+          t.change ? h('span', { class: 'mk-trend', text: t.change }) : null,
+        ),
+      ),
+    );
+
+    const metric = $('ig-metric');
+    if (!metric.options.length) metric.replaceChildren(...IG.CHARTS.map(([k, words]) => h('option', { value: k, text: words })));
+    const ser = IG.series(board, metric.value || 'reach');
+    igChart($('ig-chart'), ser);
+    $('ig-chart-note').textContent = [ser.unit === 'week' ? 'Each bar is a week.' : '', ser.note].filter(Boolean).join(' ');
+
+    const sort = $('ig-sort');
+    const kind = $('ig-kind');
+    if (!sort.options.length) sort.replaceChildren(...IG.SORTS.map(([k, words]) => h('option', { value: k, text: words })));
+    if (!kind.options.length) kind.replaceChildren(...IG.KIND_FILTERS.map(([k, words]) => h('option', { value: k, text: words })));
+    const ranked = IG.ranking(board, sort.value || 'posted', kind.value || '');
+    $('ig-posts-note').textContent = ranked.note;
+    const shown = ranked.rows.slice(0, igShown);
+    $('ig-posts').replaceChildren(
+      ...(shown.length
+        ? shown.map((p, i) =>
+            h(
+              'div',
+              { class: 'ig-post' },
+              igThumb(p),
+              h(
+                'div',
+                { class: 'ig-post-body' },
+                h('p', { class: 'small muted' }, h('strong', { text: `${i + 1}. ${p.kindWords}` }), ` · ${p.posted}`, p.settling ? ' · still filling in' : '', p.readings ? ` · ${plural(p.readings, 'reading')} kept` : ''),
+                h('p', { class: 'ig-caption', text: p.caption }),
+                h(
+                  'p',
+                  { class: 'ig-figures' },
+                  ...p.figures.map((f) => h('span', { class: f.measured ? null : 'muted' }, h('span', { class: 'ig-figure-name', text: f.name }), ' ', h('strong', { text: f.value }))),
+                  h('span', { class: p.engagement === null ? 'muted' : null }, h('span', { class: 'ig-figure-name', text: 'Engagement rate' }), ' ', h('strong', { text: p.engagementWords })),
+                  p.bioLink ? h('span', {}, h('span', { class: 'ig-figure-name', text: 'Bio link taps' }), ' ', h('strong', { text: p.bioLink })) : null,
+                ),
+                p.unavailable ? h('p', { class: 'muted small', text: p.unavailable }) : null,
+                /^https:\/\/www\.instagram\.com\//.test(p.permalink) ? h('p', { class: 'small' }, h('a', { href: p.permalink, target: '_blank', rel: 'noopener noreferrer', text: 'Open on Instagram' })) : null,
+              ),
+            ),
+          )
+        : [h('p', { class: 'muted', text: 'Nothing published in this span.' })]),
+      ...(ranked.rows.length > shown.length
+        ? [h('p', {}, h('button', { type: 'button', class: 'ghost small', text: `Show ${Math.min(30, ranked.rows.length - shown.length)} more`, onclick: () => ((igShown += 30), drawInstagram()) }))]
+        : []),
+    );
+
+    igGroups($('ig-formats'), 'By format', IG.formats(board), 'Nothing published in this span.');
+    const times = IG.times(board);
+    igGroups($('ig-days'), 'By the day it was published', times.days, 'No post in this span.');
+    igGroups($('ig-parts'), 'By the time of day (Massachusetts time)', times.parts, 'No post in this span.');
+    $('ig-few').textContent = IG.FEW_WORDS;
+    igGroups($('ig-topics'), 'By hashtag, each used on two posts or more', IG.topics(board), 'No hashtag has been used on two posts in this span, so there is nothing to compare yet.');
+
+    const audience = IG.audience(board);
+    $('ig-audience').replaceChildren(
+      ...(audience.length
+        ? audience.map((a) => h('div', { class: 'ig-audience' }, h('p', { class: 'small ig-sub', text: a.title }), table(['', 'Accounts', 'Share'], a.pairs.map(([k, v, share]) => [k, n(v), `${Math.round(share * 100)}%`]), [1, 2])))
+        : [h('p', { class: 'muted', text: 'Instagram has not reported the audience.' })]),
+    );
+    $('ig-audience-limits').textContent = IG.AUDIENCE_LIMITS;
+
+    const attr = IG.attribution(board);
+    $('ig-attr').replaceChildren(attr.rows.length ? table(IG.ATTR_HEAD, attr.rows, [1, 2, 3, 4]) : h('p', { class: 'muted', text: attr.empty }));
+    $('ig-attr-limits').replaceChildren(...attr.limits.map((t) => h('li', { text: t })));
+
+    const health = IG.health(board);
+    $('ig-health').replaceChildren(...health.lines.map((t) => h('p', { class: 'small', text: t })));
+    $('ig-runs').replaceChildren(table(health.head, health.runs, [2]));
+    $('ig-limits').textContent = IG.LIMITS;
+
+    const made = IG.analysis((board.analyses || [])[0]);
+    $('ig-analyst-help').textContent = IG.ANALYST_HELP;
+    $('ig-analyse').hidden = !(instagram && instagram.analyst);
+    $('ig-analysis').replaceChildren(
+      ...(made
+        ? [
+            h('p', { class: 'muted small', text: made.when }),
+            ...(made.headline ? [h('p', { class: 'ig-headline', text: made.headline })] : []),
+            ...made.sections.flatMap(([title, items]) => [h('p', { class: 'small ig-sub', text: title }), h('ul', { class: 'ig-list' }, ...items.map((t) => h('li', { text: t })))]),
+            ...(made.recommendations.length ? [h('p', { class: 'small ig-sub', text: 'Proposed, for your decision' })] : []),
+            ...made.recommendations.map((r) =>
+              h(
+                'div',
+                { class: 'suggestion' },
+                h('p', { class: 'suggestion-body', text: r.action }),
+                h('dl', { class: 'mk-rec' }, h('dt', { text: 'Why' }), h('dd', { text: r.why }), h('dt', { text: 'How to tell' }), h('dd', { text: r.measure }), h('dt', { text: 'Confidence' }), h('dd', { text: r.confidence })),
+              ),
+            ),
+          ]
+        : [h('p', { class: 'muted', text: 'No analysis has been written yet.' })]),
+    );
+  }
+
+  async function loadInstagram() {
+    try {
+      instagram = await ask({ action: 'instagram', days: igDays });
+    } catch (e) {
+      instagram = null;
+      $('ig-note').textContent = e.message;
+    }
+    drawInstagram();
+  }
+
+  /** Back from Instagram's own sign-in page: hand the one-time code to the server, once. */
+  async function finishInstagram() {
+    let got = null;
+    try {
+      got = JSON.parse(sessionStorage.getItem(IG_RETURN) || 'null');
+      sessionStorage.removeItem(IG_RETURN);
+    } catch {
+      got = null;
+    }
+    if (!got || typeof got !== 'object') return;
+    showTab('marketing');
+    if (got.error || !got.code) {
+      $('ig-note').textContent = got.error === 'access_denied' ? 'Instagram was not connected: the request was declined on Instagram’s page.' : `Instagram was not connected${got.why ? `: ${String(got.why).slice(0, 200)}` : '.'}`;
+      return;
+    }
+    $('ig-note').textContent = 'Finishing the connection…';
+    try {
+      const out = await ask({ action: 'instagram-connect-finish', code: got.code, state: got.state });
+      instagram = out.board;
+      $('ig-note').textContent = `Connected @${out.username}. The first reading is under way.`;
+      drawInstagram();
+      setTimeout(loadInstagram, 30000);
+      setTimeout(loadInstagram, 90000);
+    } catch (e) {
+      $('ig-note').textContent = e.message;
+    }
+  }
+
+  $('ig-connect').addEventListener('click', async () => {
+    $('ig-note').textContent = 'Opening Instagram’s sign-in page…';
+    try {
+      const out = await ask({ action: 'instagram-connect-start' });
+      // Only ever to Instagram's own page, whatever came back.
+      if (typeof out.url !== 'string' || !out.url.startsWith('https://www.instagram.com/oauth/authorize?')) throw new Error('That could not be started. Try again.');
+      location.assign(out.url);
+    } catch (e) {
+      $('ig-note').textContent = e.message;
+    }
+  });
+  $('ig-sync').addEventListener('click', async () => {
+    try {
+      await ask({ action: 'instagram-sync' });
+      $('ig-note').textContent = 'Reading Instagram now. The figures here bring themselves up to date in about a minute.';
+      setTimeout(loadInstagram, 25000);
+      setTimeout(loadInstagram, 70000);
+    } catch (e) {
+      $('ig-note').textContent = e.message;
+    }
+  });
+  $('ig-disconnect').addEventListener('click', async () => {
+    if (!confirm('Disconnect Instagram? The pass is destroyed and the hourly readings stop. Everything collected so far is kept. To remove Cigar Locker on Instagram’s side too, use Instagram’s Settings, Website permissions, Apps and websites.')) return;
+    try {
+      instagram = await ask({ action: 'instagram-disconnect' });
+      $('ig-note').textContent = 'Disconnected.';
+      drawInstagram();
+    } catch (e) {
+      $('ig-note').textContent = e.message;
+    }
+  });
+  $('ig-analyse').addEventListener('click', async () => {
+    $('ig-analyse').disabled = true;
+    $('ig-analyst-note').textContent = 'Reading the figures… about half a minute.';
+    try {
+      const out = await ask({ action: 'instagram-analyst', days: igDays });
+      instagram = out.board;
+      $('ig-analyst-note').textContent = '';
+      drawInstagram();
+    } catch (e) {
+      $('ig-analyst-note').textContent = e.message;
+    }
+    $('ig-analyse').disabled = false;
+  });
+  for (const id of ['ig-metric', 'ig-sort', 'ig-kind']) $(id).addEventListener('change', drawInstagram);
 
   function drawLaunch(launch) {
     const sections = L.funnel(launch);

@@ -94,6 +94,8 @@
   const JOB_WORDS = {
     'mktg-hourly': 'The marketing monitor: figures, the website check, findings and the brief',
     'mktg-prune': 'The marketing monitor’s nightly tidy',
+    'mktg-social-prune': 'Instagram’s readings thinned to one a day once three months old',
+    'humidor-catchup': 'Searching towns already listed for stores that keep a humidor (ends by itself)',
     'marketing-refresh': 'Members’ buying figures',
     'marketing-refresh-all': 'Buying figures, the nightly pass',
     'deals-watch': 'The run-out watch for deals',

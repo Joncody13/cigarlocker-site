@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
   <!-- Nothing but this page's own files, and only the app's server to talk to. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://nypahhdmoxrfvwnfufdf.supabase.co wss://nypahhdmoxrfvwnfufdf.supabase.co; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: https://*.cdninstagram.com https://*.fbcdn.net; connect-src https://nypahhdmoxrfvwnfufdf.supabase.co wss://nypahhdmoxrfvwnfufdf.supabase.co; base-uri 'none'; form-action 'none'">
   <title>Cigar Locker Mission Control</title>
   <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="console.css">
@@ -516,6 +516,92 @@
       </div>
     </section>
 
+    <!-- Instagram (142, 2026-11-16), inside Marketing: the official account's own figures, read hourly by the
+         monitor with a read-only pass and kept as history. Every word and figure is instagram.js's, from what
+         the server sent; a figure Instagram did not report is a dash with why, never a zero. Nothing here can
+         post, delete or spend. Facebook's page, when added, takes the same tables and the same place. -->
+    <section class="card wide" aria-labelledby="h-ig" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-ig">Instagram</h3>
+        <span class="muted small" id="ig-note" role="status"></span>
+        <span class="seg" id="ig-spans" role="group" aria-label="How far back"></span>
+      </div>
+      <p id="ig-standing"></p>
+      <p class="ig-actions">
+        <button type="button" class="primary small" id="ig-connect" hidden>Connect Instagram</button>
+        <button type="button" class="ghost small" id="ig-sync" hidden>Read now</button>
+        <button type="button" class="ghost small" id="ig-disconnect" hidden>Disconnect</button>
+      </p>
+      <ol class="ig-setup small" id="ig-setup" hidden></ol>
+      <p class="muted small" id="ig-readonly"></p>
+    </section>
+
+    <section class="mk-panels ig-tiles ig-off" id="ig-tiles" aria-label="Instagram at a glance" data-tab="marketing"></section>
+
+    <section class="row two ig-part ig-off" data-tab="marketing">
+      <div class="card" aria-labelledby="h-ig-chart">
+        <div class="card-head">
+          <h3 id="h-ig-chart">Over time</h3>
+          <select id="ig-metric" aria-label="What to chart"></select>
+        </div>
+        <div id="ig-chart"></div>
+        <p class="muted small" id="ig-chart-note"></p>
+      </div>
+      <div class="card" aria-labelledby="h-ig-analyst">
+        <div class="card-head">
+          <h3 id="h-ig-analyst">The analyst’s reading</h3>
+          <span class="muted small" id="ig-analyst-note" role="status"></span>
+          <button type="button" class="ghost small" id="ig-analyse">Ask the analyst</button>
+        </div>
+        <div id="ig-analysis"></div>
+        <p class="muted small" id="ig-analyst-help"></p>
+      </div>
+    </section>
+
+    <section class="card wide ig-part ig-off" aria-labelledby="h-ig-posts" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-ig-posts">Posts, ranked</h3>
+        <select id="ig-kind" aria-label="Which kind"></select>
+        <select id="ig-sort" aria-label="Ranked by"></select>
+      </div>
+      <p class="muted small" id="ig-posts-note"></p>
+      <div id="ig-posts" class="ig-posts"></div>
+    </section>
+
+    <section class="row two ig-part ig-off" data-tab="marketing">
+      <div class="card" aria-labelledby="h-ig-formats">
+        <div class="card-head"><h3 id="h-ig-formats">What works: format and timing</h3></div>
+        <div id="ig-formats"></div>
+        <div id="ig-days"></div>
+        <div id="ig-parts"></div>
+        <p class="muted small" id="ig-few"></p>
+      </div>
+      <div class="card" aria-labelledby="h-ig-topics">
+        <div class="card-head"><h3 id="h-ig-topics">What works: topics</h3></div>
+        <div id="ig-topics"></div>
+      </div>
+    </section>
+
+    <section class="row two ig-part ig-off" data-tab="marketing">
+      <div class="card" aria-labelledby="h-ig-audience">
+        <div class="card-head"><h3 id="h-ig-audience">Audience</h3></div>
+        <div id="ig-audience"></div>
+        <p class="muted small" id="ig-audience-limits"></p>
+      </div>
+      <div class="card" aria-labelledby="h-ig-attr">
+        <div class="card-head"><h3 id="h-ig-attr">From Instagram to Cigar Locker</h3></div>
+        <div id="ig-attr"></div>
+        <ul class="muted small ig-limits" id="ig-attr-limits"></ul>
+      </div>
+    </section>
+
+    <section class="card wide ig-part ig-off" aria-labelledby="h-ig-health" data-tab="marketing">
+      <div class="card-head"><h3 id="h-ig-health">Instagram readings</h3></div>
+      <div id="ig-health"></div>
+      <div id="ig-runs"></div>
+      <p class="muted small" id="ig-limits"></p>
+    </section>
+
     <section class="card wide" aria-labelledby="h-mk-bypage" data-tab="marketing">
       <div class="card-head"><h3 id="h-mk-bypage">By page</h3><span class="muted small" id="mk-bypage-note"></span></div>
       <div id="mk-bypage" class="scroll-x"></div>
@@ -658,6 +744,7 @@
   <script src="suggestions.js"></script>
   <script src="shops.js"></script>
   <script src="marketing.js"></script>
+  <script src="instagram.js"></script>
   <script src="console.js"></script>
 </body>
 </html>
