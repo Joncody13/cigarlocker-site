@@ -32,6 +32,7 @@
     <span class="tab-group"><span class="tab-group-name">Command</span>
       <button type="button" role="tab" data-show="global">Mission Control</button>
       <button type="button" role="tab" data-show="marketing">Marketing</button>
+      <button type="button" role="tab" data-show="excellence">Excellence</button>
     </span>
     <span class="tab-group"><span class="tab-group-name">Audience</span>
       <button type="button" role="tab" data-show="growth">Growth</button>
@@ -129,6 +130,17 @@
         <button type="button" class="ghost small" id="mc-shops-more">By day or week, and what members looked at</button>
       </div>
       <div class="tiles" id="mc-shops"></div>
+    </section>
+
+    <!-- Product Excellence (143, 2026-11-16): where Cigar Locker stands against the other collection apps, by
+         what can be shown. The Excellence part has the scorecard, the evidence and the weekly report. -->
+    <section class="card wide" aria-labelledby="h-mc-px" data-tab="global">
+      <div class="card-head">
+        <h3 id="h-mc-px">Product Excellence</h3>
+        <span class="muted small" id="mc-px-note" role="status"></span>
+        <button type="button" class="ghost small" id="mc-px-more">The scorecard, the evidence and this week's report</button>
+      </div>
+      <div class="tiles" id="mc-px"></div>
     </section>
 
     <section class="card wide" aria-labelledby="h-today" data-tab="global">
@@ -653,6 +665,66 @@
       </form>
     </section>
 
+    <!-- Product Excellence (143, 2026-11-16; his directive: "Separate advertised features from independently
+         tested features. Never invent competitive results."). Every word and figure is excellence.js's, from
+         what the server sent: the scorecard as loaded (docs/excellence/scorecard.json), each rival's store
+         record as read daily, Cigar Locker's own measures, and the weekly report as frozen. -->
+    <section class="mc-head" aria-labelledby="h-excellence" data-tab="excellence">
+      <p class="overline">Best in class, by evidence</p>
+      <h1 id="h-excellence">Product Excellence</h1>
+      <p class="mc-summary" id="px-standing"></p>
+      <p class="muted small" id="px-limits"></p>
+    </section>
+
+    <section class="card wide" aria-label="Where Cigar Locker stands, at a glance" data-tab="excellence">
+      <div class="tiles" id="px-tiles"></div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-px-report" data-tab="excellence">
+      <div class="card-head">
+        <h3 id="h-px-report">The weekly report</h3>
+        <span class="muted small" id="px-report-note" role="status"></span>
+        <select id="px-week" aria-label="Which week"></select>
+      </div>
+      <div id="px-report" class="px-report"></div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-px-opps" data-tab="excellence">
+      <div class="card-head"><h3 id="h-px-opps">The ten improvements most likely to win a collector</h3><span class="muted small" id="px-opps-note"></span></div>
+      <ol id="px-opps" class="px-opps"></ol>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-px-stand" data-tab="excellence">
+      <div class="card-head"><h3 id="h-px-stand">Where Cigar Locker stands, measure by measure</h3></div>
+      <div id="px-stand"></div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-px-grid" data-tab="excellence">
+      <div class="card-head"><h3 id="h-px-grid">The scorecard</h3><span class="muted small" id="px-grid-note"></span></div>
+      <div id="px-grid"></div>
+    </section>
+
+    <section class="row two" data-tab="excellence">
+      <div class="card" aria-labelledby="h-px-measures">
+        <div class="card-head"><h3 id="h-px-measures">Cigar Locker's own measures, last 30 days</h3></div>
+        <div id="px-measures"></div>
+        <p class="muted small" id="px-measures-note"></p>
+        <p class="small"><button type="button" class="notice-go" id="px-to-health">Suggestions from members and error reports are in Health</button></p>
+      </div>
+      <div class="card" aria-labelledby="h-px-rivals">
+        <div class="card-head"><h3 id="h-px-rivals">The other products, as their store records read</h3></div>
+        <div id="px-rivals"></div>
+        <h4 class="px-sub">What changed</h4>
+        <div id="px-changes"></div>
+      </div>
+    </section>
+
+    <section class="card wide" aria-labelledby="h-px-tests" data-tab="excellence">
+      <div class="card-head"><h3 id="h-px-tests">Hands-on tests on record</h3></div>
+      <div id="px-tests"></div>
+      <p class="muted small" id="px-tests-note"></p>
+    </section>
+
     <section class="card wide" aria-labelledby="h-suggestions" data-tab="health">
       <div class="card-head">
         <h3 id="h-suggestions">Suggestions from members</h3>
@@ -744,6 +816,7 @@
   <script src="suggestions.js"></script>
   <script src="shops.js"></script>
   <script src="marketing.js"></script>
+  <script src="excellence.js"></script>
   <script src="instagram.js"></script>
   <script src="console.js"></script>
 </body>

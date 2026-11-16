@@ -59,8 +59,8 @@
   // The buttons along the top (his words: "buttons at the top that'll say
   // global"): one part of the console at a time, remembered.
   const TAB = 'console.tab';
-  const TABS = ['global', 'marketing', 'growth', 'people', 'market', 'knowledge', 'emails', 'deals', 'featured', 'money', 'health'];
-  const TAB_NAMES = { global: 'Mission Control', marketing: 'Marketing', growth: 'Growth', people: 'People', market: 'Market', knowledge: 'Knowledge', emails: 'Emails', deals: 'Deals', featured: 'Featured', money: 'Revenue and costs', health: 'Health' };
+  const TABS = ['global', 'marketing', 'excellence', 'growth', 'people', 'market', 'knowledge', 'emails', 'deals', 'featured', 'money', 'health'];
+  const TAB_NAMES = { global: 'Mission Control', marketing: 'Marketing', excellence: 'Excellence', growth: 'Growth', people: 'People', market: 'Market', knowledge: 'Knowledge', emails: 'Emails', deals: 'Deals', featured: 'Featured', money: 'Revenue and costs', health: 'Health' };
   function showTab(name) {
     const tab = TABS.includes(name) ? name : 'global';
     for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.dataset.tab !== tab;
@@ -69,6 +69,7 @@
     if (tab === 'featured' && !$('board').hidden) loadFeatured();
     if (tab === 'deals' && !$('board').hidden) loadDeals();
     if (tab === 'marketing' && !$('board').hidden) loadMarketing();
+    if (tab === 'excellence' && !$('board').hidden) void loadExcellence();
   }
   for (const b of document.querySelectorAll('#tabs [data-show]')) {
     b.addEventListener('click', () => {
@@ -357,6 +358,7 @@
     drawSwitches(d.flags);
     void loadSuggestions();
     void loadShops();
+    void loadExcellence();
   }
 
   /** What Cigar Locker knows of cigars: its libraries, look-ups and scans. */
@@ -2353,6 +2355,221 @@
   $('mc-shops-more').addEventListener('click', () => {
     go('market');
     $('h-shop-activity').scrollIntoView();
+  });
+
+  // ---- Product Excellence (143_product_excellence.sql) ----
+  // Every word and figure is excellence.js's, from what the server sent. Nothing here judges another product:
+  // an entry about one is what its own listing said, with a word saying so, or a hands-on test on record.
+  const PX = window.CigarExcellence || null;
+  let excellence = null;
+
+  function pxMark(state, mark) {
+    return h('span', { class: `px-mark px-${state}`, text: mark });
+  }
+
+  function pxList(box, lines) {
+    box.replaceChildren(...lines.map((t) => h('li', { text: t })));
+  }
+
+  function drawExcellenceReport(r) {
+    const box = $('px-report');
+    const doc = PX.report(r);
+    if (!doc) {
+      box.replaceChildren(h('p', { class: 'muted small', text: 'No weekly report has been made yet. The first is made on Monday morning, for the week just ended.' }));
+      return;
+    }
+    const section = (s) =>
+      h(
+        'div',
+        { class: 'px-section' },
+        h('h4', { text: s.head }),
+        s.items.length
+          ? h('ul', { class: 'px-points' }, s.items.map((it) => h('li', {}, h('strong', { text: `${it.head}. ` }), h('span', { text: it.text }), it.evidence ? h('div', { class: 'muted small', text: `Evidence: ${it.evidence}` }) : null)))
+          : h('p', { class: 'muted small', text: s.none }),
+      );
+    const lines = (head, items) => h('div', { class: 'px-section' }, h('h4', { text: head }), h('ul', { class: 'px-points' }, items.map((t) => h('li', { text: t }))));
+    box.replaceChildren(
+      h('p', { class: 'px-report-title', text: doc.title }),
+      section(doc.leads),
+      section(doc.trails),
+      section(doc.even),
+      section(doc.unknown),
+      lines('What the evidence is', doc.evidence),
+      lines('Cigar Locker’s own measures', doc.own),
+      lines('What changed at the others', doc.moved),
+      lines('What is being improved next', doc.next),
+    );
+  }
+
+  function drawExcellence() {
+    const x = excellence;
+    const t = PX.tiles(x);
+    $('mc-px-note').textContent = PX.summary(x);
+    $('mc-px').replaceChildren(...(t ? t.map((it) => tile(it.label, it.value, it.note)) : [h('p', { class: 'muted small', text: 'No scorecard is loaded yet.' })]));
+    $('px-standing').textContent = PX.summary(x);
+    $('px-limits').textContent = PX.LIMITS;
+    $('px-tiles').replaceChildren(...(t ? t.map((it) => tile(it.label, it.value, it.note)) : []));
+
+    // The weekly report: the newest, or the week chosen.
+    const weeks = PX.weeks(x);
+    $('px-week').hidden = weeks.length < 2;
+    $('px-week').replaceChildren(...weeks.map((w) => h('option', { value: w.week, text: w.label })));
+    drawExcellenceReport(x.report);
+
+    const opps = PX.opportunities(x);
+    $('px-opps-note').textContent = opps.length ? 'In order. Foundations come before new scope.' : '';
+    $('px-opps').replaceChildren(
+      ...opps.map((o) =>
+        h(
+          'li',
+          { class: 'px-opp' },
+          h('div', { class: 'px-opp-head' }, h('strong', { text: o.title }), h('span', { class: 'muted small', text: ` · ${[o.kind, o.status].filter(Boolean).join(' · ')}` })),
+          h('p', { class: 'small', text: o.why }),
+          o.evidence ? h('p', { class: 'muted small', text: `Evidence: ${o.evidence}` }) : null,
+          o.next ? h('p', { class: 'small', text: `Next: ${o.next}` }) : null,
+          o.needs ? h('p', { class: 'muted small', text: `Needs: ${o.needs}` }) : null,
+        ),
+      ),
+    );
+
+    const stand = PX.standings(x);
+    $('px-stand').replaceChildren(
+      stand.length
+        ? h(
+            'div',
+            { class: 'table-wrap' },
+            h(
+              'table',
+              { class: 'plain px-table' },
+              h('thead', {}, h('tr', {}, ['Measure', 'Standing', 'Why', 'What it rests on'].map((c) => h('th', { text: c })))),
+              h(
+                'tbody',
+                {},
+                stand.map((r) =>
+                  h(
+                    'tr',
+                    {},
+                    h('td', {}, h('strong', { text: r.name })),
+                    h('td', {}, pxMark(r.standing, r.word)),
+                    h('td', {}, h('div', { text: r.why }), r.words ? h('div', { class: 'muted small', text: r.words }) : null),
+                    h('td', { class: 'small' }, h('div', { text: r.rests }), r.evidence.length ? h('div', { class: 'muted', text: r.evidence.join(' · ') }) : null),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : h('p', { class: 'muted small', text: 'No scorecard is loaded yet.' }),
+    );
+
+    const g = PX.grid(x);
+    $('px-grid-note').textContent = g.columns.length ? 'A row a measure. Each entry says what it rests on.' : '';
+    $('px-grid').replaceChildren(
+      g.rows.length
+        ? h(
+            'div',
+            { class: 'table-wrap' },
+            h(
+              'table',
+              { class: 'plain px-table px-grid' },
+              h(
+                'thead',
+                {},
+                h('tr', {}, h('th', { text: 'Measure' }), h('th', { text: 'Cigar Locker' }), g.columns.map((c) => h('th', {}, h('div', { text: c.name }), h('div', { class: 'muted small px-kind', text: c.kind })))),
+              ),
+              h(
+                'tbody',
+                {},
+                g.rows.map((r) =>
+                  h(
+                    'tr',
+                    {},
+                    h('td', {}, h('strong', { text: r.name }), h('div', { class: 'muted small', text: r.what })),
+                    h('td', {}, pxMark('ours', r.ours.mark), h('div', { class: 'small', text: r.ours.words })),
+                    r.cells.map((c) => h('td', {}, pxMark(c.state, c.mark), c.words ? h('div', { class: 'small', text: c.words }) : null)),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : h('p', { class: 'muted small', text: 'No scorecard is loaded yet.' }),
+    );
+
+    $('px-measures').replaceChildren(
+      h(
+        'table',
+        { class: 'plain px-table' },
+        h('tbody', {}, PX.measures(x).map((m) => h('tr', {}, h('td', {}, h('div', { text: m.label }), h('div', { class: 'muted small', text: m.note })), h('td', { class: 'num', text: m.value })))),
+      ),
+    );
+    $('px-measures-note').textContent = PX.measureNotes(x);
+
+    $('px-rivals').replaceChildren(
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'plain px-table' },
+          h('thead', {}, h('tr', {}, ['Product', 'Version', 'Rating', 'Read'].map((c) => h('th', { text: c })))),
+          h(
+            'tbody',
+            {},
+            PX.rivals(x).map((r) =>
+              h(
+                'tr',
+                {},
+                h('td', {}, h('strong', { text: r.name }), h('div', { class: 'muted small', text: r.status })),
+                h('td', { text: r.version }),
+                h('td', {}, h('div', { text: r.rating }), r.moved ? h('div', { class: 'muted small', text: r.moved }) : null),
+                h('td', { class: 'small', text: r.read || PX.DASH }),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    const ch = PX.changes(x);
+    $('px-changes').replaceChildren(
+      ch.length
+        ? h('ul', { class: 'px-points' }, ch.map((c) => h('li', {}, h('strong', { text: `${c.when} · ${c.name}. ` }), h('span', { text: c.what }), c.now ? h('div', { class: 'muted small', text: c.now }) : null)))
+        : h('p', { class: 'muted small', text: 'Nothing has changed in their store records since they were first read.' }),
+    );
+
+    const tests = PX.tests(x);
+    $('px-tests').replaceChildren(
+      tests.length
+        ? table(
+            ['When', 'Product', 'Measure', 'How', 'On', 'Result'],
+            tests.map((r) => [r.on, r.product, r.measure, r.protocol, r.device, r.words]),
+            [],
+          )
+        : h('p', { class: 'muted small', text: 'None yet.' }),
+    );
+    $('px-tests-note').textContent = 'A result is recorded here only after someone has run the test by the written method (docs/product-excellence.md). Until a rival has one, nothing about it is called tested.';
+  }
+
+  async function loadExcellence() {
+    if (!PX) {
+      $('mc-px-note').textContent = 'Reload this page to see the scorecard.';
+      return;
+    }
+    try {
+      excellence = await ask({ action: 'excellence' });
+      drawExcellence();
+    } catch (e) {
+      $('mc-px-note').textContent = e.message;
+      $('px-standing').textContent = e.message;
+    }
+  }
+  $('mc-px-more').addEventListener('click', () => go('excellence'));
+  $('px-to-health').addEventListener('click', () => go('health'));
+  $('px-week').addEventListener('change', async () => {
+    try {
+      $('px-report-note').textContent = '';
+      drawExcellenceReport((await ask({ action: 'excellence-report', week: $('px-week').value })).report);
+    } catch (e) {
+      $('px-report-note').textContent = e.message;
+    }
   });
 
   // ---- what members sent through Settings > Suggest an app fix (131_suggestions.sql) ----

@@ -724,3 +724,23 @@ ul.notices li.part { padding: 0; }
 .bars .dot { fill: var(--series); }
 .bars .gap { stroke: var(--faint); stroke-width: 1.5; stroke-linecap: round; }
 .ig-post a, .ig-return a { color: inherit; }
+
+/* Product Excellence (143). A mark says what an entry rests on, in a word and a shape, never by colour alone. */
+.px-mark { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; margin-bottom: 4px; }
+.px-mark.px-leads, .px-mark.px-tested, .px-mark.px-ours { border-color: var(--teal); color: var(--text); background: var(--tint-strong); }
+.px-mark.px-trails { border-style: dashed; color: var(--text); }
+.px-mark.px-listed, .px-mark.px-part, .px-mark.px-even { color: var(--text); }
+.px-mark.px-unread, .px-mark.px-untested, .px-mark.px-not, .px-mark.px-unknown { border-style: dotted; }
+.px-table td { vertical-align: top; }
+.px-grid th, .px-grid td { min-width: 190px; }
+.px-grid th:first-child, .px-grid td:first-child { min-width: 170px; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+.px-kind { font-weight: 400; }
+.px-opps { margin: 0; padding-left: 22px; }
+.px-opp { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.px-opp:last-child { border-bottom: 0; }
+.px-opp p { margin: 4px 0 0; }
+.px-points { margin: 0; padding-left: 18px; }
+.px-points li { margin: 6px 0; }
+.px-section { margin-top: 6px; }
+.px-report-title { font-family: var(--serif); font-size: 24px; margin: 4px 0 0; }
+.px-report { max-width: 980px; }
