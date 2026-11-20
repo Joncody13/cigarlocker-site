@@ -357,6 +357,7 @@
     else loadErrors();
     drawSwitches(d.flags);
     void loadSuggestions();
+    void loadOwnerAlerts();
     void loadShops();
     void loadExcellence();
   }
@@ -2569,6 +2570,66 @@
       drawExcellenceReport((await ask({ action: 'excellence-report', week: $('px-week').value })).report);
     } catch (e) {
       $('px-report-note').textContent = e.message;
+    }
+  });
+
+  // ---- Alerts on his own phone (155_owner_alerts.sql): the switches, a test, the last alerts ----
+  const OA_KIND = { install: 'New install', plus: 'New Plus member', test: 'Test alert' };
+  const OA_STATE = { queued: 'Waiting', sending: 'Sending', sent: 'Sent', skipped: 'Not sent (switched off)', failed: 'Could not be sent' };
+
+  function drawOwnerAlerts(x, said) {
+    $('owner-alerts-on').value = x.on ? 'on' : 'off';
+    $('owner-alerts-installs').value = x.installs;
+    $('owner-alerts-plus').value = x.plus ? 'on' : 'off';
+    $('owner-alerts-note').textContent =
+      said || (!x.ready ? 'Pushover is not set up yet: its two keys are not in Supabase.' : x.on ? 'On' : 'Off: nothing is sent');
+    const rows = x.recent || [];
+    $('owner-alerts-recent').replaceChildren(
+      ...(rows.length
+        ? [
+            h('thead', {}, h('tr', {}, ['When', 'What', 'How it went'].map((t) => h('th', { text: t })))),
+            h(
+              'tbody',
+              {},
+              rows.map((r) =>
+                h(
+                  'tr',
+                  {},
+                  h('td', { text: new Date(r.at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }),
+                  h('td', { text: `${OA_KIND[r.kind] || r.kind}${r.kind === 'plus' && r.detail && r.detail.test ? ' (a test purchase)' : ''}` }),
+                  h('td', { text: `${OA_STATE[r.state] || r.state}${r.error ? `: ${r.error}` : ''}` }),
+                ),
+              ),
+            ),
+          ]
+        : [h('tbody', {}, h('tr', {}, h('td', { class: 'muted', text: 'No alerts yet.' })))]),
+    );
+  }
+
+  async function loadOwnerAlerts() {
+    try {
+      drawOwnerAlerts(await ask({ action: 'owner-alerts' }));
+    } catch (e) {
+      $('owner-alerts-note').textContent = e.message;
+    }
+  }
+
+  $('owner-alerts-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    try {
+      drawOwnerAlerts(
+        await ask({ action: 'owner-alerts-set', on: $('owner-alerts-on').value === 'on', installs: $('owner-alerts-installs').value, plus: $('owner-alerts-plus').value === 'on' }),
+        'Saved.',
+      );
+    } catch (e) {
+      $('owner-alerts-note').textContent = e.message;
+    }
+  });
+  $('owner-alerts-test').addEventListener('click', async () => {
+    try {
+      drawOwnerAlerts(await ask({ action: 'owner-alerts-test' }), 'A test alert is on its way. It should reach your phone within a minute.');
+    } catch (e) {
+      $('owner-alerts-note').textContent = e.message;
     }
   });
 
