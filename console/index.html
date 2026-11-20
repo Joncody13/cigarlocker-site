@@ -614,6 +614,24 @@
       <p class="muted small" id="ig-limits"></p>
     </section>
 
+    <!-- The Facebook Page (156_facebook_page.sql): read with the Instagram sign-in, once an hour. Every word and
+         figure is facebook.js's; a figure Facebook did not report is a dash. Read only. -->
+    <section class="card wide" aria-labelledby="h-fb" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-fb">Facebook Page</h3>
+        <span class="muted small" id="fb-note" role="status"></span>
+        <button type="button" class="ghost small" id="fb-sync">Read now</button>
+      </div>
+      <p id="fb-standing"></p>
+      <p class="muted small" id="fb-readonly"></p>
+      <div id="fb-totals"></div>
+      <p class="small ig-sub">Day by day</p>
+      <div id="fb-days"></div>
+      <p class="small ig-sub">Posts</p>
+      <div id="fb-posts"></div>
+      <ul class="muted small" id="fb-limits"></ul>
+    </section>
+
     <section class="card wide" aria-labelledby="h-wt" data-tab="marketing">
       <div class="card-head">
         <h3 id="h-wt">Other accounts</h3>
@@ -864,6 +882,7 @@
   <script src="excellence.js"></script>
   <script src="watch.js"></script>
   <script src="instagram.js"></script>
+  <script src="facebook.js"></script>
   <script src="console.js"></script>
 </body>
 </html>

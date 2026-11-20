@@ -3086,6 +3086,80 @@
     );
   }
 
+  // ---- The Facebook Page (156; the words are facebook.js's). Read only: nothing here posts, comments or spends.
+  const FB = window.CigarFacebook;
+  let facebook = null;
+
+  function fbTable(head, rows, numFrom) {
+    return h(
+      'div',
+      { class: 'table-wrap' },
+      h('table', { class: 'plain' }, h('thead', {}, h('tr', {}, head.map((t, i) => h('th', { class: i >= numFrom ? 'num' : null, text: t })))), h('tbody', {}, rows)),
+    );
+  }
+
+  function drawFacebook() {
+    const board = facebook && facebook.board;
+    const igOn = !!(instagram && instagram.board && instagram.board.account && instagram.board.account.status === 'connected');
+    const st = FB.standing(board, igOn);
+    $('fb-standing').textContent = st.words;
+    $('fb-readonly').textContent = FB.READ_ONLY;
+    $('fb-sync').hidden = !igOn;
+    $('fb-limits').replaceChildren(...FB.LIMITS.map((t) => h('li', { text: t })));
+    const days = board ? FB.dayRows(board, 14) : [];
+    const posts = board ? FB.postRows(board) : [];
+    $('fb-totals').replaceChildren(
+      ...(days.length ? [h('p', { class: 'small', text: FB.totals(board).map((t) => `${t.label}: ${t.value}${t.days ? ` over ${t.days} ${t.days === 1 ? 'day' : 'days'}` : ''}`).join(' · ') })] : []),
+    );
+    $('fb-days').replaceChildren(
+      days.length
+        ? fbTable(FB.DAY_HEAD, days.map((d) => h('tr', {}, h('td', {}, d.day, d.note ? h('div', { class: 'muted small', text: d.note }) : null), ...d.cells.map((c) => h('td', { class: 'num', text: c })))), 1)
+        : h('p', { class: 'muted', text: FB.NOT_READ }),
+    );
+    $('fb-posts').replaceChildren(
+      posts.length
+        ? fbTable(
+            FB.POST_HEAD,
+            posts.map((p) =>
+              h(
+                'tr',
+                {},
+                h('td', { text: p.when }),
+                h('td', {}, p.text, h('div', { class: 'muted small' }, p.read, p.permalink ? ' · ' : null, p.permalink ? h('a', { href: p.permalink, target: '_blank', rel: 'noopener noreferrer', text: 'Open on Facebook' }) : null)),
+                ...p.cells.map((c) => h('td', { class: 'num', text: c })),
+              ),
+            ),
+            2,
+          )
+        : h('p', { class: 'muted', text: 'No posts on the Page have been read yet.' }),
+    );
+  }
+
+  async function loadFacebook() {
+    try {
+      facebook = await ask({ action: 'facebook', days: igDays });
+      $('fb-note').textContent = '';
+    } catch (e) {
+      facebook = null;
+      $('fb-note').textContent = e.message;
+    }
+    drawFacebook();
+  }
+
+  $('fb-sync').addEventListener('click', async () => {
+    $('fb-note').textContent = 'Reading the Page…';
+    $('fb-sync').disabled = true;
+    try {
+      const out = await ask({ action: 'facebook-sync' });
+      facebook = { board: out.board };
+      $('fb-note').textContent = out.ran && out.ran.why ? String(out.ran.why).slice(0, 200) : 'Read.';
+    } catch (e) {
+      $('fb-note').textContent = e.message;
+    }
+    $('fb-sync').disabled = false;
+    drawFacebook();
+  });
+
   // ---- Other accounts, watched (154; the words are watch.js's). Read only: nothing here follows, likes or posts.
   const WT = window.CigarWatch;
   let watch = null;
@@ -3191,6 +3265,7 @@
     }
     drawInstagram();
     void loadWatch();
+    void loadFacebook();
   }
 
   /** Back from Instagram's own sign-in page: hand the one-time code to the server, once. */
