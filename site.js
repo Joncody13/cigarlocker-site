@@ -9,7 +9,7 @@
 //
 //   ios:      'https://apps.apple.com/app/id6827316453'
 //   android:  'https://play.google.com/store/apps/details?id=com.cigarlocker.app'
-const STORES = { ios: '', android: '' };
+const STORES = { ios: 'https://apps.apple.com/us/app/cigar-locker/id6827316453', android: '' };
 
 // What moves (2026-10-29, quieter since 2026-11-13): what comes into view rises
 // once and draws itself, figures count up, the stars light one by one, two rows

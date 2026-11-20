@@ -3,7 +3,7 @@
 > Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.
 
 - Publisher: Atlantis Dev, LLC.
-- Where it runs: the iPhone app is coming soon to the App Store; the web app is at https://cigarlocker.app/app/. An Android app is coming soon.
+- Where it runs: iPhone (App Store: https://apps.apple.com/us/app/cigar-locker/id6827316453) and the web app is at https://cigarlocker.app/app/. An Android app is coming soon.
 - Price: free. Cigar Locker Plus is an optional subscription at $7.99 a month, bought in the iPhone app.
 - For adults 21 and over. Cigar Locker does not sell cigars or tobacco, shows no shop prices and links to no store.
 - Humidity sensors are coming soon. Today the app shows a sensor demo whose readings are simulated and labeled as a sample.

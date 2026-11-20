@@ -1,6 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
+<!DOCTYPE html><html lang="en" class="live"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Humidor management app: track every humidor · Cigar Locker</title>
@@ -10,11 +8,11 @@
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon.png" type="image/png" sizes="48x48">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
-  <link rel="preload" href="assets/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/fonts/limelight.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin="">
+  <link rel="preload" href="assets/fonts/instrument-serif-italic.woff2" as="font" type="font/woff2" crossorigin="">
+  <link rel="preload" href="assets/fonts/limelight.woff2" as="font" type="font/woff2" crossorigin="">
   <link rel="stylesheet" href="styles.css">
-  <script src="site.js" defer></script>
+  <script src="site.js" defer=""></script>
   <meta property="og:site_name" content="Cigar Locker">
   <meta property="og:title" content="Humidor management app: track every humidor · Cigar Locker">
   <meta property="og:description" content="Keep every humidor in one app: what is in each, how long it has rested, and cigars moved between them without losing a date or price. Humidity sensors are coming soon.">
@@ -61,7 +59,7 @@
       "alternateName": "Cigar Locker app",
       "url": "https://cigarlocker.app/",
       "applicationCategory": "LifestyleApplication",
-      "operatingSystem": "Web (the iPhone app is coming soon)",
+      "operatingSystem": "iOS, Web",
       "description": "Cigar Locker is a cigar collection, inventory and journal app for adults 21 and over. It identifies a cigar from a photo of its band or box, keeps every humidor and purchase in order, and gives each cigar you enjoy a page in a tasting journal. It does not sell tobacco.",
       "featureList": [
         "Identify a cigar from a photo of its band or box",
@@ -75,19 +73,32 @@
         "Cloud backup, and the same collection on the web at a desk",
         "Suggest One: three cigars from your own humidors, each with a reason"
       ],
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD",
-        "description": "Free to use."
-      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "Free to use."
+        },
+        {
+          "@type": "Offer",
+          "name": "Cigar Locker Plus",
+          "price": "7.99",
+          "priceCurrency": "USD",
+          "description": "Optional monthly subscription, bought in the iPhone app. It lifts the monthly limit on scans, look-ups and suggestions; a daily limit applies."
+        }
+      ],
       "audience": {
         "@type": "PeopleAudience",
         "suggestedMinAge": 21
       },
       "publisher": {
         "@id": "https://cigarlocker.app/#publisher"
-      }
+      },
+      "installUrl": "https://apps.apple.com/us/app/cigar-locker/id6827316453",
+      "sameAs": [
+        "https://apps.apple.com/us/app/cigar-locker/id6827316453"
+      ]
     },
     {
       "@type": "WebPage",
@@ -185,16 +196,16 @@
     <div class="page-head">
       <p class="overline">Humidors</p>
       <h1>Every humidor, <em>in order.</em></h1>
-      <p class="lead">Keep as many humidors as you own in Cigar Locker. See what is in each one and how long it has rested, and move cigars between them without losing a purchase&rsquo;s date or price.</p>
+      <p class="lead">Keep as many humidors as you own in Cigar Locker. See what is in each one and how long it has rested, and move cigars between them without losing a purchase’s date or price.</p>
       <div class="try-it">
         <div class="cta">
-          <a class="store-badge" data-store="ios" data-live hidden role="link" aria-disabled="true">
-            <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+          <a class="store-badge is-live" data-store="ios" data-live="" href="https://apps.apple.com/us/app/cigar-locker/id6827316453">
+            <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50">
           </a>
-          <a class="button" href="/app/" data-soon>Try Cigar Locker on the web</a>
-          <a class="text-link" href="/app/" data-live hidden>Try Cigar Locker on the web</a>
+          <a class="button" href="/app/" data-soon="" hidden="">Try Cigar Locker on the web</a>
+          <a class="text-link" href="/app/" data-live="">Try Cigar Locker on the web</a>
         </div>
-        <p class="fine">Free to try, with nothing to install: it runs in your browser and you sign in with Apple. It is laid out for a computer&rsquo;s screen first. For adults 21 and over.<span data-soon> The iPhone app is coming soon to the App Store.</span></p>
+        <p class="fine">Free to try, with nothing to install: it runs in your browser and you sign in with Apple. It is laid out for a computer’s screen first. For adults 21 and over.<span data-soon="" hidden=""> The iPhone app is coming soon to the App Store.</span></p>
       </div>
     </div>
 
@@ -217,11 +228,11 @@
 
     <h2>Humidity sensors: coming soon</h2>
 
-    <p>Cigar Locker&rsquo;s own humidity sensors are on the way. They are not available yet, and the app does not read any other maker&rsquo;s sensors today. Until ours arrive, the app has a sensor demo, labeled as a demo, with simulated readings, so you can see how a humidor&rsquo;s humidity will be shown.</p>
+    <p>Cigar Locker’s own humidity sensors are on the way. They are not available yet, and the app does not read any other maker’s sensors today. Until ours arrive, the app has a sensor demo, labeled as a demo, with simulated readings, so you can see how a humidor’s humidity will be shown.</p>
 
     <figure class="shot shot-phone">
       <div class="phone"><img src="assets/screens/humidor.webp" alt="A humidor in the app, with the sensor demo: its simulated readings are labeled as a sample" width="660" height="1431" loading="lazy"></div>
-      <figcaption class="fine">Shown: the app&rsquo;s sensor demo. Its readings are simulated.</figcaption>
+      <figcaption class="fine">Shown: the app’s sensor demo. Its readings are simulated.</figcaption>
     </figure>
 
     <p>When the sensors are released this page will say so, with what they measure and what they cost. We will not describe them as available before they are.</p>
@@ -237,8 +248,8 @@
 
     <section class="contact-card">
       <h2>Available today, and still to come</h2>
-      <p><strong>Today:</strong> <span data-soon>Cigar Locker on the web, at <a href="/app/">cigarlocker.app/app</a>. The iPhone app is coming soon to the App Store.</span><span data-live hidden>Cigar Locker for iPhone, on the App Store, and on the web at <a href="/app/">cigarlocker.app/app</a>.</span></p>
-      <p><strong>Still to come:</strong> Cigar Locker&rsquo;s own humidity sensors, and an Android app. Until the sensors arrive, the app has a sensor demo whose readings are simulated and labeled as a sample.</p>
+      <p><strong>Today:</strong> <span data-soon="" hidden="">Cigar Locker on the web, at <a href="/app/">cigarlocker.app/app</a>. The iPhone app is coming soon to the App Store.</span><span data-live="">Cigar Locker for iPhone, on the App Store, and on the web at <a href="/app/">cigarlocker.app/app</a>.</span></p>
+      <p><strong>Still to come:</strong> Cigar Locker’s own humidity sensors, and an Android app. Until the sensors arrive, the app has a sensor demo whose readings are simulated and labeled as a sample.</p>
     </section>
 
     <section class="faq-group">
@@ -252,7 +263,7 @@
       <details>
         <summary>Does Cigar Locker monitor humidity today?</summary>
         <div>
-          <p>Not yet. Cigar Locker&rsquo;s own humidity sensors are coming soon. Today the app has a sensor demo whose readings are simulated and labeled as a sample.</p>
+          <p>Not yet. Cigar Locker’s own humidity sensors are coming soon. Today the app has a sensor demo whose readings are simulated and labeled as a sample.</p>
         </div>
       </details>
       <details>
@@ -262,7 +273,7 @@
         </div>
       </details>
       <details>
-        <summary>What happens to a purchase&rsquo;s date when I move cigars?</summary>
+        <summary>What happens to a purchase’s date when I move cigars?</summary>
         <div>
           <p>Nothing. Cigars moved to another humidor keep the date, price and history of the purchase they came from.</p>
         </div>
@@ -270,11 +281,11 @@
     </section>
 
     <section class="get-it" aria-label="Get Cigar Locker">
-      <p class="lead"><span data-soon>Cigar Locker is coming soon to the App Store. The web app is open now.</span><span data-live hidden>Cigar Locker is free on the App Store.</span></p>
+      <p class="lead"><span data-soon="" hidden="">Cigar Locker is coming soon to the App Store. The web app is open now.</span><span data-live="">Cigar Locker is free on the App Store.</span></p>
       <div class="cta">
-        <a class="store-badge" data-store="ios" role="link" aria-disabled="true">
-          <span class="soon"><span><small>Coming soon to the</small><strong>App Store</strong></span></span>
-          <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50" hidden>
+        <a class="store-badge is-live" data-store="ios" href="https://apps.apple.com/us/app/cigar-locker/id6827316453">
+          <span class="soon" hidden=""><span><small>Coming soon to the</small><strong>App Store</strong></span></span>
+          <img class="live" src="assets/badges/app-store.svg" alt="Download on the App Store" width="150" height="50">
         </a>
         <a class="text-link" href="/app/">Open the web app</a>
       </div>
@@ -297,7 +308,7 @@
     <div class="wrap">
       <div>
         <p class="foot-brand"><img src="assets/mark.svg" alt="" width="21" height="26">Cigar Locker</p>
-        <p>&copy; 2026 Atlantis Dev, LLC. All rights reserved.</p>
+        <p>© 2026 Atlantis Dev, LLC. All rights reserved.</p>
         <p>Cigar Locker is a collection, inventory and journal app for adults 21 and over. It does not sell tobacco.</p>
         <p>Apple, the Apple logo and iPhone are trademarks of Apple Inc. App Store is a service mark of Apple Inc.</p>
       </div>
@@ -310,5 +321,6 @@
       </nav>
     </div>
   </footer>
-</body>
-</html>
+
+
+</body></html>
