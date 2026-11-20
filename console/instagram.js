@@ -91,8 +91,8 @@
     if (!answer) return { state: 'unread', words: 'Instagram could not be read just now.' };
     if (!acct || acct.status === 'disconnected') {
       return answer.setUp
-        ? { state: 'not-connected', words: 'Ready to connect. Press Connect Instagram and approve the two read-only permissions on Instagram’s own page.' }
-        : { state: 'not-set-up', words: 'Not connected. The Meta app’s two keys are not in Supabase’s secrets yet; the steps are below.' };
+        ? { state: 'not-connected', words: 'Ready to connect. Press Connect Instagram and approve the read-only permissions on Meta’s own page.' }
+        : { state: 'not-set-up', words: 'Not connected. The Meta app’s three values are not in Supabase’s secrets yet; the steps are below.' };
     }
     if (acct.status === 'needs-reconnect')
       return { state: 'needs-reconnect', words: `Instagram ended the sign-in for @${acct.username}. Press Connect Instagram to renew it. What was collected is kept.` };
@@ -104,15 +104,14 @@
 
   /** The steps to connect, for the card shown until it is. */
   const SETUP = [
-    'The Instagram account must be a professional account of type Business, and public.',
-    'At developers.facebook.com/apps: Create App, use case Other, type Business. On its dashboard, set up the Instagram product.',
-    'Under “Generate access tokens”, add the Cigar Locker Instagram account. Do not copy the token it shows.',
-    'Under “Set up Instagram business login”, add this Redirect URL exactly: https://cigarlocker.app/console/instagram.html',
-    'From “Business login settings”, put the Instagram App ID and Instagram App Secret into Supabase’s secrets as INSTAGRAM_APP_ID and INSTAGRAM_APP_SECRET.',
+    'The Instagram account must be a professional account of type Business, public, and linked to the Cigar Locker Facebook Page (Instagram app: Edit profile, Page).',
+    'At developers.facebook.com/apps, open the app “Cigar Locker Console”. Under Facebook Login for Business, Settings, add this Valid OAuth Redirect URI exactly: https://cigarlocker.app/console/instagram.html',
+    'Under Facebook Login for Business, Configurations, create a configuration with a User access token and only these permissions: instagram_basic, instagram_manage_insights, pages_show_list, pages_read_engagement, ads_read, read_insights. Nothing that publishes, manages or messages.',
+    'Put the App ID, the App Secret (App settings, Basic) and the Configuration ID into Supabase’s secrets as META_APP_ID, META_APP_SECRET and META_CONFIG_ID.',
     'Then press Connect Instagram here.',
   ];
   const READ_ONLY =
-    'Read only. The two permissions asked for (instagram_business_basic, instagram_business_manage_insights) let Cigar Locker read the profile, the posts and their figures. Nothing here can post, delete, comment, message or spend. The pass Instagram issues is kept encrypted on the server and never reaches this page.';
+    'Read only. The permissions asked for (instagram_basic, instagram_manage_insights, pages_show_list, pages_read_engagement, and the reading permissions ads_read and read_insights) let Cigar Locker read the profile, the posts and their figures. Nothing here can post, delete, comment, message or spend, and a sign-in that allows more than reading is refused and not kept. The pass Meta issues is kept encrypted on the server and never reaches this page.';
 
   // ---- The account over the span ------------------------------------------------------------------------------
 
