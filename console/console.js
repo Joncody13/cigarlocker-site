@@ -70,6 +70,7 @@
     if (tab === 'deals' && !$('board').hidden) loadDeals();
     if (tab === 'marketing' && !$('board').hidden) loadMarketing();
     if (tab === 'excellence' && !$('board').hidden) void loadExcellence();
+    if (tab === 'knowledge' && !$('board').hidden) void loadResearch();
   }
   for (const b of document.querySelectorAll('#tabs [data-show]')) {
     b.addEventListener('click', () => {
@@ -359,6 +360,7 @@
     void loadSuggestions();
     void loadShops();
     void loadExcellence();
+    void loadResearch();
   }
 
   /** What Cigar Locker knows of cigars: its libraries, look-ups and scans. */
@@ -2357,6 +2359,221 @@
     $('h-shop-activity').scrollIntoView();
   });
 
+  // ---- Research and database health (145_research_sync.sql) ----
+  // Every word and figure is research.js's, from what the server sent. Nothing here decides what is taken in.
+  const RS = window.CigarResearch || null;
+  let research = null;
+
+  function drawResearch() {
+    const x = research;
+    const now = Date.now();
+    const st = RS.standing(x, now);
+    $('rs-state').textContent = st.title;
+    $('rs-state').className = `pill ${st.state === 'ok' ? 'good' : st.state === 'attention' ? 'bad' : ''}`;
+    $('rs-standing').replaceChildren(...st.lines.map((l) => h('p', { text: l })));
+    $('rs-problems').replaceChildren(...RS.problems(x).map((pr) => h('p', { class: 'small' }, h('span', { class: 'pill bad', text: pr.kind === 'held' ? 'Held' : pr.kind === 'failed' ? 'Failed' : 'Source' }), ' ', pr.words)));
+    $('rs-totals').replaceChildren(...RS.totals(x).map((t) => tile(t.label, t.value, t.note)));
+    $('rs-note').textContent = 'A barcode counts as verified only on the maker’s, a registry’s or a distributor’s word. A check digit that holds makes a number a barcode, not a fact.';
+    const al = RS.alerts(x, now);
+    $('rs-alert-channel').textContent = al.channel;
+    $('rs-alerts').replaceChildren(
+      ...(al.none ? [h('p', { class: 'small' }, h('span', { class: 'pill good', text: 'Clear' }), ' ', al.none)] : []),
+      ...al.open.map((a) => h('p', { class: 'small' }, h('span', { class: 'pill bad', text: a.level }), ' ', h('strong', { text: a.title }), ` (${a.when}). ${a.detail} ${a.told}`)),
+      ...al.closed.map((a) => h('p', { class: 'muted small' }, h('span', { class: 'pill', text: a.level }), ' ', `${a.title} (${a.when}). ${a.told}`)),
+    );
+    const lg = RS.ledger(x);
+    $('rs-ledger').replaceChildren(...lg.rows.map((r) => tile(r.label, r.value, r.note)));
+    $('rs-ledger-codes').replaceChildren(
+      lg.levels.length
+        ? table(['Barcodes, each counted once', ...lg.levels, 'All'], lg.barcodes.map((b) => [`${b.label}. ${b.note}`, ...b.cells.map((c) => c.value), b.total]), lg.levels.map((_, i) => i + 1).concat(lg.levels.length + 1))
+        : h('p', { class: 'muted small', text: 'No barcode is on record yet.' }),
+    );
+    const sg = RS.storage(x);
+    $('rs-storage').textContent = sg ? `${sg.words} ${sg.keeps}` : '';
+    const day = RS.lastDay(x);
+    $('rs-day').replaceChildren(...day.figures.map((f) => tile(f.label, f.value)));
+    $('rs-day-words').textContent = day.words;
+    const w = RS.waiting(x);
+    $('rs-waiting').replaceChildren(
+      h('div', { class: 'tiles ledger' }, w.lines.map((l) => tile(l.label, l.value, l.note))),
+      w.reasons.length ? table(['Why', 'Open'], w.reasons.map((r) => [r.reason, r.count]), [1]) : null,
+    );
+    const sums = RS.summaries(x);
+    const heads = ['', 'Files', 'New', 'Improved', 'Leads', 'Questions', 'Refused'];
+    const cells = (r) => [r.label, r.files, r.new, r.improved, r.leads, r.questions, r.refused];
+    $('rs-daily').replaceChildren(sums.daily.length ? table(heads, sums.daily.map(cells), [1, 2, 3, 4, 5, 6]) : h('p', { class: 'muted small', text: 'Nothing has been taken in yet.' }));
+    $('rs-weekly').replaceChildren(sums.weekly.length ? table(heads, sums.weekly.map(cells), [1, 2, 3, 4, 5, 6]) : h('p', { class: 'muted small', text: 'Nothing has been taken in yet.' }));
+    $('rs-domains').replaceChildren(...RS.domains(x, now).map((d) => h('p', { class: 'small' }, h('strong', { text: `${d.label}: ` }), `${d.holds}. ${d.words}`)));
+    const bs = RS.batches(x, now);
+    $('rs-batches').replaceChildren(
+      bs.length
+        ? h(
+            'div',
+            { class: 'table-wrap' },
+            h(
+              'table',
+              { class: 'plain' },
+              h('thead', {}, h('tr', {}, ['File', 'From', 'What became of it', 'Rows', 'When', ''].map((t) => h('th', { text: t })))),
+              h(
+                'tbody',
+                {},
+                bs.map((b) =>
+                  h(
+                    'tr',
+                    {},
+                    h('td', { text: b.file }),
+                    h('td', { text: b.source }),
+                    h('td', {}, h('strong', { text: b.state }), b.words ? `: ${b.words}` : ''),
+                    h('td', { class: 'num', text: b.rows }),
+                    h('td', { text: b.when }),
+                    h('td', {}, b.canUndo ? h('button', { type: 'button', class: 'ghost', onclick: () => undoResearch(b) }, 'Take back') : null),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : h('p', { class: 'muted small', text: 'No master file has been seen yet.' }),
+    );
+    const rj = RS.rejections(x);
+    $('rs-rejections').replaceChildren(rj.length ? table(['Where', 'What', 'Why'], rj.map((r) => [r.where, r.kind, r.reason]), []) : h('p', { class: 'muted small', text: 'Nothing has been refused or questioned.' }));
+    $('rs-sources').replaceChildren(...(RS.sources(x).length ? RS.sources(x).map((s) => h('p', { class: 'small' }, h('span', { class: `pill ${s.state === 'ok' ? 'good' : 'bad'}`, text: s.name }), ' ', s.words)) : [h('p', { class: 'muted small', text: 'No check has run yet, so no source has been tried.' })]));
+    $('rs-switch').checked = x.switch === 'on';
+    $('rs-switch').disabled = false;
+    $('rs-upload').disabled = false;
+    drawBridge(x, now);
+    drawIntegration(x);
+  }
+
+  // Research integration (149): the dashboard he asked for. Every word and figure is integration.js's, from the
+  // server's own count of what is on record. Shown only where the server has it.
+  const RI = window.CigarIntegration || null;
+  function drawIntegration(x) {
+    const b = x && x.integration;
+    const on = !!(RI && b);
+    for (const id of ['ri-card', 'ri-leads-card', 'ri-row-a', 'ri-row-b']) $(id).hidden = !on;
+    if (!on) return;
+    const c = RI.controls(b);
+    $('ri-state').textContent = c.title;
+    $('ri-state').className = `pill ${c.state === 'ok' ? 'good' : 'bad'}`;
+    $('ri-asof').textContent = RI.asOf(b);
+    $('ri-controls').replaceChildren(
+      ...c.lines.map((l) => h('p', { class: 'small', text: l })),
+      c.holds.length ? table(['Held barcode', 'Why', 'On record'], c.holds.map((hd) => [hd.code, hd.reason, hd.onRecord === null ? RI.DASH : String(hd.onRecord)]), [2]) : null,
+    );
+    $('ri-catalog').replaceChildren(...RI.catalog(b).map((t) => tile(t.label, t.value, t.note)));
+    const mk = RI.makerWord(b);
+    $('ri-maker').replaceChildren(mk.rows.length ? table(['', 'All', 'No maker’s word at all', 'Some fields without it', 'Either'], mk.rows.map((r) => [r.record, r.all, r.none, r.part, r.without]), [1, 2, 3, 4]) : h('p', { class: 'muted small', text: 'Not worked out yet.' }));
+    $('ri-maker-words').textContent = `${mk.words}${mk.asOf ? ` Worked out ${mk.asOf}.` : ''}`;
+    const ld = RI.leads(b);
+    $('ri-leads').replaceChildren(...ld.tiles.map((t) => tile(t.label, t.value, t.note)));
+    $('ri-leads-words').textContent = ld.words;
+    $('ri-leads-makers').replaceChildren(ld.makers.length ? table(['Listed under', 'Leads', 'Missing', 'Naming', 'Packaging', 'Ambiguous'], ld.makers.map((m) => [m.brand, m.all, m.missing, m.naming, m.packaging, m.ambiguous]), [1, 2, 3, 4, 5]) : h('p', { class: 'muted small', text: 'No lead has been looked at yet.' }));
+    $('ri-leads-classes').replaceChildren(ld.classes.length ? table(['Why it names no cigar yet', 'Leads'], ld.classes.map((k) => [k.label, k.count]), [1]) : null);
+    $('ri-leads-newest').replaceChildren(ld.newest.length ? table(['Barcode', 'As listed', 'What it is', 'Why', 'Nearest on record', 'What would settle it'], ld.newest.map((r) => [r.code, r.listed, r.kind, r.why, r.nearest, r.needs]), []) : h('p', { class: 'muted small', text: 'None.' }));
+    $('ri-leads-rule').textContent = [ld.shown, ld.rule].filter(Boolean).join(' ');
+    const at = RI.attributes(b);
+    $('ri-attributes').replaceChildren(at.rows.length ? table(['Fields of', ...at.heads], at.rows.map((r) => [r.record, ...r.cells]), at.heads.map((_, i) => i + 1)) : h('p', { class: 'muted small', text: 'Not worked out yet.' }));
+    $('ri-fields').replaceChildren(at.fields.length ? table(['Most often missing', 'Missing', 'In dispute', 'Not yet on the maker’s word'], at.fields.map((f) => [f.field, f.missing, f.conflicting, f.awaiting]), [1, 2, 3]) : null);
+    $('ri-attributes-words').textContent = at.words;
+    const dy = RI.lastDay(b);
+    $('ri-day').replaceChildren(...dy.tiles.map((t) => tile(t.label, t.value, t.note)));
+    $('ri-day-words').textContent = [dy.words, dy.outcomes.length ? `Records by outcome: ${dy.outcomes.map((o) => `${o.label} ${o.count}`).join(', ')}.` : ''].filter(Boolean).join(' ');
+    $('ri-day-files').replaceChildren(dy.files.length ? table(['File', 'Of', 'Records', 'Taken in'], dy.files.map((f) => [f.file, f.domain, f.rows, f.at]), [2]) : null);
+    const ev = RI.evidence(b);
+    $('ri-evidence').replaceChildren(...ev.tiles.map((t) => tile(t.label, t.value, t.note)));
+    $('ri-voices').replaceChildren(table(['Independent voices behind a fact', 'Facts'], ev.voices.map((v) => [v.label, v.count]), [1]));
+    $('ri-kinds').replaceChildren(ev.kinds.length ? table(['Observations, by what the source is', 'Observations'], ev.kinds.map((k) => [k.label, k.count]), [1]) : null);
+    $('ri-evidence-words').textContent = ev.words;
+    const rv = RI.review(b);
+    $('ri-review').replaceChildren(...rv.tiles.map((t) => tile(t.label, t.value, t.note)));
+    $('ri-review-reasons').replaceChildren(rv.reasons.length ? table(['Open questions, by reason', 'Open'], rv.reasons.map((r) => [r.reason, r.open]), [1]) : null);
+    $('ri-review-newest').replaceChildren(rv.newest.length ? table(['Newest from the automatic import', 'Reason', 'Detail', 'When'], rv.newest.map((q) => [q.about, q.reason, q.detail, q.at]), []) : null);
+  }
+
+  // The research delivery bridge (146): shown only where the server has it.
+  function drawBridge(x, now) {
+    const b = RS.bridge(x, now);
+    $('rs-bridge-card').hidden = !b;
+    if (!b) return;
+    $('rs-bridge-state').textContent = b.title;
+    $('rs-bridge-state').className = `pill ${b.state === 'ok' ? 'good' : b.state === 'attention' ? 'bad' : ''}`;
+    $('rs-bridge-standing').replaceChildren(...b.lines.map((l) => h('p', { text: l })));
+    $('rs-bridge-tiles').replaceChildren(...b.tiles.map((t) => tile(t.label, t.value, t.note)));
+    $('rs-bridge-waiting').textContent = b.waiting;
+    $('rs-bridge-deliveries').replaceChildren(
+      h('h4', { text: 'Deliveries' }),
+      b.deliveries.length ? table(['File', 'Rows', 'What', 'State', '', 'When'], b.deliveries.map((d) => [d.file, d.rows, d.what, d.state, d.words, d.when]), [1]) : h('p', { class: 'muted small', text: 'Nothing has been delivered yet.' }),
+    );
+    $('rs-bridge-held').replaceChildren(
+      h('h4', { text: 'Held back' }),
+      b.held.length || b.heldDocuments.length
+        ? h('div', {},
+            b.heldDocuments.length ? table(['Document not taken', 'Why'], b.heldDocuments.map((d) => [d.name, d.reason]), []) : null,
+            b.held.length ? table(['Barcode', 'Product', 'Why it was not delivered', 'Document'], b.held.map((r) => [r.code, r.product, r.reason, r.document]), []) : null)
+        : h('p', { class: 'muted small', text: 'Nothing is held back.' }),
+    );
+    $('rs-bridge-failures').replaceChildren(
+      h('h4', { text: 'Failures' }),
+      b.failures.length ? table(['What', 'When', 'Detail'], b.failures.map((f) => [f.what, f.when, f.detail]), []) : h('p', { class: 'muted small', text: 'No failure in the last two weeks.' }),
+    );
+  }
+
+  async function loadResearch() {
+    if (!RS) {
+      $('rs-standing').textContent = 'Reload this page to see research and database health.';
+      return;
+    }
+    try {
+      research = await ask({ action: 'research' });
+      drawResearch();
+    } catch (e) {
+      $('rs-standing').textContent = e.message;
+    }
+  }
+  async function undoResearch(b) {
+    if (!window.confirm(`Take back everything ${b.file} added or changed? What has been changed again since is left as it is, and the same file is not taken in again by itself.`)) return;
+    try {
+      const r = await ask({ action: 'research-undo', batch: b.id });
+      research = r.health;
+      drawResearch();
+      const kept = (r.undo && r.undo.leftAsTheyAre) || [];
+      $('rs-undo-note').textContent = `Taken back: ${n(r.undo.undone)} changes.${kept.length ? ` Left as they are, because they changed since: ${kept.length}.` : ''}`;
+    } catch (e) {
+      $('rs-undo-note').textContent = e.message;
+    }
+  }
+  $('rs-switch').addEventListener('change', async (ev) => {
+    const on = ev.target.checked;
+    if (!window.confirm(on ? 'Switch the research sync on? Each check then takes in new versions of the master files by itself.' : 'Switch the research sync off? No check takes anything in until it is on again.')) {
+      ev.target.checked = !on;
+      return;
+    }
+    try {
+      research = (await ask({ action: 'research-switch', on })).health;
+      drawResearch();
+      $('rs-control-note').textContent = on ? 'On.' : 'Off.';
+    } catch (e) {
+      ev.target.checked = !on;
+      $('rs-control-note').textContent = e.message;
+    }
+  });
+  $('rs-upload').addEventListener('click', async () => {
+    const file = $('rs-file').files[0];
+    if (!file) {
+      $('rs-control-note').textContent = 'Choose the file first.';
+      return;
+    }
+    try {
+      $('rs-control-note').textContent = 'Putting it in the inbox…';
+      const where = await ask({ action: 'research-upload', name: file.name });
+      const res = await fetch(where.uploadUrl, { method: 'PUT', headers: { 'content-type': file.type || 'application/octet-stream', 'x-upsert': 'true' }, body: file });
+      if (!res.ok) throw new Error(`The inbox answered ${res.status}. The file was not kept.`);
+      $('rs-control-note').textContent = `${file.name} is in the inbox. The next check takes it${research && research.switch === 'on' ? '' : ' once the sync is switched on'}.`;
+    } catch (e) {
+      $('rs-control-note').textContent = e.message;
+    }
+  });
+
   // ---- Product Excellence (143_product_excellence.sql) ----
   // Every word and figure is excellence.js's, from what the server sent. Nothing here judges another product:
   // an entry about one is what its own listing said, with a word saying so, or a hands-on test on record.
@@ -3067,8 +3284,8 @@
     $('ig-note').textContent = 'Opening Instagram’s sign-in page…';
     try {
       const out = await ask({ action: 'instagram-connect-start' });
-      // Only ever to Instagram's own page, whatever came back.
-      if (typeof out.url !== 'string' || !out.url.startsWith('https://www.instagram.com/oauth/authorize?')) throw new Error('That could not be started. Try again.');
+      // Only ever to Meta's own sign-in page, whatever came back.
+      if (typeof out.url !== 'string' || !/^https:\/\/www\.facebook\.com\/v\d+\.\d+\/dialog\/oauth\?/.test(out.url)) throw new Error('That could not be started. Try again.');
       location.assign(out.url);
     } catch (e) {
       $('ig-note').textContent = e.message;
