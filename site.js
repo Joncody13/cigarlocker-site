@@ -211,7 +211,7 @@ const STORES = { ios: 'https://apps.apple.com/us/app/cigar-locker/id6827316453',
     }
   }
 
-  const COUNT_VISITS = false;
+  const COUNT_VISITS = true;
   const asksNotToBeCounted = navigator.globalPrivacyControl === true || navigator.doNotTrack === '1';
   if (COUNT_VISITS && !navigator.webdriver && !asksNotToBeCounted) {
     const COUNTER = 'https://nypahhdmoxrfvwnfufdf.supabase.co/rest/v1/rpc/mktg_site_hit';
