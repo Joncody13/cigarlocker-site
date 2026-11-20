@@ -614,6 +614,32 @@
       <p class="muted small" id="ig-limits"></p>
     </section>
 
+    <section class="card wide" aria-labelledby="h-wt" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-wt">Other accounts</h3>
+        <span class="muted small" id="wt-note" role="status"></span>
+      </div>
+      <p class="muted small" id="wt-help"></p>
+      <form id="wt-form" class="wt-form">
+        <label class="small" for="wt-name">Add an account</label>
+        <input id="wt-name" type="text" inputmode="text" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="60" placeholder="Instagram username" />
+        <button type="submit" class="ghost small">Add</button>
+      </form>
+      <div id="wt-summary" class="wt-summary"></div>
+      <div id="wt-accounts"></div>
+      <div id="wt-more" hidden>
+        <div class="row two">
+          <div><p class="small ig-sub">When they post: days</p><div id="wt-days"></div></div>
+          <div><p class="small ig-sub">When they post: hours</p><div id="wt-hours"></div></div>
+        </div>
+        <p class="small ig-sub">What they post</p>
+        <div id="wt-kinds"></div>
+        <p class="small ig-sub">Posts that did best for their account</p>
+        <div id="wt-top"></div>
+      </div>
+      <ul class="muted small ig-limits" id="wt-limits"></ul>
+    </section>
+
     <section class="card wide" aria-labelledby="h-mk-bypage" data-tab="marketing">
       <div class="card-head"><h3 id="h-mk-bypage">By page</h3><span class="muted small" id="mk-bypage-note"></span></div>
       <div id="mk-bypage" class="scroll-x"></div>
@@ -817,6 +843,7 @@
   <script src="shops.js"></script>
   <script src="marketing.js"></script>
   <script src="excellence.js"></script>
+  <script src="watch.js"></script>
   <script src="instagram.js"></script>
   <script src="console.js"></script>
 </body>

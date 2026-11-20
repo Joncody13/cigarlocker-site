@@ -3025,6 +3025,102 @@
     );
   }
 
+  // ---- Other accounts, watched (154; the words are watch.js's). Read only: nothing here follows, likes or posts.
+  const WT = window.CigarWatch;
+  let watch = null;
+
+  function drawWatch() {
+    $('wt-help').textContent = WT.HELP;
+    $('wt-limits').replaceChildren(...WT.LIMITS.map((t) => h('li', { text: t })));
+    const accounts = (watch && watch.accounts) || [];
+    $('wt-summary').replaceChildren(...(watch ? WT.summary(watch).map((t) => h('p', { text: t })) : []));
+    if (!accounts.length) {
+      $('wt-accounts').replaceChildren(h('p', { class: 'muted', text: WT.EMPTY }));
+      $('wt-more').hidden = true;
+      return;
+    }
+    $('wt-accounts').replaceChildren(
+      h(
+        'div',
+        { class: 'table-wrap' },
+        h(
+          'table',
+          { class: 'plain' },
+          h('thead', {}, h('tr', {}, WT.ACCOUNT_HEAD.map((t, i) => h('th', { class: i > 0 && i < 6 ? 'num' : null, text: t })))),
+          h(
+            'tbody',
+            {},
+            accounts.map((a) => {
+              const r = WT.accountRow(a, watch.days);
+              const off = h('button', { type: 'button', class: 'ghost small', text: 'Take off' });
+              off.addEventListener('click', () => void changeWatch({ action: 'instagram-watch-remove', username: r.username }));
+              return h(
+                'tr',
+                {},
+                h('td', {}, h('strong', { text: r.handle }), r.name ? h('span', { class: 'muted small', text: ` ${r.name}` }) : null, r.problem ? h('div', { class: 'muted small', text: r.problem }) : null),
+                ...r.cells.map((c, i) => h('td', { class: i < 5 ? 'num' : null, text: c })),
+                h('td', {}, off),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+    const when = WT.whenRows(watch);
+    $('wt-more').hidden = !(watch.posts > 0);
+    $('wt-days').replaceChildren(table(['Day', 'Posts', 'How they did'], when.days, [1]));
+    $('wt-hours').replaceChildren(table(['Hour (Eastern)', 'Posts', 'How they did'], when.hours, [1]));
+    $('wt-kinds').replaceChildren(table(['Kind', 'Posts', 'Typical likes', 'Typical comments', 'How they did'], WT.kindRows(watch), [1, 2, 3]));
+    const top = WT.topRows(watch);
+    $('wt-top').replaceChildren(
+      ...(top.length
+        ? top.map((t) =>
+            h(
+              'div',
+              { class: 'wt-post' },
+              h('p', {}, h('strong', { text: t.who }), h('span', { class: 'muted small', text: ` ${t.kind} · ${t.when}` })),
+              h('p', { class: 'small', text: t.figures }),
+              t.caption ? h('p', { class: 'muted small ig-caption', text: t.caption }) : null,
+              t.permalink ? h('p', { class: 'small' }, h('a', { href: t.permalink, target: '_blank', rel: 'noopener noreferrer', text: 'Open on Instagram' })) : null,
+            ),
+          )
+        : [h('p', { class: 'muted small', text: 'No post stands out yet.' })]),
+    );
+  }
+
+  async function loadWatch() {
+    try {
+      watch = await ask({ action: 'instagram-watch', days: igDays });
+      $('wt-note').textContent = '';
+    } catch (e) {
+      watch = null;
+      $('wt-note').textContent = e.message;
+    }
+    drawWatch();
+  }
+
+  async function changeWatch(what) {
+    $('wt-note').textContent = what.action === 'instagram-watch-add' ? 'Asking Instagram…' : 'Taking it off…';
+    try {
+      watch = await ask({ ...what, days: igDays });
+      $('wt-note').textContent = '';
+      if (what.action === 'instagram-watch-add') $('wt-name').value = '';
+    } catch (e) {
+      $('wt-note').textContent = e.message;
+    }
+    drawWatch();
+  }
+
+  $('wt-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('wt-name').value.trim().replace(/^@+/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/[/?#].*$/, '').toLowerCase();
+    if (!/^[a-z0-9._]{1,30}$/.test(name)) {
+      $('wt-note').textContent = 'Type the account’s Instagram username, like cigaraficionado.';
+      return;
+    }
+    void changeWatch({ action: 'instagram-watch-add', username: name });
+  });
+
   async function loadInstagram() {
     try {
       instagram = await ask({ action: 'instagram', days: igDays });
@@ -3033,6 +3129,7 @@
       $('ig-note').textContent = e.message;
     }
     drawInstagram();
+    void loadWatch();
   }
 
   /** Back from Instagram's own sign-in page: hand the one-time code to the server, once. */

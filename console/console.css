@@ -744,3 +744,11 @@ ul.notices li.part { padding: 0; }
 .px-section { margin-top: 6px; }
 .px-report-title { font-family: var(--serif); font-size: 24px; margin: 4px 0 0; }
 .px-report { max-width: 980px; }
+
+/* Other accounts, watched (154) */
+.wt-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 0 12px; }
+.wt-form input { flex: 1 1 200px; max-width: 320px; min-width: 0; }
+.wt-summary p { margin: 2px 0; max-width: 90ch; }
+.wt-post { padding: 10px 0; border-top: 1px solid var(--line); }
+.wt-post:first-child { border-top: 0; }
+.wt-post p { margin: 0 0 3px; }
