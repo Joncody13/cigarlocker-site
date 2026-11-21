@@ -752,3 +752,8 @@ ul.notices li.part { padding: 0; }
 .wt-post { padding: 10px 0; border-top: 1px solid var(--line); }
 .wt-post:first-child { border-top: 0; }
 .wt-post p { margin: 0 0 3px; }
+
+/* Apple Ads setup (157): the public key to copy, and the three ids. */
+#aa-key { width: 100%; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; resize: vertical; }
+#aa-form { display: grid; gap: 6px; max-width: 560px; margin-top: 10px; }
+#aa-form input { width: 100%; font: 13px/1.4 ui-monospace, Menlo, Consolas, monospace; }

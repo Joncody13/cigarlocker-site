@@ -632,6 +632,45 @@
       <ul class="muted small" id="fb-limits"></ul>
     </section>
 
+    <!-- Apple Ads (157_apple_ads.sql): App Store search ads, read once an hour with a key made for this console.
+         Every word and figure is appleads.js's; a figure Apple did not report is a dash. Read only. -->
+    <section class="card wide" aria-labelledby="h-aa" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-aa">Apple Ads</h3>
+        <span class="muted small" id="aa-note" role="status"></span>
+        <button type="button" class="ghost small" id="aa-sync" hidden>Read now</button>
+        <button type="button" class="ghost small" id="aa-start" hidden>Start setup</button>
+      </div>
+      <p id="aa-standing"></p>
+      <p class="muted small" id="aa-readonly"></p>
+      <div id="aa-setup" hidden>
+        <ol class="small" id="aa-steps"></ol>
+        <label class="small" for="aa-key">Public key</label>
+        <textarea id="aa-key" rows="4" readonly spellcheck="false"></textarea>
+        <p><button type="button" class="ghost small" id="aa-copy">Copy the public key</button></p>
+        <form id="aa-form">
+          <label class="small" for="aa-client">clientId</label>
+          <input id="aa-client" type="text" autocomplete="off" spellcheck="false" />
+          <label class="small" for="aa-team">teamId</label>
+          <input id="aa-team" type="text" autocomplete="off" spellcheck="false" />
+          <label class="small" for="aa-keyid">keyId</label>
+          <input id="aa-keyid" type="text" autocomplete="off" spellcheck="false" />
+          <p><button type="submit" class="small" id="aa-connect">Connect</button></p>
+        </form>
+        <p class="muted small" id="aa-noapi"></p>
+      </div>
+      <div id="aa-read" hidden>
+        <ul class="small" id="aa-campaigns"></ul>
+        <p class="small" id="aa-totals"></p>
+        <p class="small ig-sub">Day by day</p>
+        <div id="aa-days"></div>
+        <p class="small ig-sub">Keywords <span class="muted" id="aa-span"></span></p>
+        <div id="aa-keywords"></div>
+        <ul class="muted small" id="aa-limits"></ul>
+        <p><button type="button" class="ghost small" id="aa-disconnect">Disconnect Apple Ads</button></p>
+      </div>
+    </section>
+
     <section class="card wide" aria-labelledby="h-wt" data-tab="marketing">
       <div class="card-head">
         <h3 id="h-wt">Other accounts</h3>
@@ -883,6 +922,7 @@
   <script src="watch.js"></script>
   <script src="instagram.js"></script>
   <script src="facebook.js"></script>
+  <script src="appleads.js"></script>
   <script src="console.js"></script>
 </body>
 </html>

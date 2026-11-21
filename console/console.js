@@ -3160,6 +3160,104 @@
     drawFacebook();
   });
 
+  // ---- Apple Ads (157; the words are appleads.js's). Read only: nothing here changes a bid, a budget or a campaign.
+  const AA = window.CigarAppleAds;
+  let appleAds = null;
+
+  function drawAppleAds() {
+    const board = appleAds && appleAds.board;
+    const st = AA.standing(board);
+    const step = AA.step(board);
+    $('aa-standing').textContent = st.words;
+    $('aa-readonly').textContent = AA.READ_ONLY;
+    $('aa-start').hidden = step !== 'none';
+    $('aa-sync').hidden = step === 'none' || step === 'key';
+    $('aa-setup').hidden = step !== 'key';
+    $('aa-read').hidden = step === 'none' || step === 'key';
+    if (step === 'key') {
+      $('aa-steps').replaceChildren(...AA.STEPS.map((t) => h('li', { text: t })));
+      $('aa-key').value = (board.account && board.account.publicKey) || '';
+      $('aa-noapi').textContent = AA.NO_API_TAB;
+    }
+    if (step === 'connected' || step === 'trouble') {
+      const lines = AA.campaignLines(board);
+      $('aa-campaigns').replaceChildren(...(lines.length ? lines.map((c) => h('li', {}, h('strong', { text: c.name }), ` · ${c.words}`)) : [h('li', { class: 'muted', text: 'No campaign has been read yet.' })]));
+      $('aa-totals').textContent = AA.totalsWords(board);
+      const days = AA.dayRows(board, 14);
+      $('aa-days').replaceChildren(
+        days.length ? fbTable(AA.DAY_HEAD, days.map((d) => h('tr', {}, h('td', { text: d.day }), ...d.cells.map((c) => h('td', { class: 'num', text: c })))), 1) : h('p', { class: 'muted', text: 'Apple has reported no day yet. Figures appear once the ads have run.' }),
+      );
+      const kws = AA.keywordRows(board);
+      $('aa-span').textContent = AA.keywordSpan(board);
+      $('aa-keywords').replaceChildren(
+        kws.length
+          ? fbTable(
+              AA.KW_HEAD,
+              kws.map((k) => h('tr', {}, h('td', {}, k.keyword, k.note ? h('div', { class: 'muted small', text: k.note }) : null, k.dear ? h('div', { class: 'small', text: `Over $${AA.DEAR} a download: worth a look` }) : null), h('td', { text: k.cells[0] }), ...k.cells.slice(1).map((c) => h('td', { class: 'num', text: c })))),
+              2,
+            )
+          : h('p', { class: 'muted', text: 'No keyword has been read yet.' }),
+      );
+      $('aa-limits').replaceChildren(...AA.LIMITS.map((t) => h('li', { text: t })));
+    }
+  }
+
+  async function loadAppleAds() {
+    try {
+      appleAds = await ask({ action: 'apple-ads', days: 30 });
+      $('aa-note').textContent = '';
+    } catch (e) {
+      appleAds = null;
+      $('aa-note').textContent = e.message;
+    }
+    drawAppleAds();
+  }
+
+  async function aaDo(body, working, done) {
+    $('aa-note').textContent = working;
+    try {
+      const out = await ask(body);
+      appleAds = { board: out.board };
+      $('aa-note').textContent = out.ran && out.ran.why ? String(out.ran.why).slice(0, 200) : done;
+    } catch (e) {
+      $('aa-note').textContent = e.message;
+    }
+    drawAppleAds();
+  }
+
+  $('aa-start').addEventListener('click', () => aaDo({ action: 'apple-ads-key' }, 'Making the key…', 'The key is made.'));
+  $('aa-sync').addEventListener('click', () => aaDo({ action: 'apple-ads-sync' }, 'Reading Apple Ads…', 'Read.'));
+  $('aa-copy').addEventListener('click', async () => {
+    const box = $('aa-key');
+    try {
+      await navigator.clipboard.writeText(box.value);
+      $('aa-note').textContent = 'Copied.';
+    } catch {
+      box.focus();
+      box.select();
+      $('aa-note').textContent = 'Select it and copy.';
+    }
+  });
+  $('aa-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const read = AA.readIds({ clientId: $('aa-client').value, teamId: $('aa-team').value, keyId: $('aa-keyid').value });
+    if (read.problem) {
+      $('aa-note').textContent = read.problem;
+      return;
+    }
+    void aaDo({ action: 'apple-ads-connect', ...read.ids }, 'Asking Apple…', 'Connected.');
+  });
+  $('aa-disconnect').addEventListener('click', () => {
+    if ($('aa-disconnect').dataset.sure !== '1') {
+      $('aa-disconnect').dataset.sure = '1';
+      $('aa-disconnect').textContent = 'Press again to disconnect (what was read is kept)';
+      return;
+    }
+    $('aa-disconnect').dataset.sure = '';
+    $('aa-disconnect').textContent = 'Disconnect Apple Ads';
+    void aaDo({ action: 'apple-ads-disconnect' }, 'Disconnecting…', 'Disconnected.');
+  });
+
   // ---- Other accounts, watched (154; the words are watch.js's). Read only: nothing here follows, likes or posts.
   const WT = window.CigarWatch;
   let watch = null;
@@ -3266,6 +3364,7 @@
     drawInstagram();
     void loadWatch();
     void loadFacebook();
+    void loadAppleAds();
   }
 
   /** Back from Instagram's own sign-in page: hand the one-time code to the server, once. */
