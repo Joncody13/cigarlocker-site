@@ -3160,6 +3160,38 @@
     drawFacebook();
   });
 
+  // ---- Printed QR codes (158; the words are qr.js's). Read only: scans counted by the website's own visit counter.
+  const QR = window.CigarQr;
+  let qrBoard = null;
+
+  function drawQr() {
+    $('qr-standing').textContent = QR.standing(qrBoard);
+    $('qr-limits').replaceChildren(...QR.LIMITS.map((t) => h('li', { text: t })));
+    const codes = QR.codeRows(qrBoard);
+    const days = QR.dayRows(qrBoard, 60);
+    $('qr-codes').replaceChildren(
+      ...(codes.length ? [fbTable(QR.CODE_HEAD, codes.map((c) => h('tr', {}, h('td', { text: c.where }), h('td', { text: c.on }), ...c.cells.map((x) => h('td', { class: 'num', text: x })))), 2)] : []),
+    );
+    $('qr-by-day').replaceChildren(
+      days.length
+        ? fbTable(QR.DAY_HEAD, days.map((d) => h('tr', {}, h('td', { text: d.day }), h('td', { text: d.where }), h('td', { text: d.on }), ...d.cells.map((x) => h('td', { class: 'num', text: x })))), 3)
+        : h('p', { class: 'muted', text: 'No scans in this span.' }),
+    );
+  }
+
+  async function loadQr() {
+    try {
+      qrBoard = (await ask({ action: 'qr-codes', days: Number($('qr-days').value) || 30 })).board;
+      $('qr-note').textContent = '';
+    } catch (e) {
+      qrBoard = null;
+      $('qr-note').textContent = e.message;
+    }
+    drawQr();
+  }
+  $('qr-days').addEventListener('change', () => void loadQr());
+  $('qr-refresh').addEventListener('click', () => void loadQr());
+
   // ---- Apple Ads (157; the words are appleads.js's). Read only: nothing here changes a bid, a budget or a campaign.
   const AA = window.CigarAppleAds;
   let appleAds = null;
@@ -3365,6 +3397,7 @@
     void loadWatch();
     void loadFacebook();
     void loadAppleAds();
+    void loadQr();
   }
 
   /** Back from Instagram's own sign-in page: hand the one-time code to the server, once. */

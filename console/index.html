@@ -632,6 +632,23 @@
       <ul class="muted small" id="fb-limits"></ul>
     </section>
 
+    <!-- Printed QR codes (158_qr_codes.sql): scans of each printed code, read from the website's own visit
+         counter. Every word and figure is qr.js's. A scan is a visit, never a person. -->
+    <section class="card wide" aria-labelledby="h-qr" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-qr">Printed QR codes</h3>
+        <span class="muted small" id="qr-note" role="status"></span>
+        <label class="muted small" for="qr-days">Span</label>
+        <select id="qr-days"><option value="7">7 days</option><option value="30" selected>30 days</option><option value="90">90 days</option><option value="365">A year</option></select>
+        <button type="button" class="ghost small" id="qr-refresh">Refresh</button>
+      </div>
+      <p id="qr-standing"></p>
+      <div id="qr-codes"></div>
+      <p class="small ig-sub">Day by day</p>
+      <div id="qr-by-day"></div>
+      <ul class="muted small" id="qr-limits"></ul>
+    </section>
+
     <!-- Apple Ads (157_apple_ads.sql): App Store search ads, read once an hour with a key made for this console.
          Every word and figure is appleads.js's; a figure Apple did not report is a dash. Read only. -->
     <section class="card wide" aria-labelledby="h-aa" data-tab="marketing">
@@ -923,6 +940,7 @@
   <script src="instagram.js"></script>
   <script src="facebook.js"></script>
   <script src="appleads.js"></script>
+  <script src="qr.js"></script>
   <script src="console.js"></script>
 </body>
 </html>
