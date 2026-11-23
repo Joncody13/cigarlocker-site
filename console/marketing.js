@@ -111,7 +111,12 @@
     });
 
     // 4. Social.
-    out.push(waitingFor('social', 'Social media growth', connection(latest, 'social')));
+    const social = connection(latest, 'social');
+    out.push(
+      social && social.status === 'connected'
+        ? { key: 'social', title: 'Social media growth', state: 'measured', headline: 'Connected', lines: ['Instagram and your Facebook Page are read every hour.', 'Their figures are in the Instagram and Facebook cards further down this page.'], spark: null, trend: null }
+        : waitingFor('social', 'Social media growth', social),
+    );
 
     // 5. Website conversion.
     if (site.counting) {
