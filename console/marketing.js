@@ -96,19 +96,53 @@
     );
 
     // 2. Google search.
-    out.push(waitingFor('search', 'Google search performance', connection(latest, 'search-console')));
+    // Read from what Google itself reported for each page. Connected with no rows yet says so; never a made-up figure.
+    const measured = (intel.pages && intel.pages.measured) || {};
+    if (measured.gsc) {
+      const rows = (intel.pages && intel.pages.pages) || [];
+      const sum = (k) => rows.reduce((t, p) => t + (has(p[k]) ? num(p[k]) : 0), 0);
+      const inIndex = rows.filter((p) => /indexed/i.test(p.indexed || '') && !/not indexed/i.test(p.indexed || '')).length;
+      const told = rows.filter((p) => p.indexed).length;
+      out.push({
+        key: 'search',
+        title: 'Google search performance',
+        state: 'measured',
+        headline: `${plural(sum('impressions'), 'search view', 'search views')}, ${plural(sum('clicks'), 'click', 'clicks')}`,
+        lines: [`In Google\u2019s results over the last ${n(intel.pages.days)} days, as Google reports them.`, told ? `${n(inIndex)} of ${n(told)} pages checked are in Google\u2019s index. Page by page below.` : 'Page by page below.'],
+        spark: null,
+        trend: null,
+      });
+    } else out.push(waitingFor('search', 'Google search performance', connection(latest, 'search-console')));
 
     // 3. App Store discovery: store figures are not connected; installs are phones that opened the app.
     const store = connection(latest, 'app-store');
-    out.push({
-      key: 'store',
-      title: 'App Store discovery',
-      state: 'not-connected',
-      headline: 'Not connected',
-      lines: [store ? store.needs : 'Its connection has not been built yet.', has(now.installs) ? `Counted here meanwhile: ${plural(now.installs, 'phone or browser has', 'phones and browsers have')} ever opened the app.` : ''].filter(Boolean),
-      spark: series(history, today('installs')),
-      trend: compare(history, today('installs')),
-    });
+    const apple = intel.store || null;
+    if (apple && num(apple.reported) > 0) {
+      const days = Array.isArray(apple.days) ? apple.days : [];
+      out.push({
+        key: 'store',
+        title: 'App Store discovery',
+        state: 'measured',
+        headline: `${plural(num(apple.downloads), 'first-time download', 'first-time downloads')} in ${n(days.length)} days`,
+        lines: [
+          `As Apple reports them, through ${day(apple.lastDay)}. Apple\u2019s figures arrive a day or two late.`,
+          `${plural(num(apple.redownloads), 'redownload', 'redownloads')}, ${plural(num(apple.updates), 'update', 'updates')}, ${plural(num(apple.subscriptions), 'new subscription', 'new subscriptions')}.`,
+          'Store page views are not read yet: Apple gives those only after a separate request.',
+        ],
+        spark: days.map((d) => num(d.downloads)),
+        trend: null,
+      });
+    } else {
+      out.push({
+        key: 'store',
+        title: 'App Store discovery',
+        state: 'not-connected',
+        headline: 'Not connected',
+        lines: [store ? store.needs : 'Its connection has not been built yet.', has(now.installs) ? `Counted here meanwhile: ${plural(now.installs, 'phone or browser has', 'phones and browsers have')} ever opened the app.` : ''].filter(Boolean),
+        spark: series(history, today('installs')),
+        trend: compare(history, today('installs')),
+      });
+    }
 
     // 4. Social.
     const social = connection(latest, 'social');
