@@ -2,10 +2,11 @@
 //
 // THE DOWNLOAD SWITCH. The day the app is in a store, put that store's address
 // here and publish the site. Every button on the page then becomes a real
-// download (Apple's own badge for the App Store), the header's "Coming soon"
+// download (Apple's own badge for the App Store), the header's button
 // becomes the coral "Get the app", the closing headline changes, and on a phone
-// a small bar keeps the download one tap away. Leave a store empty and its
-// button keeps saying "Coming soon" and goes nowhere.
+// a small bar keeps the download one tap away. A store left empty keeps its
+// "not out yet" button, which goes nowhere. The site's build also writes the
+// launched state into each page and takes the prelaunch wording out of it.
 //
 //   ios:      'https://apps.apple.com/app/id6827316453'
 //   android:  'https://play.google.com/store/apps/details?id=com.cigarlocker.app'
