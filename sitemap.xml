@@ -2,12 +2,12 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://cigarlocker.app/</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-23</lastmod>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://cigarlocker.app/cigar-scanner.html</loc>
-    <lastmod>2026-11-15</lastmod>
+    <lastmod>2026-11-23</lastmod>
     <priority>0.9</priority>
   </url>
   <url>
@@ -44,6 +44,11 @@
     <loc>https://cigarlocker.app/guide-organize-cigar-collection.html</loc>
     <lastmod>2026-11-15</lastmod>
     <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://cigarlocker.app/cigar-tracker-faq.html</loc>
+    <lastmod>2026-11-23</lastmod>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://cigarlocker.app/about.html</loc>
