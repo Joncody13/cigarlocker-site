@@ -2738,3 +2738,186 @@ tr:last-child td {
   outline: 2px solid var(--gold);
   outline-offset: 3px;
 }
+
+/* ---------- Guide pages: a picture-led head, points at a glance, steps as cards (2026-11-24) ---------- */
+
+/* The head and the glance cards reach past the reading column, so the app's picture stands beside the headline. */
+.article.has-hero .hero-head,
+.article .glance-cards {
+  width: min(1100px, calc(100vw - 2 * var(--gutter)));
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.article .hero-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 56px;
+  align-items: center;
+}
+
+.article .hero-head .head-words {
+  min-width: 0;
+}
+
+.article .hero-head .head-shot {
+  margin: 0;
+}
+
+.article .hero-head .shot-phone {
+  width: 300px;
+  max-width: 300px;
+}
+
+.article .hero-head .shot-desk {
+  width: min(560px, 46vw);
+}
+
+.article .hero-head .head-shot figcaption {
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.article .glance-cards {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 34px;
+  margin-bottom: 18px;
+}
+
+.article .glance-cards li {
+  margin: 0;
+  padding: 22px 22px 24px;
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--gold-line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+}
+
+.article .glance-cards strong {
+  display: block;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 24px;
+  line-height: 1.15;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.article .glance-cards span {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.article .step-cards {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  margin: 18px 0 8px;
+}
+
+.article .step-cards li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  margin: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--card);
+}
+
+.article .step-cards .step-n {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--gold-line);
+  color: var(--gold);
+  font-family: var(--serif);
+  font-size: 24px;
+}
+
+@media (max-width: 900px) {
+  .article .hero-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .article .hero-head .head-shot {
+    margin: 26px auto 0;
+  }
+  .article .hero-head .shot-desk {
+    width: 100%;
+  }
+  .article .glance-cards {
+    grid-template-columns: minmax(0, 1fr);
+    width: auto;
+    margin-left: 0;
+    transform: none;
+  }
+  .article.has-hero .hero-head {
+    width: auto;
+    margin-left: 0;
+    transform: none;
+  }
+}
+
+/* On a phone a table is read a row at a time, each cell under its column's heading, so nothing runs off the screen
+   (his review, 2026-11-24). The wide comparison table keeps its own sideways slide with the name held in place. */
+@media (max-width: 640px) {
+  table.stack {
+    min-width: 0;
+    display: block;
+  }
+  table.stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  table.stack tbody,
+  table.stack tr,
+  table.stack td {
+    display: block;
+  }
+  table.stack tr {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  table.stack tr:last-child {
+    border-bottom: 0;
+  }
+  table.stack td {
+    padding: 0;
+    border-bottom: 0;
+    overflow-wrap: anywhere;
+  }
+  table.stack td + td {
+    margin-top: 8px;
+  }
+  table.stack td[data-label]:not([data-label=""])::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--gold);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  table.stack td:first-child {
+    font-weight: 600;
+  }
+  .table-scroll:has(> table.stack) {
+    overflow-x: visible;
+  }
+}

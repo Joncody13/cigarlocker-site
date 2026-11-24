@@ -10,7 +10,7 @@
 //
 //   ios:      'https://apps.apple.com/app/id6827316453'
 //   android:  'https://play.google.com/store/apps/details?id=com.cigarlocker.app'
-const STORES = { ios: 'https://apps.apple.com/us/app/cigar-locker/id6827316453', android: '' };
+const STORES = { ios: 'https://apps.apple.com/us/app/cigar-locker-scanner-tracker/id6827316453', android: '' };
 
 // What moves (2026-10-29, quieter since 2026-11-13): what comes into view rises
 // once and draws itself, figures count up, the stars light one by one, two rows
@@ -101,23 +101,71 @@ const STORES = { ios: 'https://apps.apple.com/us/app/cigar-locker/id6827316453',
   }
 
   const countUp = (el) => {
-    const end = Number(el.dataset.count);
+    // Read afresh at every step: the live figure may arrive while the count is still running.
+    const end = () => Number(el.dataset.count);
     const suffix = el.dataset.suffix || '';
-    if (still || !end) {
-      el.textContent = end.toLocaleString('en-US') + suffix;
+    if (still || !end()) {
+      el.textContent = end().toLocaleString('en-US') + suffix;
       return;
     }
     const start = performance.now();
     const length = 1400;
+    el.dataset.counting = '1';
     const step = (now) => {
       const t = Math.min(1, (now - start) / length);
       const eased = 1 - Math.pow(1 - t, 3);
-      el.textContent = Math.round(end * eased).toLocaleString('en-US') + suffix;
+      el.textContent = Math.round(end() * eased).toLocaleString('en-US') + suffix;
       if (t < 1) requestAnimationFrame(step);
+      else delete el.dataset.counting;
     };
     el.textContent = '0' + suffix;
     requestAnimationFrame(step);
   };
+
+  // The catalog's figures (data-stat) are read from Cigar Locker's own catalog each time the page opens: the
+  // same production database the app answers from, through one public question that gives the four counts and
+  // nothing else. The number in the page is the count when the site was built; if the server cannot be asked, it
+  // stays, so nobody is ever shown a figure the catalog did not hold.
+  const STATS = 'https://nypahhdmoxrfvwnfufdf.supabase.co/rest/v1/rpc/catalog_public_stats';
+  const STATS_KEY = 'sb_publishable_QeBMueHE5KTcVrtU4Ys8AA_nFi_kdb1';
+  const figuresShown = document.querySelectorAll('[data-stat]');
+  // The line beside the figures that says how fresh they are. Three things it can say: the live count with the day
+  // it was last confirmed; that an update is overdue, so the figures may be behind; or that the live count could
+  // not be reached and the figures saved with the page are showing.
+  const statsNotes = document.querySelectorAll('[data-stats-note]');
+  const longDay = (iso) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
+  };
+  const sayStats = (words, state) =>
+    statsNotes.forEach((el) => {
+      if (words) el.textContent = words;
+      el.dataset.state = state;
+    });
+  const savedCopy = () =>
+    statsNotes.forEach((el) => {
+      const day = longDay(`${el.dataset.asOf || ''}T12:00:00Z`);
+      el.textContent = day ? `Saved figures from ${day}. The live count could not be reached just now.` : 'Saved figures. The live count could not be reached just now.';
+      el.dataset.state = 'saved';
+    });
+  if (figuresShown.length && typeof window.fetch === 'function') {
+    window
+      .fetch(STATS, { headers: { apikey: STATS_KEY }, cache: 'no-store', referrerPolicy: 'no-referrer' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((live) => {
+        if (!live || typeof live !== 'object' || !['bands', 'lines', 'brands', 'cigars'].every((k) => Number.isInteger(live[k]) && live[k] >= 0)) return savedCopy();
+        figuresShown.forEach((el) => {
+          const v = live[el.dataset.stat];
+          if (!Number.isInteger(v) || v < 0) return;
+          if (el.dataset.count !== undefined) el.dataset.count = String(v);
+          if (!el.dataset.counting) el.textContent = v.toLocaleString('en-US') + (el.dataset.suffix || '');
+        });
+        const day = longDay(live.asOf);
+        if (live.stale === true) sayStats(`Last confirmed ${day || 'some time ago'}. An update is overdue, so these figures may be behind.`, 'stale');
+        else sayStats(day ? `Live count, last confirmed ${day}.` : '', 'live');
+      })
+      .catch(savedCopy);
+  }
 
   const lightStars = (el) => {
     const stars = [...el.querySelectorAll('svg')].slice(0, 9);

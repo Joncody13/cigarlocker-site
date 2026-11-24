@@ -94,9 +94,9 @@
       "publisher": {
         "@id": "https://cigarlocker.app/#publisher"
       },
-      "installUrl": "https://apps.apple.com/us/app/cigar-locker/id6827316453",
+      "installUrl": "https://apps.apple.com/us/app/cigar-locker-scanner-tracker/id6827316453",
       "sameAs": [
-        "https://apps.apple.com/us/app/cigar-locker/id6827316453"
+        "https://apps.apple.com/us/app/cigar-locker-scanner-tracker/id6827316453"
       ]
     },
     {
@@ -112,7 +112,7 @@
       "about": {
         "@id": "https://cigarlocker.app/#app"
       },
-      "dateModified": "2026-11-23"
+      "dateModified": "2026-11-24"
     },
     {
       "@type": "BreadcrumbList",
@@ -248,45 +248,45 @@
     <h2 id="lookups">6. Look-ups and suggestions</h2>
     <p>These features send information to our server, which asks Anthropic when it doesn't already know the answer:</p>
     <div class="table-scroll">
-      <table>
+      <table class="stack">
         <thead>
           <tr><th scope="col">Feature</th><th scope="col">What is sent</th><th scope="col">What is kept</th></tr>
         </thead>
         <tbody>
           <tr>
-            <td>Cigar details (looked up after a scan or a search of the catalog, "Look up its details", and, in the background, collecting facts already known for your cigars)</td>
-            <td>The cigar's brand, line, size and wrapper.</td>
-            <td>The facts found (blend, factory, sizes, the maker's suggested price, availability) are kept in a shared library for everyone, not linked to you.</td>
+            <td data-label="Feature">Cigar details (looked up after a scan or a search of the catalog, "Look up its details", and, in the background, collecting facts already known for your cigars)</td>
+            <td data-label="What is sent">The cigar's brand, line, size and wrapper.</td>
+            <td data-label="What is kept">The facts found (blend, factory, sizes, the maker's suggested price, availability) are kept in a shared library for everyone, not linked to you.</td>
           </tr>
           <tr>
-            <td>Shop look-up</td>
-            <td>The shop name and town you type, with your humidors' names and places as a hint to the right branch. A shop you've saved without a photo or logo is looked up once on its own.</td>
-            <td>The shops found (name, address, photo, logo) are kept for 90 days as a shared look-up, not linked to you.</td>
+            <td data-label="Feature">Shop look-up</td>
+            <td data-label="What is sent">The shop name and town you type, with your humidors' names and places as a hint to the right branch. A shop you've saved without a photo or logo is looked up once on its own.</td>
+            <td data-label="What is kept">The shops found (name, address, photo, logo) are kept for 90 days as a shared look-up, not linked to you.</td>
           </tr>
           <tr>
-            <td>Pairings</td>
-            <td>The cigar's details; or, from a drink or dish, the cigars in the humidor you choose, with their details.</td>
-            <td>Drinks and food for a cigar are kept in a shared library, not linked to you.</td>
+            <td data-label="Feature">Pairings</td>
+            <td data-label="What is sent">The cigar's details; or, from a drink or dish, the cigars in the humidor you choose, with their details.</td>
+            <td data-label="What is kept">Drinks and food for a cigar are kept in a shared library, not linked to you.</td>
           </tr>
           <tr>
-            <td>You may also like</td>
-            <td>A cigar you rated highly, with your rating, and the other cigars in your humidors, with their details.</td>
-            <td>Nothing on our server. The answer is kept on your phone.</td>
+            <td data-label="Feature">You may also like</td>
+            <td data-label="What is sent">A cigar you rated highly, with your rating, and the other cigars in your humidors, with their details.</td>
+            <td data-label="What is kept">Nothing on our server. The answer is kept on your phone.</td>
           </tr>
           <tr>
-            <td>Suggest One, right now</td>
-            <td>The cigars in the humidor you choose (their details, how many are left, your ratings, and how many days since each was suggested or enjoyed), your choices (inside or out, length, strength, meal), your local day and time, and your ZIP code if outside.</td>
-            <td>Nothing beyond the weather look-up in section 7.</td>
+            <td data-label="Feature">Suggest One, right now</td>
+            <td data-label="What is sent">The cigars in the humidor you choose (their details, how many are left, your ratings, and how many days since each was suggested or enjoyed), your choices (inside or out, length, strength, meal), your local day and time, and your ZIP code if outside.</td>
+            <td data-label="What is kept">Nothing beyond the weather look-up in section 7.</td>
           </tr>
           <tr>
-            <td>Suggest One, a trip</td>
-            <td>The same, with the place and dates you type.</td>
-            <td>The place you typed and its location, as a shared look-up, not linked to you.</td>
+            <td data-label="Feature">Suggest One, a trip</td>
+            <td data-label="What is sent">The same, with the place and dates you type.</td>
+            <td data-label="What is kept">The place you typed and its location, as a shared look-up, not linked to you.</td>
           </tr>
           <tr>
-            <td>Places (cigar shops and lounges)</td>
-            <td>The town or ZIP code you type; or, only when you tap Near me, your phone's location at that moment. Your recommendations, "been here" marks, what you say a place is known for, and any problem you report.</td>
-            <td>Your location is used to find the nearest town and the places around you, and is not kept. A town's search and the places found are kept in a shared directory for everyone, not linked to you. Your recommendations, marks and reports are kept with your account; other members see only how many members recommend a place or have been there.</td>
+            <td data-label="Feature">Places (cigar shops and lounges)</td>
+            <td data-label="What is sent">The town or ZIP code you type; or, only when you tap Near me, your phone's location at that moment. Your recommendations, "been here" marks, what you say a place is known for, and any problem you report.</td>
+            <td data-label="What is kept">Your location is used to find the nearest town and the places around you, and is not kept. A town's search and the places found are kept in a shared directory for everyone, not linked to you. Your recommendations, marks and reports are kept with your account; other members see only how many members recommend a place or have been there.</td>
           </tr>
         </tbody>
       </table>
