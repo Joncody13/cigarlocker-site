@@ -3160,6 +3160,69 @@
     drawFacebook();
   });
 
+  // ---- Shop payouts (165; the words are payouts.js's). A rate is set from today; what is owed is worked out on the server.
+  const PAY = window.CigarPayouts;
+  let payBoard = null;
+
+  function drawPay() {
+    $('pay-standing').textContent = PAY.standing(payBoard);
+    $('pay-limits').replaceChildren(...PAY.LIMITS.map((t) => h('li', { text: t })));
+    $('pay-typed').textContent = PAY.typedWords(payBoard);
+    const rows = PAY.shopRows(payBoard);
+    $('pay-shops').replaceChildren(
+      ...(rows.length
+        ? [
+            fbTable(
+              PAY.SHOP_HEAD,
+              rows.map((r) => {
+                const box = h('input', { type: 'text', inputmode: 'decimal', placeholder: '0.00', 'aria-label': `What you pay ${r.name} a download`, value: r.rateCents == null ? '' : (r.rateCents / 100).toFixed(2), size: '7' });
+                const save = h('button', { type: 'button', class: 'ghost small', text: 'Save' });
+                save.addEventListener('click', () => void setPay(r.place, r.name, box.value, save));
+                return h('tr', {}, h('td', { text: r.name }), h('td', {}, h('div', { class: 'muted small', text: r.rate }), h('div', { class: 'pay-rate' }, box, save)), ...r.cells.map((x) => h('td', { class: 'num', text: x })));
+              }),
+              2,
+            ),
+          ]
+        : []),
+    );
+    $('pay-months-list').replaceChildren(
+      ...rows
+        .filter((r) => r.months.length)
+        .map((r) => h('div', {}, h('h4', { text: r.name }), fbTable(PAY.MONTH_HEAD, r.months.map((m) => h('tr', {}, h('td', { text: m.month }), ...m.cells.map((x) => h('td', { class: 'num', text: x })))), 1))),
+    );
+  }
+
+  async function setPay(place, name, typed, button) {
+    const cents = PAY.readRate(typed);
+    if (cents == null) {
+      $('pay-note').textContent = `Type an amount for ${name}, like 2 or 2.50.`;
+      return;
+    }
+    button.disabled = true;
+    try {
+      const out = await ask({ action: 'shop-rate-set', place, cents, months: Number($('pay-months').value) || 6 });
+      payBoard = out.board;
+      $('pay-note').textContent = out.set && out.set.ok ? `${name}: ${PAY.usd(cents)} a download from today.` : 'That rate was not saved.';
+    } catch (e) {
+      $('pay-note').textContent = e.message;
+    }
+    button.disabled = false;
+    drawPay();
+  }
+
+  async function loadPay() {
+    try {
+      payBoard = (await ask({ action: 'shop-downloads', months: Number($('pay-months').value) || 6 })).board;
+      $('pay-note').textContent = '';
+    } catch (e) {
+      payBoard = null;
+      $('pay-note').textContent = e.message;
+    }
+    drawPay();
+  }
+  $('pay-months').addEventListener('change', () => void loadPay());
+  $('pay-refresh').addEventListener('click', () => void loadPay());
+
   // ---- Printed QR codes (158; the words are qr.js's). Read only: scans counted by the website's own visit counter.
   const QR = window.CigarQr;
   let qrBoard = null;
@@ -3398,6 +3461,7 @@
     void loadFacebook();
     void loadAppleAds();
     void loadQr();
+    void loadPay();
   }
 
   /** Back from Instagram's own sign-in page: hand the one-time code to the server, once. */

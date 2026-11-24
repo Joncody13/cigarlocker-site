@@ -632,6 +632,23 @@
       <ul class="muted small" id="fb-limits"></ul>
     </section>
 
+    <!-- Shop payouts (165_shop_payouts.sql): what each shop is paid a download, and what is owed. A download is a
+         new install that answered "Did you scan our code at a shop?" with that shop. Every word is payouts.js's. -->
+    <section class="card wide" aria-labelledby="h-pay" data-tab="marketing">
+      <div class="card-head">
+        <h3 id="h-pay">Shop payouts</h3>
+        <span class="muted small" id="pay-note" role="status"></span>
+        <label class="muted small" for="pay-months">Months shown</label>
+        <select id="pay-months"><option value="3">3</option><option value="6" selected>6</option><option value="12">12</option><option value="24">24</option></select>
+        <button type="button" class="ghost small" id="pay-refresh">Refresh</button>
+      </div>
+      <p id="pay-standing"></p>
+      <div id="pay-shops"></div>
+      <div id="pay-months-list"></div>
+      <p class="muted" id="pay-typed"></p>
+      <ul class="muted small" id="pay-limits"></ul>
+    </section>
+
     <!-- Printed QR codes (158_qr_codes.sql): scans of each printed code, read from the website's own visit
          counter. Every word and figure is qr.js's. A scan is a visit, never a person. -->
     <section class="card wide" aria-labelledby="h-qr" data-tab="marketing">
@@ -941,6 +958,7 @@
   <script src="facebook.js"></script>
   <script src="appleads.js"></script>
   <script src="qr.js"></script>
+  <script src="payouts.js"></script>
   <script src="console.js"></script>
 </body>
 </html>
