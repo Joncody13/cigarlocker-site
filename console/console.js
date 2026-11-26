@@ -59,13 +59,14 @@
   // The buttons along the top (his words: "buttons at the top that'll say
   // global"): one part of the console at a time, remembered.
   const TAB = 'console.tab';
-  const TABS = ['global', 'marketing', 'excellence', 'growth', 'people', 'market', 'knowledge', 'emails', 'deals', 'featured', 'money', 'health'];
-  const TAB_NAMES = { global: 'Mission Control', marketing: 'Marketing', excellence: 'Excellence', growth: 'Growth', people: 'People', market: 'Market', knowledge: 'Knowledge', emails: 'Emails', deals: 'Deals', featured: 'Featured', money: 'Revenue and costs', health: 'Health' };
+  const TABS = ['global', 'ask', 'marketing', 'excellence', 'growth', 'people', 'market', 'knowledge', 'emails', 'deals', 'featured', 'money', 'health'];
+  const TAB_NAMES = { global: 'Mission Control', ask: 'Ask Claude', marketing: 'Marketing', excellence: 'Excellence', growth: 'Growth', people: 'People', market: 'Market', knowledge: 'Knowledge', emails: 'Emails', deals: 'Deals', featured: 'Featured', money: 'Revenue and costs', health: 'Health' };
   function showTab(name) {
     const tab = TABS.includes(name) ? name : 'global';
     for (const el of document.querySelectorAll('[data-tab]')) el.hidden = el.dataset.tab !== tab;
     for (const b of document.querySelectorAll('#tabs [data-show]')) b.setAttribute('aria-selected', b.dataset.show === tab ? 'true' : 'false');
     remember(TAB, tab);
+    if (tab === 'ask' && !$('board').hidden) void loadAsks();
     if (tab === 'featured' && !$('board').hidden) loadFeatured();
     if (tab === 'deals' && !$('board').hidden) loadDeals();
     if (tab === 'marketing' && !$('board').hidden) loadMarketing();
@@ -3158,6 +3159,105 @@
     }
     $('fb-sync').disabled = false;
     drawFacebook();
+  });
+
+  // ---- Ask Claude (175). His question goes to the console function, which lets Claude read the database and
+  // nothing else. Every answer is drawn as text.
+  const ASK_TRIES = ['What did our newest members scan today?', 'How many people opened the app each day this week?', 'Which cigars are scanned most?', 'Where did this week\u2019s website visitors come from?', 'Any errors in the last 24 hours?'];
+  let askTurns = [];
+  let askBusy = false;
+  function askWords(text) {
+    // Paragraphs, and lines that start with "- " as a list. Text only.
+    const out = [];
+    let list = null;
+    for (const raw of String(text || '').split('\n')) {
+      const line = raw.trim();
+      if (!line) {
+        list = null;
+        continue;
+      }
+      if (/^[-\u2022]\s+/.test(line)) {
+        if (!list) {
+          list = h('ul', {});
+          out.push(list);
+        }
+        list.append(h('li', { text: line.replace(/^[-\u2022]\s+/, '') }));
+      } else {
+        list = null;
+        out.push(h('p', { text: line }));
+      }
+    }
+    return out;
+  }
+  function askCard(q, a, foot) {
+    return h('div', { class: 'ask-turn' }, h('p', { class: 'ask-q', text: q }), h('div', { class: 'ask-a' }, ...(a ? askWords(a) : [h('p', { class: 'muted', text: 'Looking through the records\u2026 this can take up to a minute.' })])), foot ? h('p', { class: 'muted small', text: foot }) : '');
+  }
+  function drawAskThread(pending) {
+    $('ask-thread').replaceChildren(...askTurns.map((t) => askCard(t.q, t.a, t.foot)), ...(pending ? [askCard(pending, '', '')] : []));
+    $('ask-tries').replaceChildren(
+      ...(askTurns.length || pending
+        ? []
+        : ASK_TRIES.map((q) => {
+            const b = h('button', { type: 'button', class: 'ghost small', text: q });
+            b.addEventListener('click', () => void sendAsk(q));
+            return b;
+          })),
+    );
+  }
+  async function sendAsk(question) {
+    const q = String(question || '').trim();
+    if (askBusy) return;
+    if (q.length < 3) {
+      $('ask-note').textContent = 'Type a question first.';
+      return;
+    }
+    askBusy = true;
+    $('ask-send').disabled = true;
+    $('ask-note').textContent = '';
+    $('ask-box').value = '';
+    drawAskThread(q);
+    try {
+      const out = await ask({ action: 'ask-claude', question: q, history: askTurns.slice(-6).map((t) => ({ q: t.q, a: t.a })) });
+      askTurns.push({ q, a: out.answer, foot: `Looked ${out.looked} ${out.looked === 1 ? 'time' : 'times'} \u00b7 ${out.seconds} s \u00b7 about ${out.costCents < 1 ? 'a cent' : Math.round(out.costCents) + ' cents'}` });
+    } catch (e) {
+      $('ask-note').textContent = e.message;
+      $('ask-box').value = q;
+    }
+    askBusy = false;
+    $('ask-send').disabled = false;
+    drawAskThread('');
+    void loadAsks();
+  }
+  async function loadAsks() {
+    drawAskThread('');
+    try {
+      const rows = ((await ask({ action: 'ask-recent' })).asks || []).filter((r) => r.ok && r.answer && !askTurns.some((t) => t.q === r.question && t.a === r.answer));
+      $('ask-earlier-head').hidden = !rows.length;
+      $('ask-earlier').replaceChildren(
+        ...rows.map((r) => {
+          const d = h('details', { class: 'ask-old' }, h('summary', { text: `${new Date(r.asked_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })} \u00b7 ${r.question}` }));
+          d.append(h('div', { class: 'ask-a' }, ...askWords(r.answer)));
+          return d;
+        }),
+      );
+    } catch {
+      $('ask-earlier-head').hidden = true;
+    }
+  }
+  $('ask-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    void sendAsk($('ask-box').value);
+  });
+  $('ask-box').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      void sendAsk($('ask-box').value);
+    }
+  });
+  $('ask-new').addEventListener('click', () => {
+    askTurns = [];
+    $('ask-note').textContent = '';
+    void loadAsks();
   });
 
   // ---- Shop payouts (165; the words are payouts.js's). A rate is set from today; what is owed is worked out on the server.

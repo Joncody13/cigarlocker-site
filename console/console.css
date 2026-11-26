@@ -761,3 +761,16 @@ ul.notices li.part { padding: 0; }
 /* Shop payouts (165): what a shop is paid a download, typed beside its Save. */
 .pay-rate { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
 .pay-rate input { width: 7em; }
+
+/* Ask Claude (175) */
+.ask-form { display: grid; gap: 8px; max-width: 760px; }
+.ask-form textarea { width: 100%; font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text); resize: vertical; }
+.ask-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.ask-tries { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+.ask-thread { display: grid; gap: 14px; margin-top: 14px; max-width: 760px; }
+.ask-turn { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.ask-q { font-weight: 600; margin: 0 0 8px; }
+.ask-a p { margin: 0 0 8px; }
+.ask-a ul { margin: 0 0 8px; padding-left: 20px; }
+.ask-old { max-width: 760px; border-top: 1px solid var(--line); padding: 8px 0; }
+.ask-old summary { cursor: pointer; }

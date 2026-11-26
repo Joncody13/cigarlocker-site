@@ -31,6 +31,7 @@
   <nav class="tabs" id="tabs" role="tablist" aria-label="Parts of the console" hidden>
     <span class="tab-group"><span class="tab-group-name">Command</span>
       <button type="button" role="tab" data-show="global">Mission Control</button>
+      <button type="button" role="tab" data-show="ask">Ask Claude</button>
       <button type="button" role="tab" data-show="marketing">Marketing</button>
       <button type="button" role="tab" data-show="excellence">Excellence</button>
     </span>
@@ -93,6 +94,28 @@
   </div>
 
   <main id="board" class="board" hidden>
+    <!-- Ask Claude (175_console_ask.sql): his question, answered by Claude from Cigar Locker's own database,
+         which it can read and never change. -->
+    <section class="card wide" aria-labelledby="h-ask" data-tab="ask">
+      <div class="card-head">
+        <h3 id="h-ask">Ask Claude</h3>
+        <span class="muted small" id="ask-note" role="status"></span>
+      </div>
+      <p class="muted">Ask anything about your members, scans, downloads, the website, Instagram or the catalog. Claude reads Cigar Locker's records to answer. It can only read: it cannot change anything, and it does not see your other chats. A simple question costs a few cents; one that takes a lot of digging can cost up to about 40 cents.</p>
+      <form id="ask-form" class="ask-form">
+        <label for="ask-box" class="muted small">Your question</label>
+        <textarea id="ask-box" rows="3" maxlength="2000" placeholder="What did our newest members scan today?"></textarea>
+        <div class="ask-row">
+          <button type="submit" class="primary" id="ask-send">Ask</button>
+          <button type="button" class="ghost small" id="ask-new">Start a new conversation</button>
+        </div>
+      </form>
+      <div id="ask-tries" class="ask-tries"></div>
+      <div id="ask-thread" class="ask-thread" aria-live="polite"></div>
+      <h4 id="ask-earlier-head" hidden>Earlier questions</h4>
+      <div id="ask-earlier"></div>
+    </section>
+
     <!-- Mission Control (2026-11-11): the day in a few true sentences, eight figures each with what it is
          set against and fourteen days of it, what needs him, how each part stands. Written by mission.js
          from what the server sent and nothing else. -->
